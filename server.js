@@ -2126,6 +2126,17 @@ app.get('/game.html', (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'www')));
 
+// ============ HEALTH CHECK (for Railway/deployment) ============
+
+app.get('/api/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        users: users.size
+    });
+});
+
 // ============ START SERVER ============
 
 server.listen(PORT, () => {
