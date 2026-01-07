@@ -1,0 +1,181 @@
+/* ============================================
+   STAKE MODES - Game mode buttons with different stake tiers
+   ============================================ */
+
+.stake-modes {
+    margin-bottom: 30px;
+}
+
+.stake-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: #ffd700;
+    margin-bottom: 18px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.stake-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-stake {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 28px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    min-width: 100px;
+}
+
+.btn-stake::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn-stake:hover::before {
+    left: 100%;
+}
+
+.stake-icon {
+    font-size: 2rem;
+}
+
+.stake-amount {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 900;
+}
+
+.stake-coin {
+    font-size: 1rem;
+    margin-top: -5px;
+}
+
+.stake-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+/* Bronze Tier - 10 Coins */
+.stake-bronze {
+    background: linear-gradient(135deg, rgba(205, 127, 50, 0.2), rgba(139, 69, 19, 0.3));
+    border: 2px solid rgba(205, 127, 50, 0.5);
+    color: #cd7f32;
+}
+
+.stake-bronze:hover {
+    border-color: #cd7f32;
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(205, 127, 50, 0.4);
+    background: linear-gradient(135deg, rgba(205, 127, 50, 0.3), rgba(139, 69, 19, 0.4));
+}
+
+.stake-bronze .stake-amount {
+    color: #e8a962;
+    text-shadow: 0 0 10px rgba(205, 127, 50, 0.5);
+}
+
+/* Silver Tier - 25 Coins */
+.stake-silver {
+    background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(105, 105, 105, 0.3));
+    border: 2px solid rgba(192, 192, 192, 0.5);
+    color: #c0c0c0;
+}
+
+.stake-silver:hover {
+    border-color: #e8e8e8;
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(192, 192, 192, 0.4);
+    background: linear-gradient(135deg, rgba(192, 192, 192, 0.3), rgba(128, 128, 128, 0.4));
+}
+
+.stake-silver .stake-amount {
+    color: #e8e8e8;
+    text-shadow: 0 0 10px rgba(192, 192, 192, 0.5);
+}
+
+/* Gold Tier - 100 Coins */
+.stake-gold {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(218, 165, 32, 0.3));
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    color: #ffd700;
+}
+
+.stake-gold:hover {
+    border-color: #ffd700;
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(255, 215, 0, 0.4);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(218, 165, 32, 0.4));
+}
+
+.stake-gold .stake-amount {
+    color: #ffe657;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+}
+
+/* Gold tier special glow animation */
+.stake-gold::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #ffd700, transparent, #ffd700);
+    border-radius: 18px;
+    z-index: -1;
+    opacity: 0;
+    animation: goldGlow 2s ease-in-out infinite;
+}
+
+@keyframes goldGlow {
+
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+/* Responsive design for stake buttons */
+@media (max-width: 600px) {
+    .stake-buttons {
+        gap: 10px;
+    }
+
+    .btn-stake {
+        padding: 14px 20px;
+        min-width: 80px;
+    }
+
+    .stake-icon {
+        font-size: 1.5rem;
+    }
+
+    .stake-amount {
+        font-size: 1.2rem;
+    }
+}

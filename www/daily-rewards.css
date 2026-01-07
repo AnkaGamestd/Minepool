@@ -1,0 +1,203 @@
+/* ============================================
+   DAILY REWARDS SECTION
+   ============================================ */
+
+/* Fix scrolling on main menu page */
+body:has(.daily-rewards-section) {
+    overflow-y: auto !important;
+    height: auto !important;
+}
+
+.daily-rewards-section {
+    margin: -20px 12px 12px 12px;
+    background: linear-gradient(135deg, rgba(25, 35, 55, 0.95) 0%, rgba(20, 30, 50, 0.98) 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    padding: 15px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.daily-rewards-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.daily-rewards-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffd700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.daily-rewards-timer {
+    font-size: 0.75rem;
+    color: #8899aa;
+}
+
+.daily-rewards-timer span {
+    color: #00d4ff;
+    font-weight: 600;
+}
+
+.daily-login-bonus {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gift-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #00d4ff, #0088aa);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.bonus-info h4 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 2px 0;
+}
+
+.bonus-info p {
+    font-size: 0.75rem;
+    color: #8899aa;
+    margin: 0;
+}
+
+.bonus-info p span {
+    color: #ffd700;
+    font-weight: 600;
+}
+
+.daily-streak-days {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 15px;
+}
+
+.streak-day {
+    flex: 1;
+    aspect-ratio: 1;
+    max-width: 42px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: #667;
+    transition: all 0.3s ease;
+}
+
+.streak-day .day-label {
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.streak-day .day-icon {
+    font-size: 0.8rem;
+}
+
+.streak-day.completed {
+    background: rgba(0, 200, 100, 0.15);
+    border-color: #00c864;
+    color: #00c864;
+}
+
+.streak-day.completed .day-icon::before {
+    content: '✓';
+}
+
+.streak-day.current {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: #ffd700;
+    color: #ffd700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+.streak-day.current .day-icon::before {
+    content: '★';
+}
+
+.streak-day.upcoming {
+    opacity: 0.5;
+}
+
+.claim-reward-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #ffa500, #ff8c00);
+    border: none;
+    border-radius: 25px;
+    color: #000;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.claim-reward-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(255, 165, 0, 0.4);
+}
+
+.claim-reward-btn:disabled {
+    background: linear-gradient(135deg, #444, #333);
+    color: #666;
+    cursor: not-allowed;
+}
+
+.games-progress {
+    font-size: 0.7rem;
+    color: #8899aa;
+    text-align: center;
+    margin-top: 8px;
+}
+
+.games-progress span {
+    color: #00d4ff;
+    font-weight: 600;
+}
+
+/* Header Brand - 8 Ball + Text */
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-8ball {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.header-brand-text {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #00d4ff;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}

@@ -1,0 +1,407 @@
+/**
+ * Mine Pool - Mobile Layout
+ * 
+ * SINGLE SOURCE OF TRUTH for all mobile layouts.
+ * This file should be loaded LAST to override other CSS files.
+ */
+
+/* ============================================
+   SECTION 1: GAME PAGE - HEADER ADJUSTMENTS
+   Show avatars with player names, hide logo/text
+   ============================================ */
+
+/* Hide logo and turn indicator */
+.game-page #game-header .logo {
+    display: none !important;
+}
+
+.game-page #game-header .turn-indicator {
+    display: none !important;
+}
+
+/* Hide ball-type text only */
+.game-page #game-header .ball-type {
+    display: none !important;
+}
+
+/* Hide user-menu */
+.game-page .user-menu,
+.game-page #user-menu {
+    display: none !important;
+}
+
+/* Make header transparent and positioned absolutely */
+.game-page #game-header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: transparent !important;
+    z-index: 200 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 10px !important;
+    pointer-events: none !important;
+}
+
+.game-page #game-header .player-info {
+    display: flex !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    pointer-events: auto !important;
+}
+
+/* Player 1 - TOP LEFT */
+.game-page #game-header .player-1 {
+    position: fixed !important;
+    top: 8px !important;
+    left: 3px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+.game-page #game-header .player-1 .avatar-wrapper {
+    width: 65px !important;
+    height: 65px !important;
+    border-radius: 50% !important;
+    border: 2px solid #00ff88 !important;
+    overflow: hidden !important;
+    background: #1a1a3a !important;
+}
+
+.game-page #game-header .player-1 .avatar-img {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: none !important;
+}
+
+/* Hide the fallback text avatar for P1 */
+.game-page #game-header .player-1 .avatar {
+    display: none !important;
+}
+
+.game-page #game-header .player-1 .player-details {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+.game-page #game-header .player-1 .player-name {
+    display: block !important;
+    font-size: 10px !important;
+    color: #00ff88 !important;
+    font-weight: bold !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
+    max-width: 60px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* Player 2 - TOP RIGHT */
+.game-page #game-header .player-2 {
+    position: fixed !important;
+    top: 8px !important;
+    right: 3px !important;
+    left: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+/* Reorder Player 2: avatar first (order 1), then name below (order 2) */
+.game-page #game-header .player-2 .avatar-wrapper {
+    order: 1 !important;
+    width: 65px !important;
+    height: 65px !important;
+    border-radius: 50% !important;
+    border: 2px solid #ff4444 !important;
+    overflow: hidden !important;
+    background: #1a1a3a !important;
+}
+
+.game-page #game-header .player-2 .player-details {
+    order: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+.game-page #game-header .player-2 .avatar-img {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: none !important;
+}
+
+/* Hide the fallback text avatar for P2 */
+.game-page #game-header .player-2 .avatar {
+    display: none !important;
+}
+
+.game-page #game-header .player-2 .player-name {
+    display: block !important;
+    font-size: 10px !important;
+    color: #ff4444 !important;
+    font-weight: bold !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
+    max-width: 60px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* ============================================
+   SECTION 2: MENU PAGE LAYOUT
+   Works in BOTH portrait and landscape
+   No rotate warning on menu page
+   ============================================ */
+
+/* Menu page - hide rotate overlay */
+.menu-page .rotate-device-overlay {
+    display: none !important;
+}
+
+/* Menu page - always show game container */
+.menu-page #game-container {
+    display: block !important;
+}
+
+/* ============================================
+   SECTION 3: GAME PAGE - MOBILE RULES
+   Applied to all game page touch devices
+   ============================================ */
+@media (pointer: coarse) {
+
+    /* Game page only - hide desktop elements */
+    .game-page #controls-hint {
+        display: none !important;
+    }
+
+    .game-page #ball-rack {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   SECTION 4: GAME PAGE - PORTRAIT MODE
+   Show rotate warning, hide game
+   ============================================ */
+@media (pointer: coarse) and (orientation: portrait) {
+
+    /* Game page only - show rotate overlay */
+    .game-page .rotate-device-overlay {
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%) !important;
+        z-index: 9999 !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: white !important;
+        text-align: center !important;
+    }
+
+    .game-page .rotate-device-overlay .rotate-icon {
+        font-size: 4rem !important;
+        margin-bottom: 20px !important;
+        animation: rotate-phone 2s infinite ease-in-out !important;
+    }
+
+    .game-page .rotate-device-overlay h2 {
+        font-size: 1.5rem !important;
+        margin-bottom: 10px !important;
+        color: #00d4ff !important;
+        font-family: 'Orbitron', sans-serif !important;
+    }
+
+    .game-page .rotate-device-overlay p {
+        font-size: 1rem !important;
+        color: #aaa !important;
+        padding: 0 20px !important;
+    }
+
+    @keyframes rotate-phone {
+
+        0%,
+        100% {
+            transform: rotate(0deg);
+        }
+
+        50% {
+            transform: rotate(90deg);
+        }
+    }
+
+    /* Game page only - hide game container in portrait */
+    .game-page #game-container {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   SECTION 5: GAME PAGE - LANDSCAPE MODE
+   Full game layout with power gauge and spin control visible
+   ============================================ */
+@media (pointer: coarse) and (orientation: landscape) {
+
+    /* Game page only - hide rotate overlay */
+    .game-page .rotate-device-overlay {
+        display: none !important;
+    }
+
+    /* Game page only - show game container */
+    .game-page #game-container {
+        display: block !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        overflow: hidden !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+    }
+
+    .game-page #game-main {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .game-page #table-container {
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .game-page #pool-table {
+        max-width: calc(100vw - 120px) !important;
+        max-height: calc(100vh - 40px) !important;
+        width: auto !important;
+        height: auto !important;
+    }
+
+    /* Back button - bottom left (moved 5px down, 5px left from original 20px) */
+    .game-page .back-btn,
+    .game-page #btn-back-to-menu {
+        position: fixed !important;
+        bottom: 15px !important;
+        left: 15px !important;
+        top: auto !important;
+        right: auto !important;
+        transform: none !important;
+        z-index: 9999 !important;
+        background: rgba(0, 0, 0, 0.7) !important;
+        border: 1px solid rgba(0, 212, 255, 0.4) !important;
+        color: white !important;
+        width: 45px !important;
+        height: 45px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 50% !important;
+        font-size: 1.2rem !important;
+        padding: 0 !important;
+        box-shadow: 0 0 15px rgba(0, 212, 255, 0.2) !important;
+    }
+
+    /* Power gauge - LEFT side, vertical (moved 3px left: 10px -> 7px) */
+    .game-page #power-gauge {
+        position: fixed !important;
+        left: max(7px, env(safe-area-inset-left)) !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        right: auto !important;
+        bottom: auto !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        width: 50px !important;
+        height: 50vh !important;
+        max-height: 300px !important;
+        background: rgba(0, 0, 0, 0.7) !important;
+        border-radius: 25px !important;
+        padding: 10px !important;
+        z-index: 100 !important;
+        display: flex !important;
+    }
+
+    /* Spin control - RIGHT side (moved 5px right: 10px -> 5px) */
+    .game-page #spin-control {
+        position: fixed !important;
+        right: max(5px, env(safe-area-inset-right)) !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        left: auto !important;
+        bottom: auto !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 8px !important;
+        background: rgba(0, 0, 0, 0.7) !important;
+        border-radius: 15px !important;
+        padding: 10px !important;
+        z-index: 100 !important;
+        display: flex !important;
+    }
+}
+
+/* ============================================
+   SECTION 6: START SCREEN HIDING
+   Hide start screen when game is in progress
+   ============================================ */
+#start-screen {
+    z-index: 500;
+}
+
+#start-screen.hidden,
+#start-screen[style*="display: none"],
+#start-screen[style*="display:none"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+/* ============================================
+   SECTION 7: ONLINE MATCHMAKING MODE
+   Hide game container until match is found
+   ============================================ */
+
+/* For online mode: hide game elements until match is found */
+body.online-matchmaking #game-container {
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+body.online-matchmaking #user-menu {
+    display: none !important;
+}
+
+body.online-matchmaking .rotate-device-overlay {
+    display: none !important;
+}
+
+/* Show game when match is found */
+body.online-matchmaking.match-ready #game-container {
+    visibility: visible !important;
+    opacity: 1 !important;
+    transition: opacity 0.3s ease;
+}
+
+body.online-matchmaking.match-ready #user-menu {
+    display: flex !important;
+}

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="8 Ball Pool - Classic billiards game with realistic physics. Play against AI or friends!">
+    <title>8 Ball Pool | Classic Billiards Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="game-container">
+        <!-- Header -->
+        <header id="game-header">
+            <div class="logo">
+                <span class="logo-icon">🎱</span>
+                <span class="logo-text">8 BALL POOL</span>
+            </div>
+            <div class="player-info">
+                <div class="player player-1">
+                    <div class="avatar">P1</div>
+                    <div class="player-details">
+                        <span class="player-name">Player 1</span>
+                        <span class="ball-type" id="p1-ball-type">--</span>
+                    </div>
+                </div>
+                <div class="turn-indicator" id="turn-indicator">
+                    <span class="turn-text">PLAYER 1's TURN</span>
+                </div>
+                <div class="player player-2">
+                    <div class="player-details">
+                        <span class="player-name">Player 2</span>
+                        <span class="ball-type" id="p2-ball-type">--</span>
+                    </div>
+                    <div class="avatar">P2</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Game Area -->
+        <main id="game-main">
+            <div id="table-container">
+                <canvas id="pool-table"></canvas>
+
+                <!-- Power Gauge -->
+                <div id="power-gauge">
+                    <div class="power-label">POWER</div>
+                    <div class="rack-label">SOLIDS</div>
+                    <div class="rack-balls" id="solids-rack"></div>
+                </div>
+                <div class="rack-section stripes">
+                    <div class="rack-label">STRIPES</div>
+                    <div class="rack-balls" id="stripes-rack"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Game Messages -->
+        <div id="game-message" class="hidden">
+            <div class="message-content">
+                <h2 id="message-title">FOUL!</h2>
+                <p id="message-text">Cue ball pocketed. Ball in hand.</p>
+            </div>
+        </div>
+
+        <!-- Winner Screen -->
+        <div id="winner-screen" class="hidden">
+            <div class="winner-content">
+                <div class="trophy">🏆</div>
+                <h1 id="winner-text">PLAYER 1 WINS!</h1>
+                <button id="play-again" class="btn-primary">PLAY AGAIN</button>
+            </div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <div class="start-content">
+                <div class="start-logo">
+                    <span class="big-ball">🎱</span>
+                    <h1>8 BALL POOL</h1>
+                    <p class="tagline">Classic Billiards Experience</p>
+                </div>
+                <div class="game-modes">
+                    <button id="btn-2player" class="btn-mode">
+                        <span class="mode-icon">👥</span>
+                        <span class="mode-text">2 PLAYERS</span>
+                    </button>
+                    <button id="btn-vs-ai" class="btn-mode">
+                        <span class="mode-icon">🤖</span>
+                        <span class="mode-text">VS AI</span>
+                    </button>
+                </div>
+                <div class="instructions">
+                    <h3>HOW TO PLAY</h3>
+                    <ul>
+                        <li>🎯 Aim with mouse movement</li>
+                        <li>⚡ Hold & drag to set power</li>
+                        <li>🔄 Use spin control for english</li>
+                        <li>🎱 Pocket the 8-ball last to win!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Hint -->
+        <div id="controls-hint">
+            <span>🖱️ CLICK TO LOCK AIM</span>
+            <span>⬅️ DRAG BACK FOR POWER</span>
+            <span>🎯 RELEASE TO SHOOT</span>
+        </div>
+    </div>
+
+    <script src="physics.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>

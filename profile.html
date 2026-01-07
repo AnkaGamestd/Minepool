@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Mine Pool - Player Profile">
+    <title>Player Profile | Mine Pool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-felt: #0f6b3d;
+            --bg-felt-dark: #042a18;
+            --bg-card: rgba(15, 25, 45, 0.95);
+            --bg-glass: rgba(255, 255, 255, 0.08);
+            --border-glass: rgba(255, 255, 255, 0.12);
+            --neon-blue: #00d4ff;
+            --neon-blue-glow: rgba(0, 212, 255, 0.4);
+            --gold: #ffd700;
+            --gold-glow: rgba(255, 215, 0, 0.4);
+            --text-primary: #ffffff;
+            --text-secondary: #8892a0;
+            --accent-green: #00ff88;
+            --accent-red: #ff4466;
+            --gradient-blue: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            --gradient-gold: linear-gradient(135deg, #ffd700 0%, #ff9500 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            color: var(--text-primary);
+            background: radial-gradient(ellipse at center, #1d8050 0%, #0f6b3d 40%, #0a5c32 70%, #042a18 100%);
+            overflow-x: hidden;
+        }
+
+        .profile-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 25px 20px;
+            min-height: 100vh;
+        }
+
+        .profile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: var(--text-primary);
+            padding: 12px 18px;
+            border-radius: 14px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 25px var(--neon-blue-glow);
+        }
+
+        .header-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00d4ff 0%, #00ff88 50%, #ffd700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 3px;
+        }
+
+        .settings-btn {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: var(--text-primary);
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 215, 0, 0.15);
+            border-color: var(--gold);
+            box-shadow: 0 0 25px var(--gold-glow);
+        }
+
+        .profile-card {
+            background: linear-gradient(135deg, rgba(15, 25, 45, 0.95) 0%, rgba(10, 20, 35, 0.98) 100%);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 28px;
+            padding: 35px 30px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 0 0 60px rgba(0, 212, 255, 0.12);
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #00d4ff, #ffd700, #00d4ff, transparent);
+        }
+
+        .avatar-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 20px;
+        }
+
+        .avatar-ring {
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, var(--neon-blue), var(--gold), var(--accent-green), var(--neon-blue));
+            animation: rotate 4s linear infinite;
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .avatar-inner {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 142px;
+            height: 142px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0a1525 0%, #0d1a28 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar-image {
+            width: 128px;
+            height: 128px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #222 0%, #111 60%, #0a0a0a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 52px;
+        }
+
+        .edit-avatar-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-gold);
+            border: 4px solid #0a1525;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            z-index: 2;
+        }
+
+        .edit-avatar-btn:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 20px var(--gold-glow);
+        }
+
+        .player-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 26px;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .player-id {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .level-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 149, 0, 0.1) 100%);
+            border: 2px solid var(--gold);
+            border-radius: 25px;
+            padding: 10px 20px;
+            margin-top: 15px;
+            box-shadow: 0 0 20px var(--gold-glow);
+        }
+
+        .level-icon {
+            font-size: 22px;
+        }
+
+        .level-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .level-xp {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--gold), transparent);
+        }
+
+        .stats-section {
+            margin: 30px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .stat-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-glass);
+            border-radius: 18px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--neon-blue);
+            box-shadow: 0 15px 45px rgba(0, 212, 255, 0.25);
+        }
+
+        .stat-icon {
+            font-size: 30px;
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 30px;
+            font-weight: 900;
+            margin-bottom: 6px;
+        }
+
+        .stat-value.blue {
+            color: var(--neon-blue);
+        }
+
+        .stat-value.gold {
+            color: var(--gold);
+        }
+
+        .stat-value.green {
+            color: var(--accent-green);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .wallet-section {
+            margin-top: 30px;
+        }
+
+        .wallet-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 149, 0, 0.08) 100%);
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            border-radius: 22px;
+            padding: 28px;
+        }
+
+        .wallet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .wallet-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .wallet-icon {
+            font-size: 26px;
+        }
+
+        .wallet-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .add-funds-btn {
+            background: var(--gradient-gold);
+            border: none;
+            color: #000;
+            padding: 12px 22px;
+            border-radius: 14px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .add-funds-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 30px var(--gold-glow);
+        }
+
+        .balance-amount {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 52px;
+            font-weight: 900;
+            color: var(--gold);
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .balance-currency {
+            font-size: 26px;
+        }
+
+        .wallet-stats {
+            display: flex;
+            gap: 20px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 215, 0, 0.25);
+            margin-top: 18px;
+        }
+
+        .wallet-stat {
+            flex: 1;
+        }
+
+        .wallet-stat-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .wallet-stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .wallet-stat-value.green {
+            color: var(--accent-green);
+        }
+
+        /* Enhanced Achievements Section */
+        .achievements-section {
+            margin-top: 28px;
+            background: linear-gradient(135deg, rgba(15, 25, 45, 0.95) 0%, rgba(10, 20, 35, 0.98) 100%);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            padding: 24px;
+        }
+
+        .achievements-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .achievements-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            background: linear-gradient(135deg, #fff 0%, #ccc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .achievements-counter {
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .achievements-counter span {
+            color: var(--neon-blue);
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .achievement-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 8px;
+            background: rgba(20, 30, 50, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .achievement-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .achievement-card.locked {
+            opacity: 0.6;
+        }
+
+        .achievement-card.locked:hover {
+            opacity: 0.8;
+        }
+
+        .achievement-icon-box {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            transition: all 0.3s ease;
+        }
+
+        /* Unlocked - Common (Cyan/Teal) */
+        .achievement-icon-box.common {
+            background: linear-gradient(135deg, #1a8b8b 0%, #0d5c5c 100%);
+            border: 2px solid #2dd4d4;
+            box-shadow: 0 4px 15px rgba(45, 212, 212, 0.25);
+        }
+
+        /* Unlocked - Rare (Blue) */
+        .achievement-icon-box.rare {
+            background: linear-gradient(135deg, #1e5a9e 0%, #0d3a6e 100%);
+            border: 2px solid #4a9eff;
+            box-shadow: 0 4px 15px rgba(74, 158, 255, 0.25);
+        }
+
+        /* Unlocked - Epic (Orange) */
+        .achievement-icon-box.epic {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            border: 2px solid #f39c12;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+        }
+
+        /* Unlocked - Legendary (Gold/Yellow) */
+        .achievement-icon-box.legendary {
+            background: linear-gradient(135deg, #f1c40f 0%, #d4a30a 100%);
+            border: 2px solid #ffd700;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.35);
+        }
+
+        /* Locked (Dark Gray) */
+        .achievement-icon-box.locked {
+            background: linear-gradient(135deg, #2a3444 0%, #1e2530 100%);
+            border: 2px solid #3a4555;
+            box-shadow: none;
+        }
+
+        .achievement-icon-box.locked .achievement-icon {
+            opacity: 0.5;
+            filter: grayscale(1);
+        }
+
+        .achievement-name {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+            line-height: 1.2;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .achievement-status {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            font-style: italic;
+        }
+
+        .achievement-status.unlocked {
+            color: #2dd4d4;
+        }
+
+        .achievement-status.locked-status {
+            color: var(--text-secondary);
+        }
+
+        .view-all-achievements-btn {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            padding: 14px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            color: var(--neon-blue);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .view-all-achievements-btn:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+
+        /* Match History Section */
+        .matches-section {
+            margin-top: 28px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            padding: 22px;
+        }
+
+        .matches-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .view-all-btn {
+            color: var(--neon-blue);
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .view-all-btn:hover {
+            color: var(--gold);
+        }
+
+        .match-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .match-item.win {
+            border-left: 3px solid #00ff88;
+        }
+
+        .match-item.loss {
+            border-left: 3px solid #ff4466;
+        }
+
+        .logout-section {
+            margin-top: 28px;
+            padding-top: 22px;
+            border-top: 1px solid var(--border-glass);
+        }
+
+        .logout-btn {
+            width: 100%;
+            background: rgba(255, 68, 102, 0.1);
+            border: 2px solid var(--accent-red);
+            color: var(--accent-red);
+            padding: 16px;
+            border-radius: 16px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 68, 102, 0.2);
+            box-shadow: 0 0 30px rgba(255, 68, 102, 0.4);
+        }
+
+        @media (max-width: 480px) {
+            .profile-container {
+                padding: 15px;
+            }
+
+            .profile-card {
+                padding: 25px 20px;
+            }
+
+            .balance-amount {
+                font-size: 40px;
+            }
+
+            .stat-value {
+                font-size: 24px;
+            }
+
+            .achievements-grid {
+                gap: 10px;
+            }
+
+            .achievement-icon-box {
+                width: 48px;
+                height: 48px;
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="profile-container">
+        <header class="profile-header">
+            <a href="index.html" class="back-btn">
+                <span>←</span>
+                <span>Back</span>
+            </a>
+            <span class="header-title">PROFILE</span>
+            <button class="settings-btn" onclick="window.location.href='settings.html'">⚙️</button>
+        </header>
+
+        <div class="profile-card">
+            <div class="avatar-section">
+                <div class="avatar-container">
+                    <div class="avatar-ring"></div>
+                    <div class="avatar-inner">
+                        <div class="avatar-image" id="avatar-display">🎱</div>
+                    </div>
+                    <button class="edit-avatar-btn" onclick="changeAvatar()">📷</button>
+                </div>
+                <div class="player-name" id="player-name">Loading...</div>
+                <div class="player-id" id="player-id">ID: ------</div>
+                <div class="level-badge">
+                    <span class="level-icon" id="rank-icon">🏆</span>
+                    <span class="level-text" id="player-rank">BRONZE</span>
+                    <span class="level-xp" id="player-elo">1200 ELO</span>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <div class="section-title">Statistics</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-value blue" id="total-games">0</div>
+                        <div class="stat-label">Games Played</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🏆</div>
+                        <div class="stat-value gold" id="wins">0</div>
+                        <div class="stat-label">Victories</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value green" id="win-rate">0%</div>
+                        <div class="stat-label">Win Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-value gold" id="win-streak">0</div>
+                        <div class="stat-label">Best Streak</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="wallet-section">
+                <div class="section-title">Wallet</div>
+                <div class="wallet-card">
+                    <div class="wallet-header">
+                        <div class="wallet-title">
+                            <span class="wallet-icon">💰</span>
+                            <span class="wallet-label">Balance</span>
+                        </div>
+                        <button class="add-funds-btn" onclick="addFunds()">
+                            <span>+</span> Add
+                        </button>
+                    </div>
+                    <div class="balance-amount">
+                        <span class="balance-currency">🪙</span>
+                        <span id="coin-balance">0</span>
+                    </div>
+                    <div class="wallet-stats">
+                        <div class="wallet-stat">
+                            <div class="wallet-stat-label">Total Earned</div>
+                            <div class="wallet-stat-value green" id="total-earned">+0</div>
+                        </div>
+                        <div class="wallet-stat">
+                            <div class="wallet-stat-label">Highest Balance</div>
+                            <div class="wallet-stat-value" id="highest-balance">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Achievements Section -->
+        <div class="achievements-section">
+            <div class="achievements-section-header">
+                <span class="achievements-title">ACHIEVEMENTS</span>
+                <span class="achievements-counter"><span id="unlocked-count">0</span>/50 Unlocked</span>
+            </div>
+            <div class="achievements-grid" id="achievements-grid">
+                <!-- Achievements will be loaded dynamically -->
+            </div>
+            <a href="achievements.html" class="view-all-achievements-btn">View All Achievements →</a>
+        </div>
+
+        <!-- Match History Section -->
+        <div class="matches-section">
+            <div class="matches-header">
+                <div class="section-title" style="margin-bottom: 0;">Recent Matches</div>
+                <a href="history.html" class="view-all-btn">View All →</a>
+            </div>
+            <div id="match-history-list" style="max-height: 200px; overflow-y: auto;">
+                <p style="color: var(--text-secondary); text-align: center; padding: 20px;">Loading matches...</p>
+            </div>
+        </div>
+
+        <!-- Logout -->
+        <div class="logout-section">
+            <button class="logout-btn" onclick="logout()">
+                <span>🚪</span>
+                <span>Logout</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Rank info helper
+        function getRankFromElo(elo) {
+            if (elo >= 2400) return { rank: 'Grandmaster', icon: '👑', color: '#FF6B6B' };
+            if (elo >= 2000) return { rank: 'Master', icon: '🏆', color: '#C0C0C0' };
+            if (elo >= 1700) return { rank: 'Diamond', icon: '💎', color: '#00D4FF' };
+            if (elo >= 1400) return { rank: 'Platinum', icon: '💠', color: '#4ECDC4' };
+            if (elo >= 1100) return { rank: 'Gold', icon: '🥇', color: '#FFD700' };
+            if (elo >= 800) return { rank: 'Silver', icon: '🥈', color: '#A0A0A0' };
+            return { rank: 'Bronze', icon: '🥉', color: '#CD7F32' };
+        }
+
+        // Load user data
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/auth/me', { credentials: 'include' });
+                const data = await response.json();
+
+                if (data.success && data.user) {
+                    document.getElementById('player-name').textContent = data.user.username || 'Player';
+                    document.getElementById('player-id').textContent = 'ID: ' + (data.user.id || '------').toString().substring(0, 8);
+                    document.getElementById('coin-balance').textContent = (data.user.coins || 0).toLocaleString();
+
+                    // Stats
+                    const games = data.user.gamesPlayed || 0;
+                    const wins = data.user.gamesWon || 0;
+                    const winRate = games > 0 ? Math.round((wins / games) * 100) : 0;
+
+                    document.getElementById('total-games').textContent = games;
+                    document.getElementById('wins').textContent = wins;
+                    document.getElementById('win-rate').textContent = winRate + '%';
+                    document.getElementById('win-streak').textContent = data.user.winStreak || 0;
+
+                    // Rank/ELO
+                    const elo = data.user.elo || 1200;
+                    const rankInfo = getRankFromElo(elo);
+                    document.getElementById('player-rank').textContent = rankInfo.rank.toUpperCase();
+                    document.getElementById('player-rank').style.color = rankInfo.color;
+                    document.getElementById('rank-icon').textContent = rankInfo.icon;
+                    document.getElementById('player-elo').textContent = elo + ' ELO';
+
+                    // Avatar - show image or initial
+                    const avatarDisplay = document.getElementById('avatar-display');
+                    if (data.user.profilePicture) {
+                        avatarDisplay.innerHTML = '<img src="' + data.user.profilePicture + '" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">';
+                    } else {
+                        avatarDisplay.textContent = (data.user.username || 'P').charAt(0).toUpperCase();
+                    }
+
+                    // Wallet stats
+                    document.getElementById('total-earned').textContent = '+' + (data.user.totalEarned || 0).toLocaleString();
+                    document.getElementById('highest-balance').textContent = (data.user.highestBalance || data.user.coins || 0).toLocaleString();
+
+                    // Load achievements and match history
+                    loadAchievements();
+                    loadMatchHistory();
+                } else {
+                    window.location.href = '/login.html';
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                window.location.href = '/login.html';
+            }
+        }
+
+        // Load achievements with new card design
+        async function loadAchievements() {
+            try {
+                const response = await fetch('/api/achievements', { credentials: 'include' });
+                const data = await response.json();
+
+                const grid = document.getElementById('achievements-grid');
+                grid.innerHTML = '';
+
+                if (data.success) {
+                    const earned = data.earned || [];
+                    const locked = data.locked || [];
+                    const totalAchievements = 50; // Total possible achievements
+
+                    // Update counter
+                    document.getElementById('unlocked-count').textContent = earned.length;
+
+                    // Show first 3 earned + 3 locked achievements
+                    const toShow = [...earned.slice(0, 3), ...locked.slice(0, 3)];
+
+                    toShow.forEach(ach => {
+                        const card = document.createElement('div');
+                        card.className = 'achievement-card' + (ach.unlocked ? '' : ' locked');
+                        card.title = ach.description || '';
+
+                        const iconBox = document.createElement('div');
+                        iconBox.className = 'achievement-icon-box ' + (ach.unlocked ? (ach.rarity || 'common') : 'locked');
+
+                        const icon = document.createElement('span');
+                        icon.className = 'achievement-icon';
+                        icon.textContent = ach.icon || '🔒';
+                        iconBox.appendChild(icon);
+
+                        const name = document.createElement('div');
+                        name.className = 'achievement-name';
+                        name.textContent = ach.name || 'Unknown';
+
+                        const status = document.createElement('div');
+                        status.className = 'achievement-status ' + (ach.unlocked ? 'unlocked' : 'locked-status');
+                        status.textContent = ach.unlocked ? 'Unlocked' : 'Locked';
+
+                        card.appendChild(iconBox);
+                        card.appendChild(name);
+                        card.appendChild(status);
+                        grid.appendChild(card);
+                    });
+
+                    // If no achievements to show, display placeholders
+                    if (toShow.length === 0) {
+                        const placeholders = [
+                            { icon: '🏆', name: 'First Win', rarity: 'common' },
+                            { icon: '🔥', name: '10 Streak', rarity: 'common' },
+                            { icon: '👑', name: 'Champion', rarity: 'epic' },
+                            { icon: '⭐', name: 'Legendary', rarity: 'legendary' },
+                            { icon: '💎', name: 'Perfect', rarity: 'rare' },
+                            { icon: '🎖️', name: 'Elite', rarity: 'rare' }
+                        ];
+
+                        placeholders.forEach(ph => {
+                            const card = document.createElement('div');
+                            card.className = 'achievement-card locked';
+
+                            const iconBox = document.createElement('div');
+                            iconBox.className = 'achievement-icon-box locked';
+                            iconBox.innerHTML = '<span class="achievement-icon">' + ph.icon + '</span>';
+
+                            const name = document.createElement('div');
+                            name.className = 'achievement-name';
+                            name.textContent = ph.name;
+
+                            const status = document.createElement('div');
+                            status.className = 'achievement-status locked-status';
+                            status.textContent = 'Locked';
+
+                            card.appendChild(iconBox);
+                            card.appendChild(name);
+                            card.appendChild(status);
+                            grid.appendChild(card);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.log('Achievements not available');
+                // Show placeholder achievements
+                const grid = document.getElementById('achievements-grid');
+                grid.innerHTML = `
+                    <div class="achievement-card locked">
+                        <div class="achievement-icon-box locked"><span class="achievement-icon">🏆</span></div>
+                        <div class="achievement-name">First Win</div>
+                        <div class="achievement-status locked-status">Locked</div>
+                    </div>
+                    <div class="achievement-card locked">
+                        <div class="achievement-icon-box locked"><span class="achievement-icon">🔥</span></div>
+                        <div class="achievement-name">10 Streak</div>
+                        <div class="achievement-status locked-status">Locked</div>
+                    </div>
+                    <div class="achievement-card locked">
+                        <div class="achievement-icon-box locked"><span class="achievement-icon">👑</span></div>
+                        <div class="achievement-name">Champion</div>
+                        <div class="achievement-status locked-status">Locked</div>
+                    </div>
+                    <div class="achievement-card locked">
+                        <div class="achievement-icon-box locked"><span class="achievement-icon">⭐</span></div>
+                        <div class="achievement-name">Legendary</div>
+                        <div class="achievement-status locked-status">Locked</div>
+                    </div>
+                    <div class="achievement-card locked">
+                        <div class="achievement-icon-box locked"><span class="achievement-icon">💎</span></div>
+                        <div class="achievement-name">Perfect</div>
+                        <div class="achievement-status locked-status">Locked</div>
+                    </div>
+                    <div class="achievement-card locked">
+                        <div class="achievement-icon-box locked"><span class="achievement-icon">🎖️</span></div>
+                        <div class="achievement-name">Elite</div>
+                        <div class="achievement-status locked-status">Locked</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Load match history
+        async function loadMatchHistory() {
+            try {
+                const response = await fetch('/api/matches?limit=5', { credentials: 'include' });
+                const data = await response.json();
+                const list = document.getElementById('match-history-list');
+
+                if (data.success && data.matches && data.matches.length > 0) {
+                    list.innerHTML = data.matches.map(match => {
+                        const isWin = match.isWinner;
+                        const coinsColor = match.coinsChange >= 0 ? '#00ff88' : '#ff4466';
+                        const eloColor = match.eloChange >= 0 ? '#00ff88' : '#ff4466';
+                        return '<div class="match-item ' + (isWin ? 'win' : 'loss') + '">' +
+                            '<div>' +
+                            '<div style="font-weight: 600;">' + (isWin ? '🏆 Victory' : '💔 Defeat') + '</div>' +
+                            '<div style="font-size: 11px; color: var(--text-secondary);">vs ' + (isWin ? match.loserUsername : match.winnerUsername) + '</div>' +
+                            '</div>' +
+                            '<div style="text-align: right;">' +
+                            '<div style="color: ' + coinsColor + ';">' + (match.coinsChange >= 0 ? '+' : '') + match.coinsChange + ' 💰</div>' +
+                            '<div style="font-size: 10px; color: ' + eloColor + ';">' + (match.eloChange >= 0 ? '+' : '') + match.eloChange + ' ELO</div>' +
+                            '</div>' +
+                            '</div>';
+                    }).join('');
+                } else {
+                    list.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No matches yet. Play online to see your history!</p>';
+                }
+            } catch (error) {
+                console.log('Match history not available');
+                document.getElementById('match-history-list').innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Play online matches to see your history!</p>';
+            }
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                localStorage.removeItem('user');
+                window.location.href = '/login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = '/login.html';
+            }
+        }
+
+        // Change avatar
+        function changeAvatar() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File too large! Maximum size is 5MB.');
+                    return;
+                }
+
+                const avatarDisplay = document.getElementById('avatar-display');
+                const originalContent = avatarDisplay.innerHTML;
+                avatarDisplay.innerHTML = '⏳';
+
+                try {
+                    const formData = new FormData();
+                    formData.append('avatar', file);
+
+                    const response = await fetch('/api/profile/avatar', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        avatarDisplay.innerHTML = '<img src="' + data.avatarUrl + '" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">';
+                        alert('Avatar updated successfully!');
+                    } else {
+                        avatarDisplay.innerHTML = originalContent;
+                        alert('Failed to upload avatar: ' + (data.error || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Avatar upload error:', error);
+                    avatarDisplay.innerHTML = originalContent;
+                    alert('Failed to upload avatar. Please try again.');
+                }
+            };
+
+            input.click();
+        }
+
+        // Add funds
+        function addFunds() {
+            alert('Shop coming soon! Earn coins by winning games.');
+        }
+
+        // Load profile on page load
+        loadProfile();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mine Pool - UI Concept</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --neon-cyan: #00f2ff;
+            --neon-orange: #ff9d00;
+            --neon-gold: #ffcc00;
+            --glass-bg: rgba(10, 15, 25, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: #050a10;
+            background-image:
+                radial-gradient(circle at 50% 50%, rgba(0, 242, 255, 0.05) 0%, transparent 70%),
+                url('https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070');
+            /* Cyberpunk city placeholder */
+            background-size: cover;
+            background-position: center;
+            font-family: 'Rajdhani', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+        }
+
+        /* --- UI OVERLAY --- */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            pointer-events: none;
+        }
+
+        #ui-overlay * {
+            pointer-events: auto;
+        }
+
+        /* --- PLAYER CARDS (TOP) --- */
+        .header-zone {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .player-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 240px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .player-card.active-cyan {
+            border-color: rgba(0, 242, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+        }
+
+        .player-card.active-orange {
+            border-color: rgba(255, 157, 0, 0.4);
+            box-shadow: 0 0 20px rgba(255, 157, 0, 0.2);
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 50px;
+            height: 50px;
+        }
+
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .glow-ring {
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            animation: rotate 4s linear infinite;
+        }
+
+        .active-cyan .glow-ring {
+            border-top-color: var(--neon-cyan);
+            border-right-color: var(--neon-cyan);
+            filter: drop-shadow(0 0 5px var(--neon-cyan));
+        }
+
+        .active-orange .glow-ring {
+            border-top-color: var(--neon-orange);
+            border-right-color: var(--neon-orange);
+            filter: drop-shadow(0 0 5px var(--neon-orange));
+        }
+
+        .player-info {
+            flex: 1;
+        }
+
+        .player-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        .player-rank {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            display: block;
+        }
+
+        /* Timer Bar */
+        .timer-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .timer-fill {
+            height: 100%;
+            width: 70%;
+            /* Example: 70% time left */
+            transition: width 1s linear;
+        }
+
+        .active-cyan .timer-fill {
+            background: var(--neon-cyan);
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .active-orange .timer-fill {
+            background: var(--neon-orange);
+            box-shadow: 0 0 10px var(--neon-orange);
+        }
+
+        /* --- TURN INDICATOR (CENTER) --- */
+        .turn-zone {
+            text-align: center;
+            padding-top: 10px;
+        }
+
+        .turn-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--neon-gold);
+            text-shadow: 0 0 15px rgba(255, 204, 0, 0.6);
+            letter-spacing: 3px;
+            animation: pulse 2s infinite;
+        }
+
+        /* --- MIDDLE ZONE (SIDES) --- */
+        .middle-zone {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex: 1;
+            width: 100%;
+            padding: 0 10px;
+        }
+
+        /* Power Gauge */
+        .power-gauge-container {
+            width: 40px;
+            height: 250px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .power-track {
+            flex: 1;
+            width: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .power-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 45%;
+            /* Example: 45% power */
+            background: linear-gradient(to top, #0055ff, var(--neon-cyan));
+            box-shadow: 0 0 15px var(--neon-cyan);
+            border-radius: 10px;
+        }
+
+        .power-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            margin-bottom: 5px;
+        }
+
+        /* Spin Control */
+        .spin-control-container {
+            width: 80px;
+            height: 80px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .spin-ball-ui {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle at 30% 30%, #fff 0%, #ddd 20%, #888 100%);
+            border-radius: 50%;
+            position: relative;
+            box-shadow: inset -5px -5px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .spin-marker {
+            position: absolute;
+            top: 40%;
+            left: 60%;
+            width: 8px;
+            height: 8px;
+            background: #ff3300;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #ff3300;
+        }
+
+        /* --- FOOTER ZONE (BOTTOM) --- */
+        .footer-zone {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+        }
+
+        .icon-btn {
+            width: 45px;
+            height: 45px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 20px;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.1);
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.7;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+
+            100% {
+                opacity: 0.7;
+                transform: scale(1);
+            }
+        }
+
+        /* --- TABLE PLACEHOLDER --- */
+        #table-placeholder {
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 60%;
+            background: #0a3d2a;
+            border: 15px solid #3d2411;
+            border-radius: 40px;
+            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.8), inset 0 0 50px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: -1;
+        }
+
+        .pocket {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #000;
+            border-radius: 50%;
+            box-shadow: inset 0 5px 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .p-tl {
+            top: -5px;
+            left: -5px;
+        }
+
+        .p-tr {
+            top: -5px;
+            right: -5px;
+        }
+
+        .p-bl {
+            bottom: -5px;
+            left: -5px;
+        }
+
+        .p-br {
+            bottom: -5px;
+            right: -5px;
+        }
+
+        .p-tc {
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .p-bc {
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="table-placeholder">
+        <div class="pocket p-tl"></div>
+        <div class="pocket p-tr"></div>
+        <div class="pocket p-bl"></div>
+        <div class="pocket p-br"></div>
+        <div class="pocket p-tc"></div>
+        <div class="pocket p-bc"></div>
+        <div style="color: rgba(255,255,255,0.1); font-size: 40px; font-weight: bold; font-family: 'Orbitron';">POOL
+            TABLE AREA</div>
+    </div>
+
+    <div id="ui-overlay">
+        <!-- TOP SECTION -->
+        <div class="header-zone">
+            <!-- Player 1 Card -->
+            <div class="player-card active-cyan">
+                <div class="avatar-container">
+                    <div class="glow-ring"></div>
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="P1" class="avatar-img">
+                </div>
+                <div class="player-info">
+                    <span class="player-name">DEMOPLAYER</span>
+                    <span class="player-rank">LEVEL 15</span>
+                </div>
+                <div class="timer-bar">
+                    <div class="timer-fill"></div>
+                </div>
+            </div>
+
+            <!-- Turn Indicator -->
+            <div class="turn-zone">
+                <div class="turn-text">YOUR TURN</div>
+            </div>
+
+            <!-- Player 2 Card -->
+            <div class="player-card">
+                <div class="player-info" style="text-align: right;">
+                    <span class="player-name">POOLPRO_AI</span>
+                    <span class="player-rank">LEVEL 24</span>
+                </div>
+                <div class="avatar-container">
+                    <div class="glow-ring"></div>
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" alt="P2" class="avatar-img">
+                </div>
+                <div class="timer-bar">
+                    <div class="timer-fill" style="width: 0;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MIDDLE SECTION -->
+        <div class="middle-zone">
+            <!-- Power Gauge -->
+            <div class="power-gauge-container">
+                <div class="power-label">POWER</div>
+                <div class="power-track">
+                    <div class="power-fill"></div>
+                </div>
+                <div style="font-size: 10px; font-weight: bold; color: var(--neon-cyan);">45%</div>
+            </div>
+
+            <!-- Spin Control -->
+            <div class="spin-control-container">
+                <div class="spin-ball-ui">
+                    <div class="spin-marker"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM SECTION -->
+        <div class="footer-zone">
+            <div class="icon-btn" title="Back to Menu">❮</div>
+            <div class="icon-btn" title="Chat">💬</div>
+        </div>
+    </div>
+
+    <script>
+        // Simple animation for the timer bar to show it working
+        const timerFill = document.querySelector('.active-cyan .timer-fill');
+        let width = 100;
+        setInterval(() => {
+            width -= 0.5;
+            if (width < 0) width = 100;
+            timerFill.style.width = width + '%';
+        }, 100);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,639 @@
+/* ============================================
+   MOBILE LANDSCAPE-ONLY GAME LAYOUT
+   Forces horizontal orientation and clean UI
+   ============================================ */
+
+/* Force landscape orientation message for portrait mode */
+.rotate-device-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #0a0e17 0%, #1a2540 100%);
+    z-index: 99999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+}
+
+.rotate-device-overlay .rotate-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    animation: rotatePhone 2s ease-in-out infinite;
+}
+
+.rotate-device-overlay h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.5rem;
+    color: #00d4ff;
+    margin-bottom: 10px;
+}
+
+.rotate-device-overlay p {
+    font-size: 1rem;
+    color: #8892a6;
+}
+
+@keyframes rotatePhone {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(-15deg);
+    }
+
+    75% {
+        transform: rotate(15deg);
+    }
+}
+
+/* Show rotate overlay only on mobile portrait */
+@media (pointer: coarse) and (orientation: portrait) {
+    .rotate-device-overlay {
+        display: flex !important;
+    }
+
+    #game-container {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   MOBILE LANDSCAPE LAYOUT
+   ============================================ */
+@media (pointer: coarse) and (orientation: landscape) {
+
+    /* Header - Minimalist for Mobile */
+    #game-header {
+        display: flex !important;
+        position: fixed !important;
+        top: max(5px, env(safe-area-inset-top)) !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        padding: 0 !important;
+        background: transparent !important;
+        pointer-events: none !important;
+        justify-content: center !important;
+        z-index: 90 !important;
+    }
+
+    .logo {
+        display: none !important;
+    }
+
+    .player-info {
+        display: flex !important;
+        gap: 15px !important;
+        background: transparent !important;
+        border: none !important;
+        width: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Hide the text turn indicator block */
+    #turn-indicator,
+    .turn-indicator {
+        display: none !important;
+    }
+
+    /* Hide player names and details */
+    .player-details {
+        display: none !important;
+    }
+
+    /* Player container - just the avatar */
+    .player {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        opacity: 0.6 !important;
+        transition: all 0.3s ease !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+
+    /* Active player state */
+    .player.active {
+        opacity: 1 !important;
+        transform: scale(1.1) !important;
+    }
+
+    /* Avatar Styling - Square with green border for active */
+    .avatar {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 50% !important;
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+        font-size: 0.8rem !important;
+        display: flex;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #222 !important;
+        color: #fff !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5) !important;
+        position: relative !important;
+    }
+
+    /* Green border for active turn */
+    .player.active .avatar {
+        border-color: #00ff00 !important;
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.6) !important;
+    }
+
+    /* Avatar image styling for mobile */
+    .player .avatar-img,
+    .avatar-img {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 50% !important;
+        border: 3px solid rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5) !important;
+        object-fit: cover !important;
+    }
+
+    /* Green border for active turn on avatar images */
+    .player.active .avatar-img {
+        border-color: #00ff00 !important;
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.6) !important;
+    }
+
+
+    #ball-rack {
+        display: none !important;
+    }
+
+    #controls-hint,
+    #mobile-controls-hint,
+    .desktop-hint,
+    .mobile-hint {
+        display: none !important;
+    }
+
+    .user-menu {
+        top: max(5px, env(safe-area-inset-top)) !important;
+        right: max(5px, env(safe-area-inset-right)) !important;
+        padding: 4px 10px !important;
+        gap: 8px !important;
+    }
+
+    .user-avatar {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 10px !important;
+    }
+
+    .user-name {
+        font-size: 10px !important;
+    }
+
+    .user-coins {
+        display: none !important;
+    }
+
+    .btn-logout {
+        padding: 3px 8px !important;
+        font-size: 9px !important;
+    }
+
+    /* Full screen game container */
+    body {
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background-color: #000 !important;
+        /* Fill notches with black */
+    }
+
+    #game-container {
+        width: 100vw !important;
+        height: 100vh !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    #game-main {
+        padding: 0 !important;
+        height: 100vh !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0 !important;
+    }
+
+    /* Table container - centered with controls on sides */
+    #table-container {
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0 !important;
+        /* Ensure safe areas don't cut off content */
+        padding-left: env(safe-area-inset-left) !important;
+        padding-right: env(safe-area-inset-right) !important;
+    }
+
+    /* Pool table - maximize space but leave room for controls */
+    #pool-table {
+        /* Calculate max width based on viewport minus control space */
+        /* We reserve ~15% or ~80px on each side for controls */
+        max-width: calc(100vw - max(160px, 20vw)) !important;
+        max-height: 90vh !important;
+        width: auto !important;
+        height: auto !important;
+        object-fit: contain !important;
+        pointer-events: auto !important;
+        touch-action: none !important;
+    }
+
+    /* Power gauge - Interactive Slider on Left */
+    #power-gauge {
+        position: absolute !important;
+        left: max(20px, env(safe-area-inset-left)) !important;
+        right: auto !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 1vh !important;
+        width: max(50px, 8vw) !important;
+        height: 60vh !important;
+        /* Responsive height */
+        background: rgba(0, 0, 0, 0.5) !important;
+        border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 30px !important;
+        padding: 10px 0 !important;
+        z-index: 100 !important;
+        touch-action: none !important;
+    }
+
+    .power-label {
+        font-size: 0.6rem !important;
+        letter-spacing: 1px !important;
+        margin-bottom: 5px !important;
+        pointer-events: none;
+    }
+
+    .power-bar {
+        width: 30% !important;
+        height: 80% !important;
+        background: #1a1a1a !important;
+        border-radius: 10px !important;
+        position: relative !important;
+        overflow: visible !important;
+        pointer-events: none;
+    }
+
+    /* The fill inside the bar */
+    .power-fill {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        background: linear-gradient(to top, #00ff88, #ffaa00, #ff4444) !important;
+        border-radius: 10px !important;
+        height: 0%;
+        transition: height 0.05s linear !important;
+    }
+
+    /* New Power Handle for sliding */
+    #power-handle {
+        display: block !important;
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: max(30px, 5vh);
+        height: max(30px, 5vh);
+        background: radial-gradient(circle, #fff, #ccc);
+        border: 2px solid #00d4ff;
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        top: 0;
+        margin-top: calc(max(30px, 5vh) / -2);
+        pointer-events: none;
+    }
+
+    .power-value {
+        font-size: 0.8rem !important;
+        margin-top: 5px !important;
+        font-weight: bold !important;
+        pointer-events: none;
+    }
+
+    /* Spin control - Right side, above chat */
+    #spin-control {
+        position: fixed !important;
+        right: max(15px, env(safe-area-inset-right)) !important;
+        left: auto !important;
+        top: 50% !important;
+        bottom: auto !important;
+        transform: translateY(-50%) !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        min-width: 70px !important;
+        max-width: 90px !important;
+        z-index: 100 !important;
+        margin: 0 !important;
+        padding: 10px 5px !important;
+        background: rgba(0, 0, 0, 0.4) !important;
+        border-radius: 15px !important;
+    }
+
+    .spin-label {
+        font-size: 0.55rem !important;
+        letter-spacing: 1px !important;
+        margin-bottom: 5px !important;
+        pointer-events: none;
+    }
+
+    .spin-ball {
+        width: max(50px, 12vh) !important;
+        height: max(50px, 12vh) !important;
+    }
+
+    .spin-indicator {
+        width: 20% !important;
+        height: 20% !important;
+    }
+
+    .spin-info {
+        font-size: 0.5rem !important;
+        padding: 2px 5px !important;
+        min-width: 50px !important;
+    }
+
+    .reset-spin {
+        font-size: 0.5rem !important;
+        padding: 4px 8px !important;
+    }
+
+    .turn-text {
+        font-size: 0.65rem !important;
+    }
+
+    .timer-text {
+        font-size: 0.6rem !important;
+        margin-left: 8px !important;
+    }
+
+    /* Game messages - smaller */
+    .message-content {
+        padding: 15px 25px !important;
+    }
+
+    .message-content h2 {
+        font-size: 1.2rem !important;
+    }
+
+    .message-content p {
+        font-size: 0.85rem !important;
+    }
+
+    /* Call pocket modal - compact */
+    .call-pocket-content {
+        padding: 15px !important;
+    }
+
+    .call-pocket-content h2 {
+        font-size: 1.1rem !important;
+        margin-bottom: 8px !important;
+    }
+
+    .pocket-grid {
+        gap: 5px !important;
+    }
+
+    .pocket-btn {
+        min-width: 70px !important;
+        min-height: 50px !important;
+        padding: 8px !important;
+        font-size: 0.7rem !important;
+    }
+
+    /* Winner screen - compact */
+    .winner-content .trophy {
+        font-size: 60px !important;
+    }
+
+    .winner-content h1 {
+        font-size: 1.8rem !important;
+        margin: 15px 0 !important;
+    }
+
+    .btn-primary {
+        padding: 10px 25px !important;
+        font-size: 0.9rem !important;
+    }
+}
+
+/* ============================================
+   VERY SMALL LANDSCAPE (short height)
+   ============================================ */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 400px) {
+    #power-gauge {
+        width: 40px !important;
+        height: 200px !important;
+    }
+
+    .power-bar {
+        width: 14px !important;
+        height: 140px !important;
+    }
+
+    .power-label,
+    .spin-label {
+        display: none !important;
+    }
+
+    #spin-control {
+        min-width: 55px !important;
+    }
+
+    .spin-ball {
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    .spin-info,
+    .reset-spin {
+        display: none !important;
+    }
+
+    .user-menu {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   START SCREEN - MOBILE LANDSCAPE
+   ============================================ */
+@media (pointer: coarse) and (orientation: landscape) {
+    #start-screen {
+        padding: 10px !important;
+    }
+
+    .start-content {
+        padding: 20px 30px !important;
+        max-width: 90vw !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 20px !important;
+    }
+
+    .start-logo {
+        margin-bottom: 0 !important;
+    }
+
+    .big-ball {
+        font-size: 50px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .start-logo h1 {
+        font-size: 1.8rem !important;
+    }
+
+    .tagline {
+        font-size: 0.8rem !important;
+        letter-spacing: 2px !important;
+    }
+
+    .game-modes {
+        flex-direction: row !important;
+        gap: 10px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .btn-mode {
+        padding: 15px 25px !important;
+        gap: 8px !important;
+    }
+
+    .mode-icon {
+        font-size: 1.8rem !important;
+    }
+
+    .mode-text {
+        font-size: 0.75rem !important;
+    }
+
+    .instructions {
+        display: none !important;
+    }
+}
+/* Fix: Remove blocking background under avatars */
+@media (pointer: coarse) and (orientation: landscape) {
+    #game-header {
+        background: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        box-shadow: none !important;
+        border: none !important;
+        height: auto !important;
+        min-height: unset !important;
+    }
+    
+    #game-header .player-info {
+        background: none !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        height: auto !important;
+    }
+    
+    #game-header::before,
+    #game-header::after,
+    .player-info::before,
+    .player-info::after {
+        display: none !important;
+        content: none !important;
+    }
+}
+
+/* Mobile-optimized stake mode cards in Find Match popup */
+@media (pointer: coarse) and (orientation: landscape) {
+    .matchmaking-modal {
+        max-width: 95vw !important;
+        max-height: 95vh !important;
+        padding: 15px !important;
+        overflow-y: auto !important;
+    }
+    
+    .matchmaking-header h2 {
+        font-size: 1rem !important;
+    }
+    
+    .stake-header {
+        font-size: 0.9rem !important;
+        margin-bottom: 10px !important;
+    }
+    
+    .tier-cards-row {
+        gap: 8px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .tier-card {
+        max-width: 80px !important;
+        min-width: 70px !important;
+        padding: 10px 8px !important;
+        border-radius: 10px !important;
+    }
+    
+    .tier-icon {
+        font-size: 1rem !important;
+        margin-bottom: 2px !important;
+    }
+    
+    .tier-amount {
+        font-size: 1.1rem !important;
+    }
+    
+    .tier-coin {
+        font-size: 0.7rem !important;
+    }
+    
+    .tier-name {
+        font-size: 0.55rem !important;
+        letter-spacing: 1px !important;
+    }
+    
+    .btn-find-match {
+        padding: 10px !important;
+        font-size: 0.85rem !important;
+        margin-top: 8px !important;
+    }
+    
+    .room-options {
+        margin-top: 10px !important;
+        padding-top: 10px !important;
+        gap: 8px !important;
+    }
+    
+    .btn-room {
+        padding: 8px !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .room-icon {
+        font-size: 1rem !important;
+    }
+}

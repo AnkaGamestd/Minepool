@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Multiplayer</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+
+<body>
+    <h1>Multiplayer Test</h1>
+    <div id="status">Not connected</div>
+    <div id="log"></div>
+
+    <script>
+        const log = (msg) => {
+            console.log(msg);
+            document.getElementById('log').innerHTML += msg + '<br>';
+        };
+
+        // Get auth first
+        fetch('/api/auth/me', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    log('Not authenticated - please login first');
+                    return;
+                }
+
+                window.currentUser = data.user;
+                log('Authenticated as: ' + data.user.username);
+
+                // Connect socket
+                const socket = io();
+
+                socket.on('connect', () => {
+                    log('Connected: ' + socket.id);
+                    document.getElementById('status').textContent = 'Connected';
+
+                    // Authenticate
+                    socket.emit('authenticate', { user: data.user });
+                });
+
+                socket.on('authenticated', () => {
+                    log('Authenticated with server');
+                });
+
+                socket.on('match_found', (data) => {
+                    log('MATCH FOUND! Room: ' + data.roomId);
+                });
+
+                socket.on('game_start', (data) => {
+                    log('GAME START! ' + JSON.stringify(data));
+                    alert('GAME WOULD START NOW! Check console for data.');
+                });
+
+                socket.on('matchmaking_started', (data) => {
+                    log('Matchmaking started, position: ' + data.position);
+                });
+
+                socket.on('disconnect', () => {
+                    log('Disconnected');
+                    document.getElementById('status').textContent = 'Disconnected';
+                });
+
+                // Button to find match
+                const btn = document.createElement('button');
+                btn.textContent = 'Find Match (Casual)';
+                btn.onclick = () => {
+                    log('Finding match...');
+                    socket.emit('find_match', { tier: 'casual' });
+                };
+                document.body.appendChild(btn);
+            });
+    </script>
+</body>
+
+</html>

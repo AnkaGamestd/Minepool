@@ -1,0 +1,599 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎱 8-Ball Pool Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="login-screen" class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <h1>🎱 8-Ball Pool</h1>
+                    <p>Admin Panel</p>
+                </div>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" placeholder="Enter username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="Enter password" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Login</button>
+                    <p class="login-hint">Demo: admin / admin123</p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="dashboard" class="dashboard hidden">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h1>🎱 8-Ball Pool</h1>
+                    <span class="badge">Admin</span>
+                </div>
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-item active" data-page="overview">
+                        <span class="icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="users">
+                        <span class="icon">👥</span>
+                        <span>Users</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="games">
+                        <span class="icon">🎮</span>
+                        <span>Games</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="moderation">
+                        <span class="icon">🛡️</span>
+                        <span>Moderation</span>
+                        <span class="badge-count" id="reports-count">5</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="analytics">
+                        <span class="icon">📈</span>
+                        <span>Analytics</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="messages">
+                        <span class="icon">📬</span>
+                        <span>Messages</span>
+                        <span class="badge-count" id="messages-count">0</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="settings">
+                        <span class="icon">⚙️</span>
+                        <span>Settings</span>
+                    </a>
+                </nav>
+                <div class="sidebar-footer">
+                    <div class="admin-info">
+                        <span class="admin-avatar">👤</span>
+                        <span id="admin-name">Admin</span>
+                    </div>
+                    <button id="logout-btn" class="btn-logout">Logout</button>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <header class="content-header">
+                    <h2 id="page-title">Dashboard</h2>
+                    <div class="header-actions">
+                        <span class="server-status">
+                            <span class="status-dot online"></span>
+                            Server Online
+                        </span>
+                        <button id="refresh-btn" class="btn-icon">🔄</button>
+                    </div>
+                </header>
+
+                <div id="page-content">
+                    <!-- Overview Page -->
+                    <div id="page-overview" class="page active">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon">👥</div>
+                                <div class="stat-info">
+                                    <h3 id="stat-total-users">-</h3>
+                                    <p>Total Users</p>
+                                </div>
+                                <span class="stat-trend up">↑ 12%</span>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">🟢</div>
+                                <div class="stat-info">
+                                    <h3 id="stat-online-users">-</h3>
+                                    <p>Online Now</p>
+                                </div>
+                                <span class="stat-trend up">↑ 5%</span>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">🎮</div>
+                                <div class="stat-info">
+                                    <h3 id="stat-live-games">-</h3>
+                                    <p>Live Games</p>
+                                </div>
+                                <span class="stat-trend up">↑ 8%</span>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">💰</div>
+                                <div class="stat-info">
+                                    <h3 id="stat-revenue">-</h3>
+                                    <p>Today's Revenue</p>
+                                </div>
+                                <span class="stat-trend up">↑ 18%</span>
+                            </div>
+                        </div>
+                        <div class="dashboard-grid">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>🎮 Live Games</h3>
+                                    <span class="badge" id="live-count">0</span>
+                                </div>
+                                <div class="card-body">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Room</th>
+                                                <th>Player 1</th>
+                                                <th>Player 2</th>
+                                                <th>Score</th>
+                                                <th>Duration</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="live-games-table">
+                                            <tr>
+                                                <td colspan="5" class="loading">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>📋 Recent Activity</h3>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="activity-list" id="activity-list">
+                                        <li class="loading">Loading...</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Page -->
+                    <div id="page-users" class="page">
+                        <div class="page-actions">
+                            <input type="text" id="user-search" placeholder="Search users..." class="search-input">
+                            <select id="user-filter" class="filter-select">
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="banned">Banned</option>
+                            </select>
+                        </div>
+                        <div class="card">
+                            <table class="data-table full-width">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Username</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>ELO</th>
+                                        <th>Games</th>
+                                        <th>Win Rate</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table">
+                                    <tr>
+                                        <td colspan="8" class="loading">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Games Page -->
+                    <div id="page-games" class="page">
+                        <div class="tabs">
+                            <button class="tab active" data-tab="live">🔴 Live Games</button>
+                            <button class="tab" data-tab="history">📜 History</button>
+                        </div>
+                        <div id="tab-live" class="tab-content active">
+                            <div class="card">
+                                <table class="data-table full-width">
+                                    <thead>
+                                        <tr>
+                                            <th>Room ID</th>
+                                            <th>Player 1</th>
+                                            <th>Player 2</th>
+                                            <th>Score</th>
+                                            <th>Bet</th>
+                                            <th>Duration</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="games-live-table">
+                                        <tr>
+                                            <td colspan="7" class="loading">Loading...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="tab-history" class="tab-content">
+                            <div class="card">
+                                <table class="data-table full-width">
+                                    <thead>
+                                        <tr>
+                                            <th>Room ID</th>
+                                            <th>Player 1</th>
+                                            <th>Player 2</th>
+                                            <th>Winner</th>
+                                            <th>Score</th>
+                                            <th>Duration</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="games-history-table">
+                                        <tr>
+                                            <td colspan="7" class="loading">Loading...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Moderation Page -->
+                    <div id="page-moderation" class="page">
+                        <div class="stats-grid small">
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="reports-open">-</h3>
+                                    <p>Open Reports</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="reports-reviewing">-</h3>
+                                    <p>Under Review</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="reports-resolved">-</h3>
+                                    <p>Resolved</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>📋 User Reports</h3>
+                                <select id="report-filter" class="filter-select">
+                                    <option value="all">All Status</option>
+                                    <option value="open">Open</option>
+                                    <option value="reviewing">Reviewing</option>
+                                    <option value="resolved">Resolved</option>
+                                </select>
+                            </div>
+                            <table class="data-table full-width">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Reporter</th>
+                                        <th>Reported</th>
+                                        <th>Reason</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reports-table">
+                                    <tr>
+                                        <td colspan="7" class="loading">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Page -->
+                    <div id="page-analytics" class="page">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="analytics-dau">-</h3>
+                                    <p>Daily Active Users</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="analytics-games-today">-</h3>
+                                    <p>Games Today</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="analytics-avg-duration">-</h3>
+                                    <p>Avg Game Duration</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="analytics-revenue">-</h3>
+                                    <p>Monthly Revenue</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dashboard-grid">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>📈 User Growth</h3>
+                                </div>
+                                <div class="card-body chart-container">
+                                    <canvas id="users-chart"></canvas>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>🎮 Games Per Day</h3>
+                                </div>
+                                <div class="card-body chart-container">
+                                    <canvas id="games-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Page -->
+                    <div id="page-settings" class="page">
+                        <div class="settings-grid">
+                            <!-- Physics Settings -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>⚙️ Physics Settings</h3>
+                                </div>
+                                <div class="card-body">
+                                    <h4 class="settings-subtitle">Ball & Table</h4>
+                                    <div class="setting-group">
+                                        <label>Ball Radius (px)</label>
+                                        <input type="number" id="setting-ball-radius" value="12" step="1">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Pocket Radius (px)</label>
+                                        <input type="number" id="setting-pocket-radius" value="22" step="1">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Cushion Width (px)</label>
+                                        <input type="number" id="setting-cushion-width" value="25" step="1">
+                                    </div>
+
+                                    <h4 class="settings-subtitle">Speed & Power</h4>
+                                    <div class="setting-group">
+                                        <label>Max Cue Speed</label>
+                                        <input type="number" id="setting-max-cue-speed" value="750" step="10">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Gravity (Scaled)</label>
+                                        <input type="number" id="setting-gravity" value="980" step="10">
+                                    </div>
+
+                                    <h4 class="settings-subtitle">Friction Coefficients</h4>
+                                    <div class="setting-group">
+                                        <label>Rolling Friction (μ Roll)</label>
+                                        <input type="number" id="setting-mu-roll" value="0.018" step="0.001">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Sliding Friction (μ Slide)</label>
+                                        <input type="number" id="setting-mu-slide" value="0.10" step="0.01">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Spin Friction (μ Spin)</label>
+                                        <input type="number" id="setting-mu-spin" value="0.12" step="0.01">
+                                    </div>
+
+                                    <h4 class="settings-subtitle">Elasticity / Restitution</h4>
+                                    <div class="setting-group">
+                                        <label>Ball-to-Ball (0-1)</label>
+                                        <input type="number" id="setting-e-ball" value="0.98" step="0.01" min="0"
+                                            max="1">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Ball-to-Cushion (0-1)</label>
+                                        <input type="number" id="setting-e-cushion" value="0.80" step="0.01" min="0"
+                                            max="1">
+                                    </div>
+
+                                    <button class="btn-primary" id="save-physics-settings">Save Physics
+                                        Settings</button>
+                                </div>
+                            </div>
+
+                            <!-- Gameplay Settings -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>🎮 Gameplay Settings</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-group">
+                                        <label>Shot Time Limit (seconds)</label>
+                                        <input type="number" id="setting-shot-time" value="30">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Break Time Limit (seconds)</label>
+                                        <input type="number" id="setting-break-time" value="60">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Max Power (%)</label>
+                                        <input type="number" id="setting-max-power" value="100">
+                                    </div>
+                                    <div class="toggle-group">
+                                        <label>
+                                            <span>Enable Spin</span>
+                                            <input type="checkbox" id="setting-enable-spin" checked>
+                                        </label>
+                                    </div>
+                                    <div class="toggle-group">
+                                        <label>
+                                            <span>Call Pocket for 8-Ball</span>
+                                            <input type="checkbox" id="setting-call-pocket" checked>
+                                        </label>
+                                    </div>
+                                    <button class="btn-primary" id="save-game-settings">Save Gameplay Settings</button>
+                                </div>
+                            </div>
+
+                            <!-- Feature Flags -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>🚀 Feature Flags</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="toggle-group">
+                                        <label><span>Maintenance Mode</span><input type="checkbox"
+                                                id="flag-maintenance"></label>
+                                    </div>
+                                    <div class="toggle-group">
+                                        <label><span>New User Registration</span><input type="checkbox"
+                                                id="flag-registration" checked></label>
+                                    </div>
+                                    <div class="toggle-group">
+                                        <label><span>Chat Enabled</span><input type="checkbox" id="flag-chat"
+                                                checked></label>
+                                    </div>
+                                    <div class="toggle-group">
+                                        <label><span>Tournament Mode</span><input type="checkbox"
+                                                id="flag-tournament"></label>
+                                    </div>
+                                    <button class="btn-primary" id="save-features">Save Features</button>
+                                </div>
+                            </div>
+
+                            <!-- Economy -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>💰 Economy</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="setting-group">
+                                        <label>Starting Coins</label>
+                                        <input type="number" id="setting-starting-coins" value="1000">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Minimum Bet</label>
+                                        <input type="number" id="setting-min-bet" value="50">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Maximum Bet</label>
+                                        <input type="number" id="setting-max-bet" value="10000">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Win Reward</label>
+                                        <input type="number" id="setting-win-reward" value="100">
+                                    </div>
+                                    <button class="btn-primary" id="save-economy">Save Economy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Messages Page -->
+                    <div id="page-messages" class="page">
+                        <div class="stats-grid small">
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="msg-total">-</h3>
+                                    <p>Total Messages</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="msg-open">-</h3>
+                                    <p>Open</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="msg-bugs">-</h3>
+                                    <p>Bug Reports</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-info">
+                                    <h3 id="msg-features">-</h3>
+                                    <p>Feature Requests</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>📬 User Reports & Suggestions</h3>
+                                <div class="filter-group">
+                                    <select id="msg-type-filter" class="filter-select">
+                                        <option value="all">All Types</option>
+                                        <option value="bug">Bug Reports</option>
+                                        <option value="feature">Feature Requests</option>
+                                    </select>
+                                    <select id="msg-status-filter" class="filter-select">
+                                        <option value="all">All Status</option>
+                                        <option value="open">Open</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="resolved">Resolved</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <table class="data-table full-width">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Type</th>
+                                        <th>Subject</th>
+                                        <th>User</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="messages-table">
+                                    <tr>
+                                        <td colspan="8" class="loading">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mine Pool | Connect Wallet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(ellipse at center, #1d8050 0%, #0f6b3d 40%, #042a18 100%);
+            color: #fff;
+            padding: 20px;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 440px;
+            position: relative;
+        }
+
+        .auth-card {
+            background: linear-gradient(135deg, rgba(15, 25, 45, 0.95), rgba(10, 20, 35, 0.98));
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 28px;
+            padding: 40px 30px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 0 0 100px rgba(0, 212, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #00d4ff, #ffd700, transparent);
+            border-radius: 28px 28px 0 0;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-container {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: radial-gradient(circle at 30% 30%, #1a1a1a 0%, #000 100%);
+            border-radius: 50%;
+            border: 3px solid #ffd700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            background: linear-gradient(135deg, #ffd700 0%, #00d4ff 50%, #00ff88 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .tagline {
+            color: #00d4ff;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        .error-message,
+        .success-message {
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            background: rgba(255, 68, 102, 0.15);
+            border: 1px solid rgba(255, 68, 102, 0.5);
+            color: #ff4466;
+        }
+
+        .success-message.show {
+            display: block;
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid rgba(0, 255, 136, 0.5);
+            color: #00ff88;
+        }
+
+        .btn-wallet {
+            width: 100%;
+            padding: 20px;
+            font-size: 18px;
+            background: linear-gradient(135deg, #f0b90b 0%, #d4a00a 50%, #b8860b 100%);
+            border: none;
+            border-radius: 16px;
+            color: #1a1a1a;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 8px 32px rgba(240, 185, 11, 0.4);
+            transition: all 0.3s;
+        }
+
+        .btn-wallet:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(240, 185, 11, 0.5);
+        }
+
+        .btn-wallet:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-wallet .icon {
+            font-size: 28px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 30px 0;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .feature:hover {
+            border-color: rgba(0, 212, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .feature .icon {
+            font-size: 26px;
+            margin-bottom: 8px;
+        }
+
+        .feature .title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .feature .sub {
+            font-size: 11px;
+            color: #667;
+        }
+
+        .feature:nth-child(1) .title {
+            color: #00d4ff;
+        }
+
+        .feature:nth-child(2) .title {
+            color: #00ff88;
+        }
+
+        .feature:nth-child(3) .title {
+            color: #ffd700;
+        }
+
+        .feature:nth-child(4) .title {
+            color: #b464ff;
+        }
+
+        .wallets {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 25px;
+        }
+
+        .wallets-title {
+            color: #8892a0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .wallets-grid {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        .wallet-item {
+            text-align: center;
+        }
+
+        .wallet-item .icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .wallet-item .name {
+            font-size: 11px;
+            color: #667;
+        }
+
+        .network {
+            color: #556;
+            font-size: 10px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .terms {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 12px;
+            color: #556;
+        }
+
+        .terms a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+
+        .terms a:hover {
+            text-decoration: underline;
+        }
+
+        /* Floating balls decoration */
+        .deco-ball {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.12;
+            animation: floatBall 6s ease-in-out infinite;
+        }
+
+        .deco-ball-1 {
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle at 30% 30%, #ffd700, #cc9900);
+            top: 10%;
+            left: 5%;
+        }
+
+        .deco-ball-2 {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle at 30% 30%, #ff4444, #cc0000);
+            bottom: 15%;
+            right: 8%;
+            animation-delay: 1s;
+        }
+
+        .deco-ball-3 {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle at 30% 30%, #4444ff, #0000cc);
+            top: 60%;
+            left: 8%;
+            animation-delay: 2s;
+        }
+
+        @keyframes floatBall {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .auth-card {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+
+            .btn-wallet {
+                padding: 16px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="deco-ball deco-ball-1"></div>
+    <div class="deco-ball deco-ball-2"></div>
+    <div class="deco-ball deco-ball-3"></div>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo-container">🎱</div>
+                <h1>MINE POOL</h1>
+                <p class="tagline">PLAY • WIN • EARN TAIN</p>
+            </div>
+
+            <div id="error-message" class="error-message"></div>
+            <div id="success-message" class="success-message"></div>
+
+            <button class="btn-wallet" id="wallet-login">
+                <span class="icon">🪙</span>
+                <span class="btn-text">Connect Wallet</span>
+            </button>
+
+            <div class="features">
+                <div class="feature">
+                    <div class="icon">🎱</div>
+                    <div class="title">Real 8-Ball</div>
+                    <div class="sub">Physics Engine</div>
+                </div>
+                <div class="feature">
+                    <div class="icon">💰</div>
+                    <div class="title">Win TAIN</div>
+                    <div class="sub">Real Rewards</div>
+                </div>
+                <div class="feature">
+                    <div class="icon">🌍</div>
+                    <div class="title">Play Global</div>
+                    <div class="sub">Real Players</div>
+                </div>
+                <div class="feature">
+                    <div class="icon">🏆</div>
+                    <div class="title">Tournaments</div>
+                    <div class="sub">Big Prizes</div>
+                </div>
+            </div>
+
+            <div class="wallets">
+                <p class="wallets-title">Supported Wallets</p>
+                <div class="wallets-grid">
+                    <div class="wallet-item">
+                        <div class="icon">🦊</div>
+                        <div class="name">MetaMask</div>
+                    </div>
+                    <div class="wallet-item">
+                        <div class="icon">💙</div>
+                        <div class="name">Trust Wallet</div>
+                    </div>
+                    <div class="wallet-item">
+                        <div class="icon">🔗</div>
+                        <div class="name">WalletConnect</div>
+                    </div>
+                </div>
+                <p class="network">Network: BSC Mainnet (Chain ID: 56)</p>
+            </div>
+
+            <p class="terms">
+                By connecting, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/auth';
+
+        function showError(msg) {
+            const el = document.getElementById('error-message');
+            el.textContent = msg;
+            el.classList.add('show');
+            document.getElementById('success-message').classList.remove('show');
+        }
+
+        function showSuccess(msg) {
+            const el = document.getElementById('success-message');
+            el.textContent = msg;
+            el.classList.add('show');
+            document.getElementById('error-message').classList.remove('show');
+        }
+
+        // Wallet Login
+        document.getElementById('wallet-login').addEventListener('click', async () => {
+            const btn = document.getElementById('wallet-login');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="icon">🔄</span><span class="btn-text">Connecting...</span>';
+
+            try {
+                if (!window.ethereum) {
+                    // Check if we are on mobile or in a WebView (like Capacitor)
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    const isCapacitor = !!(window.Capacitor);
+                    
+                    if (isMobile || isCapacitor) {
+                        // Open MetaMask in-app browser via deep link
+                        const appUrl = window.location.host + window.location.pathname;
+                        const metamaskDeepLink = 'https://metamask.app.link/dapp/' + appUrl;
+                        showError('Opening MetaMask...');
+                        setTimeout(() => {
+                            window.location.href = metamaskDeepLink;
+                        }, 500);
+                        return;
+                    } else {
+                        showError('Please install MetaMask or Trust Wallet');
+                        return;
+                    }
+                }
+
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const walletAddress = accounts[0];
+                const message = `Login to Mine Pool: ${walletAddress} at ${Date.now()}`;
+                const signature = await window.ethereum.request({ method: 'personal_sign', params: [message, walletAddress] });
+
+                // Check for referral code in URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const referralCode = urlParams.get('ref');
+
+                const response = await fetch(`${API_URL}/wallet-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletAddress, message, signature, referralCode }),
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showSuccess('Connected! Redirecting...');
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('walletAddress', walletAddress);
+                    setTimeout(() => {
+                        window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
+                    }, 1000);
+                } else {
+                    showError(data.error || 'Login failed');
+                }
+            } catch (e) {
+                if (e.code === 4001) {
+                    showError('Connection rejected by user');
+                } else {
+                    showError('Connection failed. Please try again.');
+                }
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="icon">🪙</span><span class="btn-text">Connect Wallet</span>';
+            }
+        });
+
+        // Check if already logged in
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/me`, { credentials: 'include' });
+                const data = await response.json();
+                if (data.success && data.user) {
+                    window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
+                }
+            } catch (error) {
+                // Not logged in
+            }
+        }
+        checkAuth();
+    </script>
+</body>
+
+</html>

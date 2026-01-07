@@ -1,0 +1,95 @@
+/* Compact Turn Indicator - Two Avatar Squares with Green Border for Active Turn */
+/* This file replaces the old large turn bar with a minimal avatar-based indicator */
+
+/* Hide everything in the old header player info except avatars */
+#game-header .player-info {
+    display: flex !important;
+    /* HIDDEN per user request - remove D and P2 */
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 20px !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 10px 0 !important;
+    width: 100% !important;
+}
+
+/* Hide the text-based turn indicator completely */
+#game-header .turn-indicator,
+.turn-indicator {
+    display: none !important;
+}
+
+/* Hide player names, ball types, details */
+#game-header .player-details,
+#game-header .player-name,
+#game-header .ball-type {
+    display: none !important;
+}
+
+/* Player container - minimal, just avatar */
+#game-header .player {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 0.5 !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+/* Active player state */
+#game-header .player.active {
+    opacity: 1 !important;
+    transform: scale(1.1) !important;
+}
+
+/* Avatar Styling - Square with rounded corners */
+#game-header .avatar {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 10px !important;
+    border: 3px solid rgba(255, 255, 255, 0.3) !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    display: flex;
+    align-items: center !important;
+    justify-content: center !important;
+    background: linear-gradient(135deg, #2a3a5a 0%, #1a2a40 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Green border for active turn */
+#game-header .player.active .avatar {
+    border-color: #00ff00 !important;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.6), 0 0 40px rgba(0, 255, 0, 0.3) !important;
+}
+
+/* Hide any other player info bar */
+#player-bar-above-table,
+#player-info-bar {
+    display: none !important;
+}
+
+/* Adjust game-main padding */
+#game-main {
+    padding-top: 10px !important;
+}
+
+/* Keep header visible but minimal */
+#game-header {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 10px !important;
+    background: transparent !important;
+}
+
+/* Hide logo on game screen */
+#game-header .logo {
+    display: none !important;
+}

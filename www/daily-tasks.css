@@ -1,0 +1,413 @@
+/* ============================================
+   DAILY TASKS SECTION
+   ============================================ */
+
+.daily-tasks-section {
+    margin: 12px;
+    background: linear-gradient(135deg, rgba(25, 35, 55, 0.95) 0%, rgba(20, 30, 50, 0.98) 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    padding: 15px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.daily-tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.daily-tasks-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #00d4ff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.daily-tasks-title .tasks-icon {
+    font-size: 1.2rem;
+}
+
+.tasks-reset-timer {
+    font-size: 0.7rem;
+    color: #8899aa;
+}
+
+.tasks-reset-timer span {
+    color: #ffd700;
+    font-weight: 600;
+}
+
+.tasks-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+}
+
+.progress-circle {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: conic-gradient(#00ff88 var(--progress, 0%), rgba(255, 255, 255, 0.1) var(--progress, 0%));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.progress-circle-inner {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: #1a2540;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #00ff88;
+}
+
+.tasks-progress-info {
+    flex: 1;
+}
+
+.tasks-progress-info h4 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 4px 0;
+}
+
+.tasks-progress-info p {
+    font-size: 0.7rem;
+    color: #8899aa;
+    margin: 0;
+}
+
+.tasks-progress-info p span {
+    color: #ffd700;
+    font-weight: 600;
+}
+
+/* Task Item */
+.task-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.task-item:last-child {
+    margin-bottom: 0;
+}
+
+.task-item:hover {
+    background: rgba(0, 212, 255, 0.05);
+    border-color: rgba(0, 212, 255, 0.2);
+}
+
+.task-item.completed {
+    background: rgba(0, 255, 136, 0.08);
+    border-color: rgba(0, 255, 136, 0.3);
+}
+
+.task-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.task-icon.twitter {
+    background: linear-gradient(135deg, #1DA1F2, #0d8bd9);
+}
+
+.task-icon.telegram {
+    background: linear-gradient(135deg, #0088cc, #006699);
+}
+
+.task-icon.invite {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.task-icon.youtube {
+    background: linear-gradient(135deg, #FF0000, #cc0000);
+}
+
+.task-icon.discord {
+    background: linear-gradient(135deg, #5865F2, #4752c4);
+}
+
+.task-icon.instagram {
+    background: linear-gradient(135deg, #E4405F, #C13584);
+}
+
+.task-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-description {
+    font-size: 0.7rem;
+    color: #8899aa;
+}
+
+.task-reward {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #ffd700;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.task-reward .coin-emoji {
+    font-size: 0.9rem;
+}
+
+.task-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 20px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    min-width: 70px;
+}
+
+.task-btn.go {
+    background: linear-gradient(135deg, #00d4ff, #0088aa);
+    color: #000;
+}
+
+.task-btn.go:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+}
+
+.task-btn.claim {
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    color: #000;
+    animation: pulse-glow 1.5s infinite;
+}
+
+.task-btn.claim:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+}
+
+.task-btn.completed {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    cursor: default;
+    pointer-events: none;
+}
+
+.task-btn.completed::before {
+    content: '✓ ';
+}
+
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+    }
+}
+
+/* Invite Code Section */
+.invite-section {
+    margin-top: 15px;
+    padding: 12px;
+    background: rgba(155, 89, 182, 0.1);
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    border-radius: 12px;
+}
+
+.invite-code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.invite-code-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9b59b6;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.invite-count {
+    font-size: 0.7rem;
+    color: #8899aa;
+}
+
+.invite-count span {
+    color: #00d4ff;
+    font-weight: 600;
+}
+
+.invite-code-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.invite-code {
+    flex: 1;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    border-radius: 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    letter-spacing: 2px;
+}
+
+.copy-code-btn {
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.copy-code-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+}
+
+.copy-code-btn.copied {
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    color: #000;
+}
+
+/* Share buttons */
+.share-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.share-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.share-btn.whatsapp {
+    background: #25D366;
+    color: #fff;
+}
+
+.share-btn.telegram {
+    background: #0088cc;
+    color: #fff;
+}
+
+.share-btn.twitter {
+    background: #1DA1F2;
+    color: #fff;
+}
+
+.share-btn:hover {
+    transform: scale(1.03);
+    opacity: 0.9;
+}
+
+/* Mobile Landscape - Layout controlled by index.html's Three-Column Dashboard */
+@media (pointer: coarse) and (orientation: landscape),
+(max-height: 500px) and (orientation: landscape) {
+    /* Daily tasks visible in right column - styling handled by index.html */
+}
+
+/* Small screens */
+@media (max-width: 400px) {
+    .task-item {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .task-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+    }
+
+    .task-name {
+        font-size: 0.8rem;
+    }
+
+    .task-reward {
+        font-size: 0.75rem;
+    }
+
+    .task-btn {
+        padding: 6px 12px;
+        font-size: 0.7rem;
+        min-width: 60px;
+    }
+}

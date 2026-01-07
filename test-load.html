@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>File Load Test</title>
+    <style>
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+
+        .error {
+            color: #f00;
+        }
+
+        .success {
+            color: #0f0;
+        }
+
+        .warning {
+            color: #ff0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 File Loading Test</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(msg, type = 'success') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = msg;
+            output.appendChild(div);
+        }
+
+        // Test 1: Check if physics.js loaded
+        setTimeout(() => {
+            log('=== FILE LOADING TEST ===', 'warning');
+
+            if (typeof PhysicsEngine !== 'undefined') {
+                log('✓ physics.js loaded - PhysicsEngine found', 'success');
+            } else {
+                log('✗ physics.js NOT loaded - PhysicsEngine missing', 'error');
+            }
+
+            if (typeof SoundManager !== 'undefined') {
+                log('✓ physics.js loaded - SoundManager found', 'success');
+            } else {
+                log('✗ physics.js NOT loaded - SoundManager missing', 'error');
+            }
+
+            if (typeof PoolGame !== 'undefined') {
+                log('✓ game.js loaded - PoolGame found', 'success');
+            } else {
+                log('✗ game.js NOT loaded - PoolGame missing', 'error');
+            }
+
+            if (typeof PhysicsSettings !== 'undefined') {
+                log('✓ settings.js loaded - PhysicsSettings found', 'success');
+            } else {
+                log('✗ settings.js NOT loaded - PhysicsSettings missing', 'error');
+            }
+
+            // Test 2: Check for game instance
+            log('\n=== GAME INSTANCE TEST ===', 'warning');
+            if (window.gameInstance) {
+                log('✓ Game instance created', 'success');
+                log(`  Game mode: ${window.gameInstance.gameMode}`, 'success');
+                log(`  Game state: ${window.gameInstance.gameState}`, 'success');
+            } else {
+                log('✗ Game instance NOT created', 'error');
+                log('  This means there was an error during initialization', 'error');
+                log('  Check browser console (F12) for error messages', 'warning');
+            }
+
+            // Test 3: Check DOM elements
+            log('\n=== DOM ELEMENTS TEST ===', 'warning');
+            const canvas = document.getElementById('pool-table');
+            if (canvas) {
+                log('✓ Canvas element found', 'success');
+            } else {
+                log('✗ Canvas element NOT found', 'error');
+            }
+
+            const startScreen = document.getElementById('start-screen');
+            if (startScreen) {
+                log('✓ Start screen found', 'success');
+            } else {
+                log('✗ Start screen NOT found', 'error');
+            }
+
+            const btnVsAi = document.getElementById('btn-vs-ai');
+            if (btnVsAi) {
+                log('✓ VS AI button found', 'success');
+            } else {
+                log('✗ VS AI button NOT found', 'error');
+            }
+
+            const btn2Player = document.getElementById('btn-2player');
+            if (btn2Player) {
+                log('✓ 2 Player button found', 'success');
+            } else {
+                log('✗ 2 Player button NOT found', 'error');
+            }
+
+            log('\n=== INSTRUCTIONS ===', 'warning');
+            log('1. Open browser console (F12)', 'warning');
+            log('2. Look for error messages in red', 'warning');
+            log('3. Copy any error messages you see', 'warning');
+
+        }, 1500);
+    </script>
+
+    <!-- Load game files -->
+    <script src="physics.js?v=15"></script>
+    <script src="game.js?v=15"></script>
+    <script src="settings.js?v=15"></script>
+
+    <!-- Include minimal HTML for game -->
+    <div style="display: none;">
+        <canvas id="pool-table"></canvas>
+        <div id="start-screen"></div>
+        <button id="btn-vs-ai">VS AI</button>
+        <button id="btn-2player">2 Players</button>
+        <div id="game-message"></div>
+        <div id="winner-screen"></div>
+        <div id="power-fill"></div>
+        <div id="power-value"></div>
+        <div id="spin-indicator"></div>
+        <div id="turn-indicator"></div>
+        <div id="solids-rack"></div>
+        <div id="stripes-rack"></div>
+        <div id="timer-text"></div>
+        <div id="call-pocket-modal"></div>
+        <button id="play-again"></button>
+        <button id="btn-cues"></button>
+        <button id="close-cues"></button>
+        <div id="cue-selection-modal"></div>
+        <div id="spin-ball-control"></div>
+        <button id="reset-spin"></button>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🐛 Report - Mine Pool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0f1a 0%, #1a2540 50%, #0d1525 100%);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* Page Header */
+        .page-header {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(10, 22, 40, 0.95);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 180, 255, 0.05));
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            margin-right: 15px;
+        }
+
+        .back-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .page-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Report Type Cards */
+        .report-types {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .report-type-card {
+            padding: 20px 15px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(30, 45, 70, 0.6), rgba(20, 35, 60, 0.4));
+            border: 2px solid rgba(0, 212, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .report-type-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.15);
+        }
+
+        .report-type-card.selected {
+            border-color: #00d4ff;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 180, 255, 0.08));
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+
+        .report-type-card.bug {
+            border-color: rgba(255, 100, 100, 0.3);
+        }
+
+        .report-type-card.bug.selected {
+            border-color: #ff6464;
+            background: linear-gradient(135deg, rgba(255, 100, 100, 0.15), rgba(200, 80, 80, 0.08));
+            box-shadow: 0 0 20px rgba(255, 100, 100, 0.2);
+        }
+
+        .report-type-card.feature {
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+
+        .report-type-card.feature.selected {
+            border-color: #00ff88;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 200, 100, 0.08));
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+        }
+
+        .report-type-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .report-type-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .report-type-desc {
+            font-size: 0.75rem;
+            color: #8899aa;
+            margin-top: 5px;
+        }
+
+        /* Form Card */
+        .form-card {
+            background: linear-gradient(135deg, rgba(30, 45, 70, 0.6), rgba(20, 35, 60, 0.4));
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .form-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #aabbcc;
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            background: rgba(10, 22, 40, 0.6);
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-group select option {
+            background: #1a2540;
+            color: #fff;
+        }
+
+        .char-count {
+            font-size: 0.75rem;
+            color: #666;
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        /* Priority Pills */
+        .priority-pills {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .priority-pill {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(100, 100, 100, 0.3);
+            background: rgba(30, 40, 60, 0.5);
+            color: #8899aa;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .priority-pill:hover {
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+
+        .priority-pill.selected {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+        }
+
+        .priority-pill.low.selected {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+        }
+
+        .priority-pill.medium.selected {
+            border-color: #ffcc00;
+            background: rgba(255, 204, 0, 0.15);
+            color: #ffcc00;
+        }
+
+        .priority-pill.high.selected {
+            border-color: #ff6464;
+            background: rgba(255, 100, 100, 0.15);
+            color: #ff6464;
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            width: 100%;
+            padding: 15px 25px;
+            border-radius: 14px;
+            border: none;
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #fff;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Success Message */
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: bounce 0.6s ease;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .success-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .success-text {
+            color: #8899aa;
+            font-size: 0.95rem;
+            margin-bottom: 25px;
+        }
+
+        .back-home-btn {
+            padding: 12px 30px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 180, 255, 0.08));
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .back-home-btn:hover {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.25), rgba(0, 180, 255, 0.15));
+            transform: translateY(-2px);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .report-types {
+                grid-template-columns: 1fr;
+            }
+
+            .form-card {
+                padding: 20px 15px;
+            }
+
+            .priority-pills {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Page Header -->
+    <header class="page-header">
+        <button class="back-btn" onclick="window.location.href='index.html'">←</button>
+        <h1 class="page-title">Report & Feedback</h1>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Report Form -->
+        <div id="report-form-container">
+            <!-- Report Type Selection -->
+            <div class="report-types">
+                <div class="report-type-card bug selected" data-type="bug" onclick="selectType('bug')">
+                    <div class="report-type-icon">🐛</div>
+                    <div class="report-type-name">Report Bug</div>
+                    <div class="report-type-desc">Found something broken?</div>
+                </div>
+                <div class="report-type-card feature" data-type="feature" onclick="selectType('feature')">
+                    <div class="report-type-icon">💡</div>
+                    <div class="report-type-name">Suggest Feature</div>
+                    <div class="report-type-desc">Have an idea to improve?</div>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <div class="form-card">
+                <h2 class="form-title">
+                    <span id="form-icon">🐛</span>
+                    <span id="form-title-text">Report a Bug</span>
+                </h2>
+
+                <form id="report-form">
+                    <input type="hidden" id="report-type" value="bug">
+
+                    <div class="form-group">
+                        <label for="report-subject">Subject *</label>
+                        <input type="text" id="report-subject" placeholder="Brief description of the issue"
+                            maxlength="100" required>
+                        <div class="char-count"><span id="subject-count">0</span>/100</div>
+                    </div>
+
+                    <div class="form-group" id="category-group">
+                        <label for="report-category">Category</label>
+                        <select id="report-category">
+                            <option value="gameplay">Gameplay</option>
+                            <option value="ui">User Interface</option>
+                            <option value="network">Network / Connection</option>
+                            <option value="account">Account / Login</option>
+                            <option value="shop">Shop / Purchases</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="report-description">Description *</label>
+                        <textarea id="report-description" placeholder="Please describe in detail..." maxlength="1000"
+                            required></textarea>
+                        <div class="char-count"><span id="description-count">0</span>/1000</div>
+                    </div>
+
+                    <div class="form-group" id="priority-group">
+                        <label>Priority</label>
+                        <div class="priority-pills">
+                            <div class="priority-pill low selected" data-priority="low" onclick="selectPriority('low')">
+                                🟢 Low</div>
+                            <div class="priority-pill medium" data-priority="medium" onclick="selectPriority('medium')">
+                                🟡 Medium</div>
+                            <div class="priority-pill high" data-priority="high" onclick="selectPriority('high')">🔴
+                                High</div>
+                        </div>
+                        <input type="hidden" id="report-priority" value="low">
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submit-btn">
+                        <span>📤</span>
+                        <span>Submit Report</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Success Message -->
+        <div class="success-message" id="success-message">
+            <div class="success-icon">✅</div>
+            <h2 class="success-title">Thank You!</h2>
+            <p class="success-text">Your feedback has been submitted successfully. We appreciate your help in making
+                Mine Pool better!</p>
+            <button class="back-home-btn" onclick="window.location.href='index.html'">Back to Home</button>
+        </div>
+    </div>
+
+    <script>
+        let currentType = 'bug';
+        let currentPriority = 'low';
+
+        // Select report type
+        function selectType(type) {
+            currentType = type;
+            document.getElementById('report-type').value = type;
+
+            // Update visual selection
+            document.querySelectorAll('.report-type-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector(`.report-type-card[data-type="${type}"]`).classList.add('selected');
+
+            // Update form title
+            const formIcon = document.getElementById('form-icon');
+            const formTitleText = document.getElementById('form-title-text');
+            const categoryGroup = document.getElementById('category-group');
+            const priorityGroup = document.getElementById('priority-group');
+
+            if (type === 'bug') {
+                formIcon.textContent = '🐛';
+                formTitleText.textContent = 'Report a Bug';
+                categoryGroup.style.display = 'block';
+                priorityGroup.style.display = 'block';
+                document.getElementById('report-description').placeholder = 'Please describe the bug in detail. Include steps to reproduce if possible...';
+            } else {
+                formIcon.textContent = '💡';
+                formTitleText.textContent = 'Suggest a Feature';
+                categoryGroup.style.display = 'block';
+                priorityGroup.style.display = 'none';
+                document.getElementById('report-description').placeholder = 'Describe your feature idea and how it would improve the game...';
+            }
+        }
+
+        // Select priority
+        function selectPriority(priority) {
+            currentPriority = priority;
+            document.getElementById('report-priority').value = priority;
+
+            document.querySelectorAll('.priority-pill').forEach(pill => {
+                pill.classList.remove('selected');
+            });
+            document.querySelector(`.priority-pill[data-priority="${priority}"]`).classList.add('selected');
+        }
+
+        // Character counters
+        document.getElementById('report-subject').addEventListener('input', function () {
+            document.getElementById('subject-count').textContent = this.value.length;
+        });
+
+        document.getElementById('report-description').addEventListener('input', function () {
+            document.getElementById('description-count').textContent = this.value.length;
+        });
+
+        // Form submission
+        document.getElementById('report-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submit-btn');
+            const originalContent = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<div class="spinner"></div><span>Submitting...</span>';
+            submitBtn.disabled = true;
+
+            const reportData = {
+                type: document.getElementById('report-type').value,
+                subject: document.getElementById('report-subject').value,
+                category: document.getElementById('report-category').value,
+                description: document.getElementById('report-description').value,
+                priority: document.getElementById('report-priority').value
+            };
+
+            try {
+                const response = await fetch('/api/reports', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(reportData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Show success message
+                    document.getElementById('report-form-container').style.display = 'none';
+                    document.getElementById('success-message').classList.add('show');
+                } else {
+                    alert('Failed to submit report: ' + (result.error || 'Unknown error'));
+                    submitBtn.innerHTML = originalContent;
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error submitting report:', error);
+                alert('Failed to submit report. Please try again.');
+                submitBtn.innerHTML = originalContent;
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,2091 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Mine Pool - Classic billiards game with realistic physics. Play against AI or friends!">
+    <title>Mine Pool | Classic Billiards Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="mobile-app.css">
+    <link rel="stylesheet" href="mobile-landscape.css">
+    <link rel="stylesheet" href="daily-rewards.css">
+    <link rel="stylesheet" href="daily-tasks.css">
+    <link rel="stylesheet" href="stake-modal.css">
+    <style>
+        /* Reset & Base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0f1a 0%, #1a2035 50%, #0d1520 100%);
+            font-family: 'Rajdhani', sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* Loading overlay */
+        .auth-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0f1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .auth-loading.hidden {
+            display: none;
+        }
+
+        .auth-loading .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 212, 255, 0.2);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .auth-loading p {
+            color: #888;
+            margin-top: 20px;
+        }
+
+        /* ============================================
+           TOP HEADER BAR
+           ============================================ */
+        .top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: linear-gradient(180deg, rgba(20, 30, 50, 0.95) 0%, rgba(15, 25, 40, 0.9) 100%);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-compact {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-compact .logo-icon {
+            font-size: 2rem;
+            filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.5));
+        }
+
+        .header-player {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 16px 8px 8px;
+            border-radius: 30px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .header-player:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+
+        .header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4ff, #0088aa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            overflow: hidden;
+            border: 2px solid #00d4ff;
+        }
+
+        .header-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .header-player-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-player-name {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header-player-title {
+            font-size: 0.75rem;
+            color: #00d4ff;
+            font-weight: 500;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-btn {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.3rem;
+        }
+
+        .header-btn:hover {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: rgba(0, 212, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .header-btn .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* ============================================
+           PLAYER PROFILE CARD
+           ============================================ */
+        .profile-card {
+            margin: 12px;
+            background: linear-gradient(135deg, rgba(25, 35, 55, 0.95) 0%, rgba(20, 30, 50, 0.98) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            padding: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .profile-main {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .profile-avatar-section {
+            position: relative;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #1a2540, #0d1525);
+            border: 3px solid #00d4ff;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-level {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #00d4ff, #0088aa);
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 10px;
+            border: 2px solid #0a0f1a;
+        }
+
+        .profile-flag {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 28px;
+            height: 20px;
+            overflow: hidden;
+            border-radius: 4px;
+            border: 2px solid #00d4ff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        .profile-flag:empty {
+            display: none;
+        }
+
+        .profile-flag img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .profile-details {
+            flex: 1;
+        }
+
+        .profile-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .profile-rank-title {
+            font-size: 0.9rem;
+            color: #00d4ff;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .profile-xp-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .profile-xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .profile-xp-text {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .profile-stats {
+            display: flex;
+            gap: 15px;
+            justify-content: space-around;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 10px 6px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .stat-box:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: rgba(0, 212, 255, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .stat-icon {
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .stat-icon.coins {
+            color: #ffd700;
+        }
+
+        .stat-icon.winrate {
+            color: #00ff88;
+        }
+
+        .stat-icon.rank {
+            color: #b366ff;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #8899aa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ============================================
+           GAME MODES
+           ============================================ */
+        .game-modes-section {
+            padding: 0 12px 12px;
+        }
+
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: #fff;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(0, 212, 255, 0.3), transparent);
+        }
+
+        .game-modes {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .btn-mode {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 15px 10px;
+            background: linear-gradient(135deg, rgba(30, 40, 60, 0.9) 0%, rgba(20, 30, 50, 0.95) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Rajdhani', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-mode::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn-mode:hover::before {
+            left: 100%;
+        }
+
+        .btn-mode:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-mode .mode-icon {
+            font-size: 1.8rem;
+        }
+
+        .btn-mode .mode-text {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .btn-online-play {
+            background: linear-gradient(135deg, rgba(0, 100, 130, 0.5) 0%, rgba(0, 60, 90, 0.6) 100%);
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-online-play:hover {
+            border-color: #00d4ff;
+            box-shadow: 0 15px 40px rgba(0, 212, 255, 0.2);
+        }
+
+        .online-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(135deg, #00ff88, #00aa55);
+            color: #000;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            animation: pulse-badge 2s infinite;
+        }
+
+        @keyframes pulse-badge {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+
+        .btn-tournament {
+            background: linear-gradient(135deg, rgba(130, 100, 0, 0.4) 0%, rgba(90, 70, 0, 0.5) 100%);
+            border-color: rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-tournament:hover {
+            border-color: #ffd700;
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.2);
+        }
+
+        /* ============================================
+           BOTTOM NAVIGATION
+           ============================================ */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            padding: 4px 8px;
+            background: linear-gradient(180deg, rgba(15, 25, 40, 0.98) 0%, rgba(10, 20, 35, 1) 100%);
+            border-top: 1px solid rgba(0, 212, 255, 0.15);
+            z-index: 100;
+        }
+
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            padding: 3px 8px;
+            background: transparent;
+            border: none;
+            color: #8899aa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .nav-btn:hover,
+        .nav-btn.active {
+            color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .nav-btn .nav-icon {
+            font-size: 1.1rem;
+        }
+
+        .nav-btn .nav-text {
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Space for bottom nav */
+        .main-content {
+            padding-bottom: 45px;
+        }
+
+        /* ============================================
+           MODALS (keep existing)
+           ============================================ */
+        .cue-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .cue-modal-overlay.hidden {
+            display: none;
+        }
+
+        .cue-modal-content {
+            background: linear-gradient(135deg, #1a1a3a, #0a0a1a);
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .cue-modal-content h2 {
+            color: #00d4ff;
+            text-align: center;
+            margin-bottom: 20px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .cue-carousel-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .carousel-btn {
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            color: #00d4ff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .carousel-btn:hover {
+            background: rgba(0, 212, 255, 0.4);
+        }
+
+        .cue-carousel {
+            display: flex;
+            gap: 15px;
+            overflow: hidden;
+            flex: 1;
+            transition: transform 0.3s ease;
+        }
+
+        .cue-card {
+            flex: 0 0 200px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cue-card:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+        }
+
+        .cue-card.active {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .cue-card .cue-image img {
+            max-width: 100%;
+            height: 80px;
+            object-fit: contain;
+        }
+
+        .cue-card h3 {
+            color: #fff;
+            margin: 10px 0 5px 0;
+            font-size: 1rem;
+        }
+
+        .cue-card p {
+            color: #888;
+            font-size: 0.8rem;
+            margin: 0;
+        }
+
+        .carousel-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .carousel-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .carousel-dot.active {
+            background: #00d4ff;
+        }
+
+        .btn-primary {
+            display: block;
+            width: 100%;
+            max-width: 200px;
+            margin: 20px auto 0;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #00d4ff, #0088aa);
+            border: none;
+            border-radius: 25px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4);
+        }
+
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
+        @media (min-width: 768px) {
+            .main-content {
+                max-width: 600px;
+                margin: 0 auto;
+            }
+
+            .game-modes {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .profile-stats {
+                gap: 20px;
+            }
+        }
+
+        /* Mobile-first optimizations for smaller screens */
+        @media (max-width: 480px) {
+            .top-header {
+                padding: 8px 12px;
+            }
+
+            .header-player-name {
+                font-size: 0.75rem;
+            }
+
+            .header-player-title {
+                font-size: 0.6rem;
+            }
+
+            .header-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.8rem;
+            }
+
+            .profile-card {
+                margin: 8px;
+                padding: 12px;
+                border-radius: 12px;
+            }
+
+            .profile-main {
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            .profile-avatar {
+                width: 55px;
+                height: 55px;
+            }
+
+            .profile-level {
+                font-size: 0.55rem;
+                padding: 2px 6px;
+            }
+
+            .profile-name {
+                font-size: 0.8rem;
+                letter-spacing: 0.3px;
+            }
+
+            .profile-rank-title {
+                font-size: 0.75rem;
+                margin-bottom: 6px;
+            }
+
+            .profile-xp-bar {
+                height: 6px;
+            }
+
+            .profile-stats {
+                gap: 8px;
+            }
+
+            .stat-box {
+                padding: 6px 4px;
+                border-radius: 8px;
+            }
+
+            .stat-icon {
+                font-size: 1rem;
+                margin-bottom: 2px;
+            }
+
+            .stat-value {
+                font-size: 0.85rem;
+            }
+
+            .stat-label {
+                font-size: 0.55rem;
+            }
+
+            .game-modes-section {
+                padding: 10px 8px;
+            }
+
+            .section-title {
+                font-size: 0.85rem;
+                margin-bottom: 10px;
+            }
+
+            .game-modes {
+                gap: 8px;
+            }
+
+            .btn-mode {
+                padding: 10px 8px;
+                gap: 4px;
+                border-radius: 10px;
+            }
+
+            .btn-mode .mode-icon {
+                font-size: 1.3rem;
+            }
+
+            .btn-mode .mode-text {
+                font-size: 0.65rem;
+            }
+
+            .online-badge {
+                font-size: 0.5rem;
+                padding: 1px 4px;
+            }
+
+            .bottom-nav {
+                padding: 3px 6px;
+                padding-bottom: calc(3px + env(safe-area-inset-bottom, 0px));
+            }
+
+            .nav-btn {
+                gap: 0px;
+                padding: 2px 6px;
+                border-radius: 6px;
+            }
+
+            .nav-btn .nav-icon {
+                font-size: 0.95rem;
+            }
+
+            .nav-btn .nav-text {
+                font-size: 0.5rem;
+            }
+
+            .main-content {
+                padding-bottom: 40px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .header-player-title {
+                display: none;
+            }
+
+            .profile-avatar {
+                width: 48px;
+                height: 48px;
+            }
+
+            .profile-name {
+                font-size: 0.75rem;
+            }
+
+            .stat-value {
+                font-size: 0.8rem;
+            }
+
+            .btn-mode .mode-icon {
+                font-size: 1.1rem;
+            }
+
+            .btn-mode .mode-text {
+                font-size: 0.6rem;
+            }
+        }
+
+
+        /* Friends Activity - Portrait styling (before landscape) */
+        .right-column-wrapper {
+            display: contents;
+            /* In portrait, don't wrap - just flow normally */
+        }
+
+        /* ============================================
+           FRIENDS ACTIVITY SECTION
+           ============================================ */
+        .friends-activity-section {
+            margin: 12px;
+            background: linear-gradient(135deg, rgba(25, 35, 55, 0.95) 0%, rgba(20, 30, 50, 0.98) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            padding: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .friends-activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .friends-activity-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .view-all-btn {
+            font-size: 0.7rem;
+            color: #8899aa;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .view-all-btn:hover {
+            color: #00d4ff;
+        }
+
+        .friends-activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .friend-activity-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .friend-activity-item:hover {
+            background: rgba(0, 212, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.25);
+        }
+
+        .friend-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1a2a4a 0%, #0f1a2a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            position: relative;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .friend-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .status-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid #1a2540;
+        }
+
+        .status-dot.online {
+            background: #00ff88;
+            box-shadow: 0 0 6px rgba(0, 255, 136, 0.6);
+        }
+
+        .status-dot.ingame {
+            background: #f39c12;
+            box-shadow: 0 0 6px rgba(243, 156, 18, 0.6);
+        }
+
+        .status-dot.offline {
+            background: #666;
+        }
+
+        .friend-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .friend-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .friend-status {
+            font-size: 0.65rem;
+            color: #8899aa;
+        }
+
+        .friend-status.online {
+            color: #00ff88;
+        }
+
+        .friend-status.ingame {
+            color: #f39c12;
+        }
+
+        .challenge-btn {
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            border: none;
+            border-radius: 15px;
+            color: #000;
+            font-size: 0.65rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .challenge-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.4);
+        }
+
+        .no-friends-msg {
+            text-align: center;
+            padding: 20px;
+            color: #8899aa;
+            font-size: 0.75rem;
+        }
+
+        .no-friends-msg a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+
+
+        /* ============================================
+           LANDSCAPE LAYOUT - CORRECT 2-ROW GRID
+           ============================================ */
+        @media (pointer: coarse) and (orientation: landscape),
+        (max-height: 500px) and (orientation: landscape) {
+
+            body {
+                overflow-y: auto !important;
+            }
+
+            /* Header */
+            .top-header {
+                padding: 8px 20px !important;
+                background: rgba(10, 22, 40, 0.95) !important;
+            }
+
+            .header-brand-text {
+                font-size: 1.1rem !important;
+            }
+
+            .header-btn {
+                width: 36px !important;
+                height: 36px !important;
+            }
+
+            /* ===== MAIN GRID: 3 columns x 2 rows ===== */
+            .main-content {
+                display: grid !important;
+                grid-template-columns: 280px 1fr 1fr !important;
+                grid-template-rows: auto 1fr !important;
+                gap: 12px !important;
+                padding: 12px 15px 65px 15px !important;
+                max-width: 100% !important;
+                min-height: calc(100vh - 70px) !important;
+                align-items: stretch !important;
+            }
+
+            /* ======================= */
+            /* ROW 1, COL 1: Profile Card */
+            /* ======================= */
+            .profile-card {
+                grid-column: 1 !important;
+                grid-row: 1 !important;
+                display: block !important;
+                padding: 12px !important;
+                margin: 0 !important;
+            }
+
+            .profile-main {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 10px !important;
+                margin-bottom: 10px !important;
+            }
+
+            .profile-avatar-section {
+                flex-shrink: 0 !important;
+            }
+
+            .profile-avatar {
+                width: 50px !important;
+                height: 50px !important;
+            }
+
+            .profile-level {
+                font-size: 0.45rem !important;
+                padding: 2px 5px !important;
+                margin-top: -6px !important;
+            }
+
+            .profile-details {
+                flex: 1 !important;
+            }
+
+            .profile-name {
+                font-size: 0.9rem !important;
+            }
+
+            .profile-rank-title {
+                font-size: 0.65rem !important;
+                color: #00d4ff !important;
+            }
+
+            .profile-xp-bar {
+                height: 7px !important;
+                margin: 5px 0 !important;
+            }
+
+            .profile-xp-text {
+                font-size: 0.5rem !important;
+            }
+
+            .profile-stats {
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 8px !important;
+            }
+
+            .stat-box {
+                flex: 1 !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                padding: 8px 6px !important;
+            }
+
+            .stat-icon {
+                font-size: 0.9rem !important;
+                margin-bottom: 3px !important;
+            }
+
+            .stat-value {
+                font-size: 0.8rem !important;
+            }
+
+            .stat-label {
+                font-size: 0.45rem !important;
+            }
+
+            /* ======================= */
+            /* ROW 1, COL 2-3: Game Modes (spans 2 columns) */
+            /* ======================= */
+            .game-modes-section {
+                grid-column: 2 / span 2 !important;
+                grid-row: 1 !important;
+                padding: 0 10px 0 0 !important;
+                margin: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                height: 100% !important;
+            }
+
+            .section-title {
+                font-size: 0.9rem !important;
+                margin-bottom: 12px !important;
+                text-align: center !important;
+            }
+
+            .game-modes {
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 15px !important;
+                width: 100% !important;
+                justify-content: stretch !important;
+            }
+
+            .btn-mode {
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 20px 15px !important;
+                min-height: 85px !important;
+                gap: 8px !important;
+                position: relative !important;
+                border-radius: 14px !important;
+            }
+
+            /* PLAY LIVE - Green themed */
+            .btn-mode.btn-online-play {
+                background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 180, 100, 0.08) 100%) !important;
+                border: 2px solid rgba(0, 255, 136, 0.4) !important;
+                box-shadow: 0 0 20px rgba(0, 255, 136, 0.1) !important;
+            }
+
+            .btn-mode.btn-online-play:hover {
+                box-shadow: 0 0 30px rgba(0, 255, 136, 0.25) !important;
+            }
+
+            /* 2 PLAYERS - Blue themed */
+            #btn-2player {
+                background: linear-gradient(135deg, rgba(0, 150, 255, 0.15) 0%, rgba(0, 100, 200, 0.08) 100%) !important;
+                border: 2px solid rgba(0, 180, 255, 0.35) !important;
+            }
+
+            #btn-2player:hover {
+                box-shadow: 0 0 25px rgba(0, 180, 255, 0.2) !important;
+            }
+
+            /* TOURNAMENTS - Gold/Orange themed */
+            .btn-mode.btn-tournament,
+            #btn-tournament {
+                background: linear-gradient(135deg, rgba(255, 180, 0, 0.15) 0%, rgba(255, 120, 0, 0.08) 100%) !important;
+                border: 2px solid rgba(255, 180, 0, 0.4) !important;
+            }
+
+            .btn-mode.btn-tournament:hover,
+            #btn-tournament:hover {
+                box-shadow: 0 0 25px rgba(255, 180, 0, 0.2) !important;
+            }
+
+            /* CUES - Purple themed (if visible) */
+            #btn-cues {
+                background: linear-gradient(135deg, rgba(180, 100, 255, 0.15) 0%, rgba(140, 60, 200, 0.08) 100%) !important;
+                border: 2px solid rgba(180, 100, 255, 0.35) !important;
+            }
+
+            .btn-mode .mode-icon {
+                font-size: 1.8rem !important;
+            }
+
+            .btn-mode .mode-text {
+                font-size: 0.8rem !important;
+                font-weight: 700 !important;
+                letter-spacing: 0.5px !important;
+            }
+
+            .btn-mode .online-badge {
+                font-size: 0.5rem !important;
+                padding: 3px 10px !important;
+                position: absolute !important;
+                top: 8px !important;
+                right: 8px !important;
+                background: #00ff88 !important;
+                color: #000 !important;
+                border-radius: 10px !important;
+                font-weight: 700 !important;
+            }
+
+            /* ======================= */
+            /* ROW 2, COL 1: Friends Activity */
+            /* ======================= */
+            .friends-activity-section {
+                grid-column: 1 !important;
+                grid-row: 2 !important;
+                margin: 0 !important;
+                padding: 12px !important;
+            }
+
+            .friends-activity-title {
+                font-size: 0.8rem !important;
+            }
+
+            .view-all-btn {
+                font-size: 0.6rem !important;
+            }
+
+            .friends-activity-list {
+                gap: 6px !important;
+            }
+
+            .friend-activity-item {
+                padding: 8px !important;
+            }
+
+            .friend-avatar {
+                width: 32px !important;
+                height: 32px !important;
+            }
+
+            .friend-name {
+                font-size: 0.7rem !important;
+            }
+
+            .friend-status {
+                font-size: 0.55rem !important;
+            }
+
+            .no-friends-msg {
+                font-size: 0.7rem !important;
+                padding: 25px 12px !important;
+            }
+
+            /* ======================= */
+            /* ROW 2, COL 2: Daily Rewards */
+            /* ======================= */
+            .daily-rewards-section {
+                grid-column: 2 !important;
+                grid-row: 2 !important;
+                display: block !important;
+                margin: 0 !important;
+                padding: 12px !important;
+            }
+
+            .daily-rewards-header {
+                margin-bottom: 10px !important;
+            }
+
+            .daily-rewards-title {
+                font-size: 0.8rem !important;
+            }
+
+            .daily-rewards-timer {
+                font-size: 0.6rem !important;
+            }
+
+            .daily-login-bonus {
+                padding: 10px !important;
+                gap: 10px !important;
+                margin-bottom: 12px !important;
+            }
+
+            .gift-icon {
+                width: 38px !important;
+                height: 38px !important;
+                font-size: 1.1rem !important;
+            }
+
+            .bonus-info h4 {
+                font-size: 0.75rem !important;
+            }
+
+            .bonus-info p {
+                font-size: 0.6rem !important;
+            }
+
+            .daily-streak-days {
+                gap: 6px !important;
+                margin-bottom: 12px !important;
+                justify-content: center !important;
+            }
+
+            .streak-day {
+                width: 36px !important;
+                height: 36px !important;
+                font-size: 0.6rem !important;
+            }
+
+            .claim-reward-btn {
+                padding: 12px 16px !important;
+                font-size: 0.75rem !important;
+                width: 100% !important;
+            }
+
+            .games-progress {
+                font-size: 0.6rem !important;
+                margin-top: 8px !important;
+            }
+
+            /* ======================= */
+            /* ROW 2, COL 3: Daily Tasks */
+            /* ======================= */
+            .daily-tasks-section {
+                grid-column: 3 !important;
+                grid-row: 2 !important;
+                display: block !important;
+                margin: 0 !important;
+                padding: 12px !important;
+                overflow-y: auto !important;
+            }
+
+            .daily-tasks-header {
+                margin-bottom: 10px !important;
+            }
+
+            .daily-tasks-title {
+                font-size: 0.8rem !important;
+            }
+
+            .tasks-earnings {
+                font-size: 0.6rem !important;
+            }
+
+            .tasks-progress {
+                display: none !important;
+            }
+
+            .task-item {
+                padding: 10px !important;
+                gap: 8px !important;
+                margin-bottom: 8px !important;
+            }
+
+            .task-icon {
+                width: 36px !important;
+                height: 36px !important;
+                font-size: 1rem !important;
+            }
+
+            .task-name {
+                font-size: 0.7rem !important;
+            }
+
+            .task-description {
+                font-size: 0.55rem !important;
+            }
+
+            .task-reward {
+                font-size: 0.7rem !important;
+            }
+
+            .task-btn {
+                padding: 6px 12px !important;
+                font-size: 0.6rem !important;
+            }
+
+            .invite-section {
+                margin-top: 12px !important;
+                padding: 10px !important;
+            }
+
+            .invite-code {
+                font-size: 0.75rem !important;
+                padding: 8px !important;
+            }
+
+            .share-buttons {
+                gap: 6px !important;
+            }
+
+            .share-btn {
+                padding: 6px !important;
+                font-size: 0.55rem !important;
+            }
+
+            /* ======================= */
+            /* BOTTOM NAV */
+            /* ======================= */
+            .bottom-nav {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                padding: 8px 30px !important;
+                border-radius: 0 !important;
+                background: rgba(10, 20, 40, 0.98) !important;
+                justify-content: space-around !important;
+                border-top: 1px solid rgba(0, 212, 255, 0.15) !important;
+            }
+
+            .nav-btn {
+                padding: 8px 20px !important;
+                gap: 4px !important;
+                flex-direction: column !important;
+            }
+
+            .nav-btn .nav-icon {
+                font-size: 1.1rem !important;
+            }
+
+            .nav-btn .nav-text {
+                font-size: 0.6rem !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Auth Loading -->
+    <div id="auth-loading" class="auth-loading">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Top Header Bar -->
+    <header class="top-header" id="top-header" style="display: none;">
+        <div class="header-left">
+            <div class="header-brand" title="Mine Pool">
+                <span class="header-8ball">🎱</span>
+                <span class="header-brand-text">Mine Pool</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="header-btn" id="btn-report" title="Report Bug / Suggest Feature">
+                🐛
+            </button>
+            <button class="header-btn" id="btn-settings" title="Settings">
+                ⚙️
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content" id="main-content" style="display: none;">
+        <!-- Player Profile Card -->
+        <div class="profile-card">
+            <div class="profile-main">
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar" id="profile-avatar">P</div>
+                    <span class="profile-flag" id="profile-flag"></span>
+                    <div class="profile-level" id="profile-level">LV 47</div>
+                </div>
+                <div class="profile-details">
+                    <div class="profile-name" id="profile-name">SHADOW_STRIKER</div>
+                    <div class="profile-rank-title" id="profile-rank-title">Master Player</div>
+                    <div class="profile-xp-bar">
+                        <div class="profile-xp-fill" id="profile-xp-fill" style="width: 73%;"></div>
+                        <span class="profile-xp-text" id="profile-xp-text">73%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="profile-stats">
+                <div class="stat-box">
+                    <span class="stat-icon coins">🪙</span>
+                    <span class="stat-value" id="stat-coins">24,580</span>
+                    <span class="stat-label">TAIN</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-icon winrate">📊</span>
+                    <span class="stat-value" id="stat-winrate">87.5%</span>
+                    <span class="stat-label">Win Rate</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-icon rank">👑</span>
+                    <span class="stat-value" id="stat-rank">#142</span>
+                    <span class="stat-label">Rank</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Modes Section -->
+        <div class="game-modes-section">
+            <h2 class="section-title">🎮 PLAY NOW</h2>
+            <div class="game-modes">
+                <button id="btn-online" class="btn-mode btn-online-play">
+                    <span class="mode-icon">🌐</span>
+                    <span class="mode-text">PLAY LIVE</span>
+                    <span class="online-badge">LIVE</span>
+                </button>
+                <button id="btn-2player" class="btn-mode">
+                    <span class="mode-icon">👥</span>
+                    <span class="mode-text">2 PLAYERS</span>
+                </button>
+                <button id="btn-tournament" class="btn-mode btn-tournament">
+                    <span class="mode-icon">🏆</span>
+                    <span class="mode-text">TOURNAMENTS</span>
+                </button>
+                <button id="btn-cues" class="btn-mode">
+                    <span class="mode-icon">🎱</span>
+                    <span class="mode-text">CUES</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Friends Activity Section -->
+        <div class="friends-activity-section" id="friends-activity-section">
+            <div class="friends-activity-header">
+                <span class="friends-activity-title">👥 FRIENDS ACTIVITY</span>
+                <a href="friends.html" class="view-all-btn">View All →</a>
+            </div>
+            <div class="friends-activity-list" id="friends-activity-list">
+                <!-- Friend items will be loaded here -->
+                <div class="friend-activity-item">
+                    <div class="friend-avatar online">
+                        👤
+                        <div class="status-dot online"></div>
+                    </div>
+                    <div class="friend-info">
+                        <div class="friend-name">Loading...</div>
+                        <div class="friend-status">Checking friends...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="daily-rewards-section" id="daily-rewards-section" style="display: none;">
+            <div class="daily-rewards-header">
+                <span class="daily-rewards-title">🎁 DAILY REWARDS</span>
+                <span class="daily-rewards-timer">Resets in <span id="reward-timer">23h 59m</span></span>
+            </div>
+            <div class="daily-login-bonus">
+                <div class="gift-icon">🎁</div>
+                <div class="bonus-info">
+                    <h4>Daily Login Bonus</h4>
+                    <p>Day <span id="current-streak-day">1</span> of 7 - Keep the streak!</p>
+                </div>
+            </div>
+            <div class="daily-streak-days" id="streak-days-container">
+                <div class="streak-day current" data-day="1"><span class="day-label">D1</span><span
+                        class="day-icon"></span>
+                </div>
+                <div class="streak-day upcoming" data-day="2"><span class="day-label">D2</span><span
+                        class="day-icon"></span></div>
+                <div class="streak-day upcoming" data-day="3"><span class="day-label">D3</span><span
+                        class="day-icon"></span></div>
+                <div class="streak-day upcoming" data-day="4"><span class="day-label">D4</span><span
+                        class="day-icon"></span></div>
+                <div class="streak-day upcoming" data-day="5"><span class="day-label">D5</span><span
+                        class="day-icon"></span></div>
+                <div class="streak-day upcoming" data-day="6"><span class="day-label">D6</span><span
+                        class="day-icon"></span></div>
+                <div class="streak-day upcoming" data-day="7"><span class="day-label">D7</span><span
+                        class="day-icon"></span></div>
+            </div>
+            <button class="claim-reward-btn" id="claim-reward-btn" disabled>
+                <span class="coin-icon">💰</span> PLAY 3 GAMES TO CLAIM
+            </button>
+            <div class="games-progress">Games played today: <span id="games-today">0</span>/3</div>
+        </div>
+
+        <!-- Daily Tasks Section -->
+        <div class="daily-tasks-section" id="daily-tasks-section">
+            <div class="daily-tasks-header">
+                <span class="daily-tasks-title">📋 DAILY TASKS</span>
+                <span class="tasks-earnings">Earn up to <span id="max-earnings"></span> 💰</span>
+            </div>
+            <div class="tasks-list" id="tasks-list">
+                <!-- Tasks will be loaded by daily-tasks.js -->
+            </div>
+
+        </div>
+    </div><!-- End main-content -->
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav" id="bottom-nav" style="display: none;">
+        <button class="nav-btn active" id="nav-home">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">Home</span>
+        </button>
+        <button class="nav-btn" id="nav-shop" onclick="window.location.href='shop.html'">
+            <span class="nav-icon">🛒</span>
+            <span class="nav-text">Shop</span>
+        </button>
+        <button class="nav-btn" id="nav-friends" onclick="window.location.href='friends.html'">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">Friends</span>
+        </button>
+        <button class="nav-btn" id="nav-profile" onclick="window.location.href='profile.html'">
+            <span class="nav-icon">👤</span>
+            <span class="nav-text">Profile</span>
+        </button>
+    </nav>
+
+    <!-- Stake Selection Modal -->
+    <div class="stake-modal-overlay" id="stake-modal">
+        <div class="stake-modal">
+            <div class="stake-modal-header">
+                <h2 class="stake-modal-title">🎱 PLAY LIVE</h2>
+                <button class="stake-modal-close" onclick="closeStakeModal()">✕</button>
+            </div>
+
+            <div class="stake-section-title">💰 SELECT YOUR STAKE</div>
+
+            <div class="stake-cards-grid">
+                <div class="stake-card" data-stake="50" onclick="selectStake(this, 50)">
+                    <span class="stake-card-icon">🥉</span>
+                    <span class="stake-card-amount">50</span>
+                    <span class="stake-card-name">Bronze</span>
+                    <span class="stake-card-players">👤 --</span>
+                </div>
+                <div class="stake-card selected" data-stake="100" onclick="selectStake(this, 100)">
+                    <span class="stake-card-icon">🥈</span>
+                    <span class="stake-card-amount">100</span>
+                    <span class="stake-card-name">Silver</span>
+                    <span class="stake-card-players">👤 --</span>
+                </div>
+                <div class="stake-card" data-stake="250" onclick="selectStake(this, 250)">
+                    <span class="stake-card-icon">🥇</span>
+                    <span class="stake-card-amount">250</span>
+                    <span class="stake-card-name">Gold</span>
+                    <span class="stake-card-players">👤 --</span>
+                </div>
+                <div class="stake-card" data-stake="500" onclick="selectStake(this, 500)">
+                    <span class="stake-card-icon">💎</span>
+                    <span class="stake-card-amount">500</span>
+                    <span class="stake-card-name">Diamond</span>
+                    <span class="stake-card-players">👤 --</span>
+                </div>
+                <div class="stake-card" data-stake="1000" onclick="selectStake(this, 1000)">
+                    <span class="stake-card-icon">❤️‍🔥</span>
+                    <span class="stake-card-amount">1K</span>
+                    <span class="stake-card-name">Ruby</span>
+                    <span class="stake-card-players">👤 --</span>
+                </div>
+                <div class="stake-card" data-stake="2500" onclick="selectStake(this, 2500)">
+                    <span class="stake-card-icon">👑</span>
+                    <span class="stake-card-amount">2.5K</span>
+                    <span class="stake-card-name">Crown</span>
+                    <span class="stake-card-players">👤 --</span>
+                </div>
+            </div>
+
+            <div class="stake-balance">
+                <span class="stake-balance-label">Your Balance</span>
+                <span class="stake-balance-amount">💰 <span id="modal-balance">0</span></span>
+            </div>
+
+            <button class="btn-find-match" id="btn-start-matchmaking" onclick="startMatchmaking()">
+                🎮 FIND MATCH
+            </button>
+
+            <div class="stake-room-options">
+                <button class="btn-room-option">
+                    <span class="room-icon">➕</span>
+                    Create Room
+                </button>
+                <button class="btn-room-option">
+                    <span class="room-icon">🔑</span>
+                    Join Room
+                </button>
+                <button class="btn-room-option">
+                    <span class="room-icon">👁️</span>
+                    Spectate
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cue Selection Modal -->
+    <div id="cue-selection-modal" class="cue-modal-overlay hidden">
+        <div class="cue-modal-content">
+            <h2>SELECT YOUR CUE</h2>
+            <div class="cue-carousel-container">
+                <button class="carousel-btn prev" id="carousel-prev">&#8249;</button>
+                <div class="cue-carousel" id="cue-carousel">
+                    <div class="cue-card active" data-cue="standard">
+                        <div class="cue-image">
+                            <img src="assets/cue_standard.png" alt="Standard Cue">
+                        </div>
+                        <h3>STANDARD</h3>
+                        <p>Classic maple wood</p>
+                    </div>
+                    <div class="cue-card" data-cue="premium">
+                        <div class="cue-image">
+                            <img src="assets/cue_premium.png" alt="Premium Cue">
+                        </div>
+                        <h3>PREMIUM</h3>
+                        <p>Carbon fiber tech</p>
+                    </div>
+                    <div class="cue-card" data-cue="legendary">
+                        <div class="cue-image">
+                            <img src="assets/cue_legendary.png" alt="Legendary Cue">
+                        </div>
+                        <h3>LEGENDARY</h3>
+                        <p>Ancient power</p>
+                    </div>
+                    <div class="cue-card" data-cue="dragon">
+                        <div class="cue-image">
+                            <img src="assets/cue_standard.png" alt="Dragon Cue">
+                        </div>
+                        <h3>DRAGON</h3>
+                        <p>Fire & fury</p>
+                    </div>
+                    <div class="cue-card" data-cue="ice">
+                        <div class="cue-image">
+                            <img src="assets/cue_premium.png" alt="Ice Cue">
+                        </div>
+                        <h3>ICE</h3>
+                        <p>Frozen precision</p>
+                    </div>
+                    <div class="cue-card" data-cue="viper">
+                        <div class="cue-image">
+                            <img src="assets/cue_legendary.png" alt="Viper Cue">
+                        </div>
+                        <h3>VIPER</h3>
+                        <p>Venomous strike</p>
+                    </div>
+                </div>
+                <button class="carousel-btn next" id="carousel-next">&#8250;</button>
+            </div>
+            <div class="carousel-dots" id="carousel-dots"></div>
+            <button id="close-cues" class="btn-primary">CONFIRM</button>
+        </div>
+    </div>
+
+
+    <script>
+        // Calculate player rank title based on ELO
+        function getRankTitle(elo) {
+            if (elo >= 2000) return 'Legendary Master';
+            if (elo >= 1800) return 'Grand Master';
+            if (elo >= 1600) return 'Master Player';
+            if (elo >= 1400) return 'Expert Player';
+            if (elo >= 1200) return 'Skilled Player';
+            if (elo >= 1000) return 'Intermediate';
+            return 'Beginner';
+        }
+
+        // Calculate level from games played and wins
+        function calculateLevel(gamesPlayed, gamesWon) {
+            const xp = (gamesPlayed * 10) + (gamesWon * 25);
+            return Math.floor(xp / 100) + 1;
+        }
+
+        // Calculate XP percentage to next level
+        function calculateXPPercent(gamesPlayed, gamesWon) {
+            const xp = (gamesPlayed * 10) + (gamesWon * 25);
+            return (xp % 100);
+        }
+
+        // Authentication check and UI update
+        (async function checkAuth() {
+            const loadingEl = document.getElementById('auth-loading');
+            const topHeader = document.getElementById('top-header');
+            const mainContent = document.getElementById('main-content');
+            const bottomNav = document.getElementById('bottom-nav');
+
+            try {
+                const response = await fetch('/api/auth/me', { credentials: 'include' });
+                const data = await response.json();
+
+                if (data.success && data.user) {
+                    const user = data.user;
+
+                    // Check if profile is complete - redirect to complete-profile if not
+                    if (!user.profileComplete) {
+                        window.location.href = '/complete-profile.html';
+                        return;
+                    }
+
+                    window.currentUser = user;
+                    localStorage.setItem('user', JSON.stringify(user));
+
+                    const level = calculateLevel(user.gamesPlayed || 0, user.gamesWon || 0);
+                    const xpPercent = calculateXPPercent(user.gamesPlayed || 0, user.gamesWon || 0);
+                    const rankTitle = getRankTitle(user.elo || 1200);
+                    const winRate = user.gamesPlayed > 0
+                        ? ((user.gamesWon / user.gamesPlayed) * 100).toFixed(1)
+                        : '0.0';
+
+                    // Header now shows branding instead of player info
+                    // No header player elements to update
+
+                    // Update profile card
+                    document.getElementById('profile-name').textContent = user.username.toUpperCase();
+                    document.getElementById('profile-rank-title').textContent = rankTitle;
+                    document.getElementById('profile-level').textContent = `LV ${level}`;
+                    document.getElementById('profile-xp-fill').style.width = `${xpPercent}%`;
+                    document.getElementById('profile-xp-text').textContent = `${xpPercent}%`;
+
+                    // Update profile avatar
+                    const profileAvatar = document.getElementById('profile-avatar');
+                    if (user.profilePicture) {
+                        // Add cache-busting timestamp to prevent browser caching issues
+                        const avatarUrl = user.profilePicture + (user.profilePicture.includes('?') ? '&' : '?') + 't=' + Date.now();
+                        profileAvatar.innerHTML = `<img src="${avatarUrl}" alt="${user.username}">`;
+                    } else {
+                        profileAvatar.textContent = user.username.charAt(0).toUpperCase();
+                    }
+
+                    // Update profile flag with image
+                    if (user.nationality) {
+                        const flagUrl = `https://flagcdn.com/w40/${user.nationality.toLowerCase()}.png`;
+                        const flagEl = document.getElementById('profile-flag');
+                        if (flagEl) flagEl.innerHTML = `<img src="${flagUrl}" alt="${user.nationality}" title="${user.nationality}">`;
+                    }
+
+                    // Update stats
+                    document.getElementById('stat-coins').textContent = (user.coins || 0).toLocaleString();
+                    document.getElementById('stat-winrate').textContent = `${winRate}%`;
+                    document.getElementById('stat-rank').textContent = user.rank?.name || 'Silver';
+
+                    // Show UI
+                    loadingEl.classList.add('hidden');
+                    topHeader.style.display = 'flex';
+                    mainContent.style.display = 'block';
+                    bottomNav.style.display = 'flex';
+                } else {
+                    {
+                        const _storedUser = localStorage.getItem('user');
+                        if (!_storedUser) {
+                            window.location.href = '/login.html';
+                        } else {
+                            console.log('Using localStorage user instead of redirecting');
+                            window.currentUser = JSON.parse(_storedUser);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                const userData = localStorage.getItem('user');
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    window.currentUser = user;
+
+                    // Update profile with cached data
+                    document.getElementById('profile-name').textContent = user.username.toUpperCase();
+                    document.getElementById('stat-coins').textContent = (user.coins || 0).toLocaleString();
+
+                    loadingEl.classList.add('hidden');
+                    topHeader.style.display = 'flex';
+                    mainContent.style.display = 'block';
+                    bottomNav.style.display = 'flex';
+                } else {
+                    {
+                        const _storedUser = localStorage.getItem('user');
+                        if (!_storedUser) {
+                            window.location.href = '/login.html';
+                        } else {
+                            console.log('Using localStorage user instead of redirecting');
+                            window.currentUser = JSON.parse(_storedUser);
+                        }
+                    }
+                }
+            }
+        })();
+
+        // Navigation handlers
+        document.getElementById('btn-online').addEventListener('click', () => {
+            openStakeModal();
+        });
+
+        document.getElementById('btn-2player').addEventListener('click', () => {
+            window.location.href = 'game.html?mode=2player';
+        });
+
+        document.getElementById('btn-tournament').addEventListener('click', () => {
+            window.location.href = 'tournament.html';
+        });
+
+        // Bottom nav handlers
+        document.getElementById('nav-profile').addEventListener('click', () => {
+            window.location.href = 'profile.html';
+        });
+
+        // Settings button handler
+        document.getElementById('btn-settings').addEventListener('click', () => {
+            window.location.href = 'settings.html';
+        });
+
+        // Report button handler
+        document.getElementById('btn-report').addEventListener('click', () => {
+            window.location.href = 'report.html';
+        });
+
+
+
+
+        // Cue Selection Handler
+        (function () {
+            const cueModal = document.getElementById('cue-selection-modal');
+            const cueCards = document.querySelectorAll('.cue-card');
+            const closeCuesBtn = document.getElementById('close-cues');
+            const btnCues = document.getElementById('btn-cues');
+
+            let selectedCue = localStorage.getItem('selectedCue') || 'standard';
+            let carousel, prevBtn, nextBtn, dotsContainer;
+            let currentIndex = 0;
+            let carouselInitialized = false;
+
+            function initCarousel() {
+                if (carouselInitialized) return;
+
+                carousel = document.getElementById('cue-carousel');
+                prevBtn = document.getElementById('carousel-prev');
+                nextBtn = document.getElementById('carousel-next');
+                dotsContainer = document.getElementById('carousel-dots');
+
+                if (!carousel || !prevBtn || !nextBtn || !dotsContainer) return;
+
+                const cardsPerView = 3;
+                const totalCards = cueCards.length;
+
+                dotsContainer.innerHTML = '';
+                for (let i = 0; i < Math.ceil(totalCards / cardsPerView); i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'carousel-dot';
+                    if (i === 0) dot.classList.add('active');
+                    dot.addEventListener('click', () => goToSlide(i));
+                    dotsContainer.appendChild(dot);
+                }
+
+                function updateCarousel() {
+                    const cardWidth = 220;
+                    const offset = currentIndex * cardWidth;
+                    carousel.style.transform = `translateX(-${offset}px)`;
+
+                    document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+                        dot.classList.toggle('active', i === Math.floor(currentIndex / cardsPerView));
+                    });
+                }
+
+                function goToSlide(index) {
+                    currentIndex = Math.floor(index * cardsPerView);
+                    currentIndex = Math.max(0, Math.min(currentIndex, totalCards - 1));
+                    updateCarousel();
+                }
+
+                prevBtn.onclick = function (e) {
+                    e.preventDefault();
+                    if (currentIndex > 0) {
+                        currentIndex--;
+                        updateCarousel();
+                    }
+                };
+
+                nextBtn.onclick = function (e) {
+                    e.preventDefault();
+                    if (currentIndex < totalCards - 1) {
+                        currentIndex++;
+                        updateCarousel();
+                    }
+                };
+
+                carouselInitialized = true;
+            }
+
+            cueCards.forEach(card => {
+                if (card.getAttribute('data-cue') === selectedCue) {
+                    card.classList.add('active');
+                } else {
+                    card.classList.remove('active');
+                }
+            });
+
+            if (btnCues) {
+                btnCues.addEventListener('click', () => {
+                    cueModal.classList.remove('hidden');
+                    setTimeout(() => initCarousel(), 100);
+                });
+            }
+
+            cueCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    cueCards.forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                    selectedCue = card.getAttribute('data-cue');
+                    localStorage.setItem('selectedCue', selectedCue);
+                });
+            });
+
+            if (closeCuesBtn) {
+                closeCuesBtn.addEventListener('click', () => {
+                    cueModal.classList.add('hidden');
+                });
+            }
+
+            cueModal.addEventListener('click', (e) => {
+                if (e.target === cueModal) {
+                    cueModal.classList.add('hidden');
+                }
+            });
+
+            window.selectedCue = selectedCue;
+        })();
+    </script>
+    <script src="stake-modal.js"></script>
+    <script src="daily-rewards.js"></script>
+    <script src="daily-tasks.js"></script>
+    <script src="friends-activity.js"></script>
+</body>
+
+</html>

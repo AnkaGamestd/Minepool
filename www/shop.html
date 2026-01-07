@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cue Shop - Mine Pool</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(180deg, #0a1628 0%, #0d1f35 50%, #0a1425 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* ============================================
+           HEADER
+           ============================================ */
+        .shop-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: rgba(10, 22, 40, 0.95);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        .shop-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .header-currency {
+            display: flex;
+            gap: 12px;
+        }
+
+        .currency-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .currency-item.coins {
+            color: #ffd700;
+        }
+
+        .currency-item.cash {
+            color: #00ff88;
+        }
+
+        .currency-icon {
+            font-size: 1rem;
+        }
+
+        /* ============================================
+           FILTER TABS
+           ============================================ */
+        .filter-tabs {
+            display: flex;
+            gap: 10px;
+            padding: 15px 20px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .filter-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-tab {
+            padding: 8px 18px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+            color: #8899aa;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .filter-tab:hover {
+            border-color: rgba(0, 212, 255, 0.4);
+            color: #fff;
+        }
+
+        .filter-tab.active {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        /* ============================================
+           MAIN CONTENT
+           ============================================ */
+        .shop-content {
+            padding: 0 20px 100px 20px;
+        }
+
+        /* ============================================
+           FEATURED CUE
+           ============================================ */
+        .featured-cue {
+            background: linear-gradient(135deg, rgba(20, 60, 40, 0.9) 0%, rgba(10, 40, 30, 0.95) 100%);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .featured-cue::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(0, 255, 136, 0.2) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .featured-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #ffd700, #ff9500);
+            border-radius: 15px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .featured-cue-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .featured-cue-desc {
+            font-size: 0.85rem;
+            color: #8899aa;
+            margin-bottom: 20px;
+        }
+
+        .cue-stats {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            flex: 1;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .stat-name {
+            font-size: 0.7rem;
+            color: #8899aa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .stat-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .stat-bar-fill.force {
+            background: linear-gradient(90deg, #00ff88, #00cc6a);
+        }
+
+        .stat-bar-fill.aim {
+            background: linear-gradient(90deg, #00d4ff, #0099cc);
+        }
+
+        .featured-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .featured-price {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #00ff88;
+        }
+
+        .unlock-btn {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            border: none;
+            border-radius: 25px;
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .unlock-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 25px rgba(0, 255, 136, 0.4);
+        }
+
+        /* ============================================
+           SECTION HEADER
+           ============================================ */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .section-timer {
+            font-size: 0.8rem;
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .view-all-link {
+            font-size: 0.8rem;
+            color: #00d4ff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* ============================================
+           CUE CARDS
+           ============================================ */
+        .cue-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .cue-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(25, 35, 55, 0.9) 0%, rgba(20, 30, 50, 0.95) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .cue-card:hover {
+            border-color: rgba(0, 212, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .cue-image {
+            width: 70px;
+            height: 70px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cue-image.legendary {
+            background: linear-gradient(135deg, rgba(255, 180, 0, 0.2) 0%, rgba(180, 100, 0, 0.1) 100%);
+            border: 1px solid rgba(255, 180, 0, 0.3);
+        }
+
+        .cue-image.epic {
+            background: linear-gradient(135deg, rgba(180, 0, 255, 0.2) 0%, rgba(100, 0, 180, 0.1) 100%);
+            border: 1px solid rgba(180, 0, 255, 0.3);
+        }
+
+        .cue-image.rare {
+            background: linear-gradient(135deg, rgba(0, 150, 255, 0.2) 0%, rgba(0, 80, 180, 0.1) 100%);
+            border: 1px solid rgba(0, 150, 255, 0.3);
+        }
+
+        .cue-image.common {
+            background: linear-gradient(135deg, rgba(100, 100, 100, 0.2) 0%, rgba(60, 60, 60, 0.1) 100%);
+            border: 1px solid rgba(100, 100, 100, 0.3);
+        }
+
+        .cue-stick {
+            width: 60px;
+            height: 8px;
+            border-radius: 4px;
+            transform: rotate(-45deg);
+        }
+
+        .cue-stick.legendary {
+            background: linear-gradient(90deg, #ffd700, #ff9500, #ffd700);
+            box-shadow: 0 0 15px rgba(255, 180, 0, 0.5);
+        }
+
+        .cue-stick.epic {
+            background: linear-gradient(90deg, #ff00ff, #9900ff, #ff00ff);
+            box-shadow: 0 0 15px rgba(180, 0, 255, 0.5);
+        }
+
+        .cue-stick.rare {
+            background: linear-gradient(90deg, #00d4ff, #0066ff, #00d4ff);
+            box-shadow: 0 0 15px rgba(0, 150, 255, 0.5);
+        }
+
+        .cue-stick.common {
+            background: linear-gradient(90deg, #888, #aaa, #888);
+        }
+
+        .cue-info {
+            flex: 1;
+        }
+
+        .cue-name-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .cue-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .rarity-badge {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .rarity-badge.legendary {
+            background: linear-gradient(135deg, #ffd700, #ff9500);
+            color: #000;
+        }
+
+        .rarity-badge.epic {
+            background: linear-gradient(135deg, #ff00ff, #9900ff);
+            color: #fff;
+        }
+
+        .rarity-badge.rare {
+            background: linear-gradient(135deg, #00d4ff, #0066ff);
+            color: #fff;
+        }
+
+        .rarity-badge.common {
+            background: rgba(100, 100, 100, 0.5);
+            color: #ccc;
+        }
+
+        .cue-mini-stats {
+            display: flex;
+            gap: 15px;
+        }
+
+        .mini-stat {
+            flex: 1;
+        }
+
+        .mini-stat-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .mini-stat-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .mini-stat-fill.force {
+            background: #00ff88;
+        }
+
+        .mini-stat-fill.aim {
+            background: #00d4ff;
+        }
+
+        .cue-price-section {
+            text-align: right;
+        }
+
+        .cue-price {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffd700;
+            margin-bottom: 8px;
+        }
+
+        .purchase-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #ffd700, #ff9500);
+            border: none;
+            border-radius: 15px;
+            color: #000;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .purchase-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 3px 15px rgba(255, 180, 0, 0.4);
+        }
+
+        .purchase-btn.cash {
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+        }
+
+        /* ============================================
+           BOTTOM NAVIGATION
+           ============================================ */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(10, 20, 40, 0.98);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid rgba(0, 212, 255, 0.15);
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 20px;
+            background: transparent;
+            border: none;
+            color: #667788;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .nav-btn:hover,
+        .nav-btn.active {
+            color: #00d4ff;
+        }
+
+        .nav-btn.active {
+            color: #ffd700;
+        }
+
+        .nav-icon {
+            font-size: 1.3rem;
+        }
+
+        .nav-text {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* ============================================
+           LANDSCAPE ADJUSTMENTS
+           ============================================ */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .shop-header {
+                padding: 8px 15px;
+            }
+
+            .filter-tabs {
+                padding: 10px 15px;
+            }
+
+            .shop-content {
+                padding: 0 15px 70px 15px;
+            }
+
+            .featured-cue {
+                padding: 15px;
+            }
+
+            .featured-cue-name {
+                font-size: 1.3rem;
+            }
+
+            .cue-card {
+                padding: 12px;
+            }
+
+            .cue-image {
+                width: 55px;
+                height: 55px;
+            }
+
+            .bottom-nav {
+                padding: 8px 30px;
+            }
+
+            .nav-btn {
+                flex-direction: row;
+                gap: 6px;
+            }
+        }
+
+        /* ============================================
+           ANIMATIONS
+           ============================================ */
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .featured-badge {
+            background-size: 200% 100%;
+            animation: shimmer 3s infinite linear;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="shop-header">
+        <div class="header-left">
+            <button class="back-btn" onclick="window.location.href='index.html'">←</button>
+            <h1 class="shop-title">Cue Shop</h1>
+        </div>
+        <div class="header-currency">
+            <div class="currency-item coins">
+                <span class="currency-icon">🪙</span>
+                <span id="user-coins">12.5k</span>
+            </div>
+            <div class="currency-item cash">
+                <span class="currency-icon">💎</span>
+                <span id="user-cash">520</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all">All Cues</button>
+        <button class="filter-tab" data-filter="legendary">Legendary</button>
+        <button class="filter-tab" data-filter="epic">Epic</button>
+        <button class="filter-tab" data-filter="rare">Rare</button>
+        <button class="filter-tab" data-filter="common">Common</button>
+    </div>
+
+    <!-- Main Content -->
+    <main class="shop-content">
+        <!-- Featured Cue -->
+        <div class="featured-cue">
+            <div class="featured-badge">⭐ Featured Legendary</div>
+            <h2 class="featured-cue-name">Dragon's Breath</h2>
+            <p class="featured-cue-desc">Unleash the heat on every shot</p>
+
+            <div class="cue-stats">
+                <div class="stat-item">
+                    <div class="stat-header">
+                        <span class="stat-name">Force</span>
+                        <span class="stat-value">9.5/10</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill force" style="width: 95%"></div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-header">
+                        <span class="stat-name">Aim</span>
+                        <span class="stat-value">8.0/10</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill aim" style="width: 80%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="featured-footer">
+                <div class="featured-price">
+                    <span>💎</span>
+                    <span>100</span>
+                </div>
+                <button class="unlock-btn" onclick="purchaseCue('dragons_breath', 100, 'coins')">Unlock Now</button>
+            </div>
+        </div>
+
+        <!-- Daily Deals -->
+        <div class="section-header">
+            <h3 class="section-title">Daily Deals</h3>
+            <span class="section-timer" id="deal-timer">Ends in 04:22:15</span>
+        </div>
+
+        <div class="cue-grid" id="daily-deals">
+            <!-- Neon Striker -->
+            <div class="cue-card" data-rarity="epic" data-cue-id="neon_striker">
+                <div class="cue-image epic">
+                    <div class="cue-stick epic"></div>
+                </div>
+                <div class="cue-info">
+                    <div class="cue-name-row">
+                        <span class="cue-name">Neon Striker</span>
+                        <span class="rarity-badge epic">Epic</span>
+                    </div>
+                    <div class="cue-mini-stats">
+                        <div class="mini-stat">
+                            <div class="mini-stat-bar">
+                                <div class="mini-stat-fill force" style="width: 85%"></div>
+                            </div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-bar">
+                                <div class="mini-stat-fill aim" style="width: 75%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cue-price-section">
+                    <div class="cue-price">
+                        <span>🪙</span>
+                        <span>100</span>
+                    </div>
+                    <button class="purchase-btn" onclick="purchaseCue('neon_striker', 100, 'coins')">Purchase</button>
+                </div>
+            </div>
+
+            <!-- Frost Bite -->
+            <div class="cue-card" data-rarity="rare" data-cue-id="frost_bite">
+                <div class="cue-image rare">
+                    <div class="cue-stick rare"></div>
+                </div>
+                <div class="cue-info">
+                    <div class="cue-name-row">
+                        <span class="cue-name">Frost Bite</span>
+                        <span class="rarity-badge rare">Rare</span>
+                    </div>
+                    <div class="cue-mini-stats">
+                        <div class="mini-stat">
+                            <div class="mini-stat-bar">
+                                <div class="mini-stat-fill force" style="width: 70%"></div>
+                            </div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-bar">
+                                <div class="mini-stat-fill aim" style="width: 80%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cue-price-section">
+                    <div class="cue-price">
+                        <span>🪙</span>
+                        <span>100</span>
+                    </div>
+                    <button class="purchase-btn" onclick="purchaseCue('frost_bite', 100, 'coins')">Purchase</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Cues Section -->
+        <div class="section-header">
+            <h3 class="section-title">New Cues</h3>
+            <a href="#" class="view-all-link">View All</a>
+        </div>
+
+        <div class="cue-grid" id="new-cues">
+            <!-- Shadow Master -->
+            <div class="cue-card" data-rarity="legendary" data-cue-id="shadow_master">
+                <div class="cue-image legendary">
+                    <div class="cue-stick legendary"></div>
+                </div>
+                <div class="cue-info">
+                    <div class="cue-name-row">
+                        <span class="cue-name">Shadow Master</span>
+                        <span class="rarity-badge legendary">Legendary</span>
+                    </div>
+                    <div class="cue-mini-stats">
+                        <div class="mini-stat">
+                            <div class="mini-stat-bar">
+                                <div class="mini-stat-fill force" style="width: 90%"></div>
+                            </div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-bar">
+                                <div class="mini-stat-fill aim" style="width: 92%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cue-price-section">
+                    <div class="cue-price" style="color: #00ff88;">
+                        <span>💎</span>
+                        <span>100</span>
+                    </div>
+                    <button class="purchase-btn cash"
+                        onclick="purchaseCue('shadow_master', 100, 'coins')">Purchase</button>
+                </div>
+            </div>
+
+            <!-- Classic Oak -->
+            <div class="cue-card" data-rarity="common" data-cue-id="classic_oak">
+                <div class="cue-image common">
+                    <div class="cue-stick common"></div>
+                </div>
+                <div class="cue-info">
+                    <div class="cue-name-row">
+                        <span class="cue-name">Classic Oak</span>
+                        <span class="rarity-badge common">Common</span>
+                    </div>
+                    <div class="cue-mini-stats">
+                        <div class="mini-stat">
+                            <div class="mini-stat-bar">
+                                <div class="mini-stat-fill force" style="width: 50%"></div>
+                            </div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-bar">
+                                <div class="mini-stat-fill aim" style="width: 55%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cue-price-section">
+                    <div class="cue-price">
+                        <span>🪙</span>
+                        <span>100</span>
+                    </div>
+                    <button class="purchase-btn" onclick="purchaseCue('classic_oak', 100, 'coins')">Purchase</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-btn">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">Home</span>
+        </a>
+        <a href="shop.html" class="nav-btn active">
+            <span class="nav-icon">🛒</span>
+            <span class="nav-text">Shop</span>
+        </a>
+        <a href="friends.html" class="nav-btn">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">Friends</span>
+        </a>
+        <a href="index.html" class="nav-btn">
+            <span class="nav-icon">👤</span>
+            <span class="nav-text">Profile</span>
+        </a>
+    </nav>
+
+        <script>
+        // Load user data
+        let currentUser = null;
+        let ownedCues = ['standard']; // Everyone owns the standard cue
+        let selectedCue = localStorage.getItem('selectedCue') || 'standard';
+
+        async function loadUserData() {
+            try {
+                var token = localStorage.getItem('authToken');
+                var headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+                var response = await fetch('/api/user', { headers: headers, credentials: 'include' });
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    ownedCues = ['standard', ...(currentUser.cues || [])];
+                    updateCurrencyDisplay();
+                    updateCueButtons();
+                }
+            } catch (error) {
+                console.log('Not logged in');
+            }
+        }
+
+        function updateCurrencyDisplay() {
+            if (currentUser) {
+                const coins = currentUser.coins || 0;
+                const cash = currentUser.cash || 0;
+                document.getElementById('user-coins').textContent = coins >= 1000 ? (coins / 1000).toFixed(1) + 'k' : coins;
+                document.getElementById('user-cash').textContent = cash;
+            }
+        }
+
+        function updateCueButtons() {
+            document.querySelectorAll('.cue-card').forEach(card => {
+                const cueId = card.dataset.cueId;
+                if (!cueId) return;
+                const priceSection = card.querySelector('.cue-price-section');
+                if (!priceSection) return;
+                if (ownedCues.includes(cueId)) {
+                    const isEquipped = selectedCue === cueId;
+                    priceSection.innerHTML = '<div style="color:#00ff88;font-size:0.75rem;font-weight:700;margin-bottom:8px;">? OWNED</div>' +
+                        '<button class="purchase-btn" onclick="equipCue(\'' + cueId + '\')" style="background:' + (isEquipped ? 'linear-gradient(135deg,#00d4ff,#0099cc)' : 'linear-gradient(135deg,#444,#666)') + '">' + (isEquipped ? '? EQUIPPED' : 'EQUIP') + '</button>';
+                    card.classList.add('owned');
+                }
+            });
+            const featuredCueId = 'dragons_breath';
+            if (ownedCues.includes(featuredCueId)) {
+                const featuredFooter = document.querySelector('.featured-footer');
+                const isEquipped = selectedCue === featuredCueId;
+                if (featuredFooter) {
+                    featuredFooter.innerHTML = '<div style="color:#00ff88;font-size:1rem;font-weight:700;">? OWNED</div>' +
+                        '<button class="unlock-btn" onclick="equipCue(\'' + featuredCueId + '\')" style="background:' + (isEquipped ? 'linear-gradient(135deg,#00d4ff,#0099cc)' : 'linear-gradient(135deg,#444,#666)') + '">' + (isEquipped ? '? Equipped' : 'Equip Now') + '</button>';
+                }
+            }
+        }
+
+        function equipCue(cueId) {
+            if (!ownedCues.includes(cueId)) { alert('You don\'t own this cue!'); return; }
+            selectedCue = cueId;
+            localStorage.setItem('selectedCue', cueId);
+            showToast('?? ' + formatCueName(cueId) + ' equipped!');
+            updateCueButtons();
+        }
+
+        function formatCueName(cueId) {
+            return cueId.split('_').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
+        }
+
+        function showToast(message) {
+            var toast = document.getElementById('shop-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'shop-toast';
+                toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(50px);background:linear-gradient(135deg,#00ff88,#00cc6a);color:#000;padding:14px 28px;border-radius:25px;font-weight:700;opacity:0;transition:all 0.3s;z-index:10001;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = message;
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+            toast.style.opacity = '1';
+            setTimeout(function() { toast.style.transform = 'translateX(-50%) translateY(50px)'; toast.style.opacity = '0'; }, 2500);
+        }
+
+        document.querySelectorAll('.filter-tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.filter-tab').forEach(function(t) { t.classList.remove('active'); });
+                this.classList.add('active');
+                filterCues(this.dataset.filter);
+            });
+        });
+
+        function filterCues(rarity) {
+            document.querySelectorAll('.cue-card').forEach(function(card) {
+                card.style.display = (rarity === 'all' || card.dataset.rarity === rarity) ? 'flex' : 'none';
+            });
+        }
+
+        async function purchaseCue(cueId, price, currency) {
+            if (!currentUser) { alert('Please login to purchase cues'); window.location.href = 'login.html'; return; }
+            if (ownedCues.includes(cueId)) { equipCue(cueId); return; }
+            var userBalance = currency === 'coins' ? currentUser.coins : currentUser.cash;
+            if (userBalance < price) { alert('Not enough ' + currency + '! You need ' + price + ' but have ' + userBalance); return; }
+            if (!confirm('Purchase ' + formatCueName(cueId) + ' for ' + price.toLocaleString() + ' ' + currency + '?')) return;
+            try {
+                var token = localStorage.getItem('authToken');
+                var response = await fetch('/api/shop/purchase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    credentials: 'include',
+                    body: JSON.stringify({ cueId: cueId, price: price, currency: currency })
+                });
+                var data = await response.json();
+                if (data.success) {
+                    showToast('?? ' + formatCueName(cueId) + ' purchased!');
+                    currentUser = data.user;
+                    ownedCues = ['standard'].concat(currentUser.cues || []);
+                    // UPDATE LOCALSTORAGE so profile page sees the new cue
+                    var storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+                    storedUser.cues = currentUser.cues;
+                    storedUser.coins = currentUser.coins;
+                    storedUser.cash = currentUser.cash;
+                    localStorage.setItem('user', JSON.stringify(storedUser));
+                    updateCurrencyDisplay();
+                    equipCue(cueId);
+                } else {
+                    alert(data.error || 'Purchase failed');
+                }
+            } catch (error) {
+                console.error('Purchase error:', error);
+                alert('Purchase failed. Please try again.');
+            }
+        }
+
+        function updateDealTimer() {
+            var now = new Date();
+            var tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+            var diff = tomorrow - now;
+            var hours = Math.floor(diff / (1000 * 60 * 60));
+            var minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            var seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            document.getElementById('deal-timer').textContent = 'Ends in ' + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+        }
+        setInterval(updateDealTimer, 1000);
+        updateDealTimer();
+        // Try to load from localStorage first
+        var storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                currentUser = JSON.parse(storedUser);
+                ownedCues = ['standard'].concat(currentUser.cues || []);
+                    // UPDATE LOCALSTORAGE so profile page sees the new cue
+                    var storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+                    storedUser.cues = currentUser.cues;
+                    storedUser.coins = currentUser.coins;
+                    storedUser.cash = currentUser.cash;
+                    localStorage.setItem('user', JSON.stringify(storedUser));
+                updateCurrencyDisplay();
+                updateCueButtons();
+            } catch(e) {}
+        }
+        loadUserData();
+    </script>
+</body>
+
+</html>

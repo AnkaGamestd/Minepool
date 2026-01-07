@@ -1,0 +1,344 @@
+/* ============================================
+   MINE POOL - MOBILE APP STYLES
+   Optimized for mobile experience
+   ============================================ */
+
+/* ============================================
+   START SCREEN - PORTRAIT VERTICAL LAYOUT
+   ============================================ */
+@media screen and (max-width: 1024px),
+(pointer: coarse) {
+
+    /* Full screen container - Portrait */
+    #start-screen {
+        padding: 20px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        overflow-y: auto !important;
+        min-height: 100vh !important;
+    }
+
+    /* Remove decorative borders */
+    #start-screen::before,
+    #start-screen::after {
+        display: none !important;
+    }
+
+    /* ============================================
+       MENU ELEMENTS - Proper positioning
+       ============================================ */
+
+    /* User Menu / Player Info - Top Right */
+    #user-menu,
+    .user-menu {
+        position: fixed !important;
+        z-index: 100 !important;
+        top: 10px !important;
+        right: 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        background: rgba(10, 15, 30, 0.95) !important;
+        padding: 8px 12px !important;
+        border-radius: 20px !important;
+        border: 1px solid rgba(0, 212, 255, 0.3) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .user-menu .user-info {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 0 !important;
+    }
+
+    .user-menu .user-avatar {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 12px !important;
+    }
+
+    .user-menu .user-details {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .user-menu .user-name {
+        font-size: 12px !important;
+        font-weight: 600 !important;
+    }
+
+    .user-menu .user-coins {
+        font-size: 10px !important;
+    }
+
+    .user-menu .btn-logout {
+        padding: 4px 8px !important;
+        font-size: 10px !important;
+        border-radius: 10px !important;
+    }
+
+    /* Bottom Menu - Daily Reward, News, Leaderboard, Shop */
+    #bottom-left-menu,
+    .bottom-left-menu {
+        position: fixed !important;
+        z-index: 100 !important;
+        bottom: 15px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        right: auto !important;
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 10px !important;
+        width: calc(100% - 30px) !important;
+        max-width: 400px !important;
+    }
+
+    /* Top Left Menu - Settings, Messages */
+    #bottom-right-menu,
+    .bottom-right-menu {
+        position: fixed !important;
+        z-index: 100 !important;
+        top: 10px !important;
+        left: 10px !important;
+        right: auto !important;
+        flex-direction: row !important;
+        gap: 8px !important;
+    }
+
+    /* Main Content - VERTICAL Layout with dark background wrapper */
+    .start-content {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 20px !important;
+        padding: 25px 20px !important;
+        margin: auto 15px !important;
+        max-width: calc(100vw - 30px) !important;
+        width: calc(100% - 30px) !important;
+        background: rgba(10, 15, 30, 0.92) !important;
+        border: 2px solid rgba(0, 212, 255, 0.25) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    .start-content::before {
+        display: none !important;
+    }
+
+    /* Logo Block - Inside content wrapper, no separate background */
+    .start-logo {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        flex-shrink: 0 !important;
+        width: auto !important;
+        max-width: 100% !important;
+        height: auto !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .big-ball {
+        font-size: 70px !important;
+        margin-bottom: 10px !important;
+        animation: bounce 2s infinite !important;
+        filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.7)) !important;
+    }
+
+    .start-logo h1 {
+        font-size: 2.2rem !important;
+        margin-bottom: 5px !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+    }
+
+    .tagline {
+        font-size: 0.7rem !important;
+        letter-spacing: 2px !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+    }
+
+    /* Game mode buttons - Vertical Stack, no separate backgrounds */
+    .game-modes {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 12px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        width: 100% !important;
+    }
+
+    .btn-mode {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 15px !important;
+        padding: 15px 20px !important;
+        width: 100% !important;
+        min-height: 60px !important;
+        border-radius: 12px !important;
+        background: rgba(0, 212, 255, 0.08) !important;
+        border: 1px solid rgba(0, 212, 255, 0.25) !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .btn-mode:hover,
+    .btn-mode:active {
+        transform: scale(0.98) !important;
+        background: rgba(0, 212, 255, 0.15) !important;
+        border-color: rgba(0, 212, 255, 0.5) !important;
+    }
+
+    .mode-icon {
+        font-size: 2rem !important;
+        flex-shrink: 0 !important;
+    }
+
+    .mode-text {
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
+        text-align: left !important;
+    }
+
+    /* Online badge styling */
+    .online-badge {
+        font-size: 0.55rem !important;
+        padding: 3px 8px !important;
+        margin-left: auto !important;
+    }
+
+    /* PLAY LIVE special button */
+    .btn-online-play {
+        border-color: rgba(0, 255, 136, 0.4) !important;
+        background: rgba(0, 255, 136, 0.1) !important;
+    }
+
+    /* Hide Cues button on mobile */
+    #btn-cues {
+        display: none !important;
+    }
+
+    /* Hide instructions on mobile */
+    .instructions {
+        display: none !important;
+    }
+
+    /* Side menu buttons styling */
+    .side-menu-btn {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 10px 8px !important;
+        min-width: auto !important;
+        gap: 4px !important;
+        border-radius: 12px !important;
+        background: rgba(10, 15, 30, 0.95) !important;
+        border: 1px solid rgba(0, 212, 255, 0.3) !important;
+    }
+
+    .side-menu-btn .btn-icon {
+        font-size: 1.3rem !important;
+    }
+
+    .side-menu-btn .btn-text {
+        font-size: 0.5rem !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+    }
+}
+
+/* ============================================
+   VERY SMALL SCREENS (small phones)
+   ============================================ */
+@media screen and (max-width: 400px) {
+    .start-content {
+        padding: 20px 15px !important;
+        margin: 45px 10px 90px 10px !important;
+    }
+
+    .big-ball {
+        font-size: 55px !important;
+    }
+
+    .start-logo h1 {
+        font-size: 1.8rem !important;
+    }
+
+    .tagline {
+        font-size: 0.6rem !important;
+    }
+
+    .btn-mode {
+        padding: 12px 15px !important;
+        min-height: 55px !important;
+    }
+
+    .mode-icon {
+        font-size: 1.8rem !important;
+    }
+
+    .mode-text {
+        font-size: 0.85rem !important;
+    }
+
+    .side-menu-btn .btn-text {
+        display: none !important;
+    }
+
+    /* Compact user menu on very small screens */
+    .user-menu .user-details {
+        display: none !important;
+    }
+
+    .user-menu .btn-logout {
+        display: none !important;
+    }
+}
+/* ============================================
+   HIDE CONTROLS HINT ON MOBILE PORTRAIT
+   ============================================ */
+@media screen and (max-width: 1024px),
+(pointer: coarse) {
+    /* Hide the controls hint bar at the bottom */
+    #controls-hint {
+        display: none !important;
+    }
+    
+    /* Add more margin at bottom for menu buttons */
+    .start-content {
+        margin-bottom: 120px !important;
+    }
+    
+    /* Bottom menu styling for portrait */
+    #bottom-left-menu,
+    .bottom-left-menu {
+        bottom: 20px !important;
+        gap: 8px !important;
+    }
+}
+
+/* ============================================
+   ENSURE START SCREEN HIDES WHEN GAME STARTS
+   ============================================ */
+#start-screen.hidden,
+#start-screen[style*="display: none"] {
+    display: none !important;
+}

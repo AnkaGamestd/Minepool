@@ -1,0 +1,180 @@
+/* ============================================
+   MINE POOL - MOBILE APP STYLES
+   Optimized for landscape mobile experience
+   ============================================ */
+
+/* ============================================
+   START SCREEN - MOBILE LANDSCAPE FIX
+   ============================================ */
+@media screen and (max-width: 1024px) and (orientation: landscape),
+(pointer: coarse) and (orientation: landscape) {
+
+    /* Full screen container */
+    #start-screen {
+        padding: 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* Remove decorative borders */
+    #start-screen::before,
+    #start-screen::after {
+        display: none !important;
+    }
+
+    /* Main card - horizontal flex layout */
+    .start-content {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 25px !important;
+        padding: 20px 25px !important;
+        max-width: 95vw !important;
+        max-height: 85vh !important;
+        width: auto !important;
+        background: rgba(10, 15, 30, 0.95) !important;
+        border-radius: 16px !important;
+        border: 2px solid rgba(0, 212, 255, 0.3) !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    .start-content::before {
+        display: none !important;
+    }
+
+    /* Logo - left side, compact vertical stack */
+    .start-logo {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 10px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .big-ball {
+        font-size: 45px !important;
+        margin-bottom: 6px !important;
+        animation: none !important;
+        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.5)) !important;
+    }
+
+    .start-logo h1 {
+        font-size: 1.3rem !important;
+        margin-bottom: 3px !important;
+        white-space: nowrap !important;
+    }
+
+    .tagline {
+        font-size: 0.55rem !important;
+        letter-spacing: 1.5px !important;
+        white-space: nowrap !important;
+    }
+
+    /* Game mode buttons - 2x2 grid on right */
+    .game-modes {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(120px, 150px)) !important;
+        grid-template-rows: repeat(2, auto) !important;
+        gap: 12px !important;
+        margin: 0 !important;
+        flex-shrink: 0 !important;
+        background: transparent !important;
+    }
+
+    .btn-mode {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        padding: 18px 22px !important;
+        min-width: 120px !important;
+        min-height: 90px !important;
+        border-radius: 12px !important;
+        background: rgba(10, 15, 30, 0.95) !important;
+        border: 2px solid rgba(0, 212, 255, 0.3) !important;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .btn-mode:hover,
+    .btn-mode:active {
+        transform: scale(0.97) !important;
+        background: rgba(0, 212, 255, 0.15) !important;
+        border-color: rgba(0, 212, 255, 0.4) !important;
+    }
+
+    .mode-icon {
+        font-size: 2rem !important;
+    }
+
+    .mode-text {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
+        text-align: center !important;
+    }
+
+    /* Online badge styling */
+    .online-badge {
+        font-size: 0.45rem !important;
+        padding: 1px 4px !important;
+        margin-top: 2px !important;
+    }
+
+    /* PLAY LIVE special button */
+    .btn-online-play {
+        border-color: rgba(0, 255, 136, 0.3) !important;
+        background: rgba(0, 255, 136, 0.1) !important;
+    }
+
+    /* Hide instructions on mobile */
+    .instructions {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   VERY SMALL SCREENS (phones)
+   ============================================ */
+@media screen and (max-height: 450px) and (orientation: landscape) {
+    .start-content {
+        gap: 20px !important;
+        padding: 15px 20px !important;
+    }
+
+    .big-ball {
+        font-size: 35px !important;
+    }
+
+    .start-logo h1 {
+        font-size: 1.1rem !important;
+    }
+
+    .tagline {
+        font-size: 0.5rem !important;
+    }
+
+    .game-modes {
+        grid-template-columns: repeat(2, minmax(75px, 95px)) !important;
+        gap: 6px !important;
+    }
+
+    .btn-mode {
+        padding: 10px 12px !important;
+        min-height: 55px !important;
+    }
+
+    .mode-icon {
+        font-size: 1.2rem !important;
+    }
+
+    .mode-text {
+        font-size: 0.55rem !important;
+    }
+}

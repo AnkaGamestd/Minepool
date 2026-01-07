@@ -1,0 +1,341 @@
+/* ============================================
+   SHARED MOBILE LANDSCAPE STYLES
+   For profile, settings, friends, matchmaking pages
+   ============================================ */
+
+/* ============================================
+   LANDSCAPE LAYOUT OPTIMIZATIONS
+   ============================================ */
+@media (pointer: coarse) and (orientation: landscape),
+(max-height: 500px) and (orientation: landscape) {
+
+    /* General page container adjustments */
+    .profile-container,
+    .settings-container,
+    .friends-container,
+    .matchmaking-container {
+        max-width: 100% !important;
+        padding: 10px 20px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 15px !important;
+        align-items: flex-start !important;
+        min-height: auto !important;
+    }
+
+    /* Page headers - compact */
+    .page-header,
+    .profile-header {
+        width: 100% !important;
+        flex: 0 0 100% !important;
+        margin-bottom: 10px !important;
+        padding-bottom: 10px !important;
+    }
+
+    .back-btn {
+        padding: 8px 14px !important;
+        font-size: 12px !important;
+    }
+
+    .page-title,
+    .header-title {
+        font-size: 16px !important;
+        letter-spacing: 2px !important;
+    }
+
+    /* Profile page specific */
+    .avatar-section {
+        flex: 0 0 200px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .avatar-wrapper {
+        width: 100px !important;
+        height: 100px !important;
+    }
+
+    .profile-stats-grid {
+        flex: 1 1 300px !important;
+    }
+
+    .profile-stat {
+        min-height: auto !important;
+        padding: 12px !important;
+    }
+
+    .stat-icon {
+        font-size: 1.5rem !important;
+    }
+
+    .stat-value {
+        font-size: 1.2rem !important;
+    }
+
+    .stat-label {
+        font-size: 0.65rem !important;
+    }
+
+    /* Settings page specific */
+    .settings-section {
+        flex: 1 1 250px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .section-header {
+        margin-bottom: 10px !important;
+    }
+
+    .section-icon {
+        font-size: 16px !important;
+    }
+
+    .section-title {
+        font-size: 10px !important;
+    }
+
+    .setting-item {
+        padding: 12px 14px !important;
+    }
+
+    .setting-icon {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 16px !important;
+    }
+
+    .setting-label {
+        font-size: 13px !important;
+    }
+
+    .setting-description {
+        font-size: 10px !important;
+    }
+
+    .toggle-switch {
+        width: 44px !important;
+        height: 24px !important;
+    }
+
+    .toggle-slider::before {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    .toggle-switch input:checked+.toggle-slider::before {
+        transform: translateX(20px) !important;
+    }
+
+    /* Version info - hide in landscape */
+    .version-info {
+        display: none !important;
+    }
+
+    /* Friends page specific */
+    .friends-list {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    .friend-item {
+        padding: 10px !important;
+    }
+
+    .friend-avatar {
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    .friend-name {
+        font-size: 0.85rem !important;
+    }
+
+    .friend-status {
+        font-size: 0.65rem !important;
+    }
+
+    /* Matchmaking page specific */
+    .matchmaking-card {
+        flex: 1 1 300px !important;
+        padding: 15px !important;
+    }
+
+    .player-vs-container {
+        flex-direction: row !important;
+        gap: 20px !important;
+    }
+
+    .player-card {
+        flex: 1 !important;
+    }
+
+    .player-avatar {
+        width: 60px !important;
+        height: 60px !important;
+    }
+
+    .player-name {
+        font-size: 0.9rem !important;
+    }
+
+    .vs-text {
+        font-size: 1.2rem !important;
+    }
+
+    /* Modals - full screen in landscape */
+    .modal-content {
+        max-width: 90% !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        padding: 20px !important;
+    }
+
+    .modal-title {
+        font-size: 16px !important;
+    }
+
+    .modal-text {
+        font-size: 12px !important;
+    }
+
+    .modal-buttons {
+        gap: 8px !important;
+    }
+
+    .modal-btn {
+        padding: 10px 18px !important;
+        font-size: 12px !important;
+    }
+
+    /* Toast notifications */
+    .toast {
+        bottom: 15px !important;
+        padding: 10px 20px !important;
+        font-size: 12px !important;
+    }
+
+    /* Tournament page specific */
+    .tournament-container {
+        max-width: 100% !important;
+        padding: 10px 20px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 15px !important;
+    }
+    
+    .tournament-header {
+        width: 100% !important;
+        flex: 0 0 100% !important;
+        margin-bottom: 10px !important;
+    }
+    
+    .tournament-card {
+        flex: 1 1 280px !important;
+        padding: 12px !important;
+    }
+    
+    .tournament-info h3 {
+        font-size: 0.9rem !important;
+    }
+    
+    .tournament-info p {
+        font-size: 0.75rem !important;
+    }
+    
+    .tournament-prize {
+        font-size: 1rem !important;
+    }
+    
+    .tournament-btn {
+        padding: 8px 16px !important;
+        font-size: 0.75rem !important;
+    }
+    
+    /* Tournament bracket */
+    .bracket-container {
+        overflow-x: auto !important;
+        padding: 10px !important;
+    }
+    
+    .bracket-round {
+        min-width: 150px !important;
+    }
+    
+    .bracket-match {
+        padding: 8px !important;
+        margin: 5px 0 !important;
+    }
+    
+    .bracket-player {
+        font-size: 0.75rem !important;
+        padding: 4px 8px !important;
+    }
+    
+    /* Achievements page specific */
+    .achievements-container {
+        max-width: 100% !important;
+        padding: 10px 20px !important;
+    }
+    
+    .achievements-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 10px !important;
+    }
+    
+    .achievement-card {
+        padding: 10px !important;
+    }
+    
+    .achievement-icon {
+        font-size: 1.5rem !important;
+    }
+    
+    .achievement-name {
+        font-size: 0.75rem !important;
+    }
+    
+    .achievement-desc {
+        font-size: 0.6rem !important;
+    }
+    
+    .achievement-progress {
+        height: 4px !important;
+    }
+}
+
+/* Very short landscape screens */
+@media (max-height: 400px) and (orientation: landscape) {
+
+    .profile-container,
+    .settings-container,
+    .friends-container,
+    .matchmaking-container {
+        padding: 8px 15px !important;
+    }
+
+    .page-header,
+    .profile-header {
+        margin-bottom: 5px !important;
+    }
+
+    .back-btn {
+        padding: 6px 10px !important;
+        font-size: 11px !important;
+    }
+
+    .avatar-wrapper {
+        width: 80px !important;
+        height: 80px !important;
+    }
+
+    .settings-section {
+        margin-bottom: 5px !important;
+    }
+
+    .setting-item {
+        padding: 8px 10px !important;
+    }
+}

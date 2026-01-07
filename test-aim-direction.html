@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Aiming Debug</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+        }
+
+        .debug {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Aiming Debug Test</h1>
+    <div id="output"></div>
+
+    <script src="physics.js"></script>
+    <script>
+        const output = document.getElementById('output');
+
+        try {
+            const physics = new PhysicsEngine();
+            physics.initTable(1000, 500, 25);
+
+            const cueBall = { x: 250, y: 250, active: true, id: 0 };
+            const targetBall = { x: 500, y: 250, active: true, id: 1 };
+            const balls = [cueBall, targetBall];
+
+            // Test angle pointing RIGHT (0 radians)
+            const angle = 0;
+            output.innerHTML += `<div class="debug">
+                <strong>Test Setup:</strong><br>
+                Cue Ball: (${cueBall.x}, ${cueBall.y})<br>
+                Target Ball: (${targetBall.x}, ${targetBall.y})<br>
+                Aim Angle: ${angle} radians (pointing RIGHT)<br>
+                Expected: Line should go from (250,250) towards (500,250)
+            </div>`;
+
+            const result = physics.calculateAimLine(cueBall, angle, balls, 50);
+
+            output.innerHTML += `<div class="debug">
+                <strong>Result:</strong><br>
+                Segments: ${result.segments.length}<br>
+                Points: ${result.points.length}<br>
+            </div>`;
+
+            if (result.segments.length > 0) {
+                const firstSegment = result.segments[0];
+                output.innerHTML += `<div class="debug">
+                    <strong>First Segment:</strong><br>
+                    Start: (${firstSegment.start.x}, ${firstSegment.start.y})<br>
+                    Points: ${firstSegment.points.length}<br>
+                    First 3 points:<br>
+                `;
+
+                for (let i = 0; i < Math.min(3, firstSegment.points.length); i++) {
+                    const p = firstSegment.points[i];
+                    output.innerHTML += `&nbsp;&nbsp;Point ${i}: (${p.x.toFixed(1)}, ${p.y.toFixed(1)})<br>`;
+                }
+                output.innerHTML += `</div>`;
+
+                // Check if line is going in the right direction
+                if (firstSegment.points.length > 0) {
+                    const firstPoint = firstSegment.points[0];
+                    const direction = firstPoint.x > cueBall.x ? 'RIGHT ✓' : 'LEFT ✗';
+                    output.innerHTML += `<div class="debug" style="background: ${direction.includes('✓') ? '#90EE90' : '#FFB6C1'}">
+                        <strong>Direction Check:</strong><br>
+                        First point X (${firstPoint.x.toFixed(1)}) vs Cue Ball X (${cueBall.x})<br>
+                        Direction: ${direction}
+                    </div>`;
+                }
+            }
+
+            output.innerHTML += `<div class="debug" style="background: #90EE90">
+                <strong>✓ Test completed successfully!</strong>
+            </div>`;
+
+        } catch (error) {
+            output.innerHTML += `<div class="debug" style="background: #FFB6C1">
+                <strong>✗ ERROR:</strong><br>
+                ${error.message}<br>
+                ${error.stack}
+            </div>`;
+        }
+    </script>
+</body>
+
+</html>

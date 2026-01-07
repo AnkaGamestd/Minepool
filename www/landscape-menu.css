@@ -1,0 +1,386 @@
+/* ============================================
+   LANDSCAPE MENU LAYOUT - 3 COLUMN DESIGN
+   Optimized for mobile landscape (740x360)
+   ============================================ */
+
+/* Apply to landscape on screens wide enough */
+@media screen and (orientation: landscape) and (min-width: 600px) {
+
+    /* Hide profile card - not in reference for small screens */
+    .profile-card {
+        display: none !important;
+    }
+
+    /* Main content wrapper - 3 column grid */
+    .main-content {
+        display: grid !important;
+        grid-template-columns: minmax(180px, 220px) 1fr minmax(160px, 200px) !important;
+        grid-template-rows: 1fr !important;
+        gap: 8px !important;
+        padding: 8px 10px 60px 10px !important;
+        height: calc(100vh - 50px) !important;
+        overflow: hidden !important;
+        align-items: stretch !important;
+    }
+
+    /* ============================================
+       LEFT COLUMN: Friends Activity ONLY
+       ============================================ */
+    .friends-activity-section {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        margin: 0 !important;
+        padding: 8px !important;
+        height: 100% !important;
+        max-height: calc(100vh - 120px) !important;
+        overflow-y: auto !important;
+        background: linear-gradient(135deg, rgba(25, 35, 55, 0.95) 0%, rgba(20, 30, 50, 0.98) 100%) !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(0, 212, 255, 0.25) !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .friends-activity-header {
+        margin-bottom: 6px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .friends-activity-title {
+        font-size: 0.65rem !important;
+    }
+
+    .view-all-btn {
+        font-size: 0.55rem !important;
+    }
+
+    .friends-activity-list {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        max-height: none !important;
+    }
+
+    .friend-activity-item {
+        padding: 4px 5px !important;
+        margin-bottom: 3px !important;
+        border-radius: 6px !important;
+    }
+
+    .friend-avatar {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 0.7rem !important;
+    }
+
+    .friend-name {
+        font-size: 0.6rem !important;
+    }
+
+    .friend-status {
+        font-size: 0.5rem !important;
+    }
+
+    .challenge-btn {
+        padding: 2px 6px !important;
+        font-size: 0.5rem !important;
+    }
+
+    /* ============================================
+       CENTER COLUMN: Play Now + Daily Rewards STACKED
+       ============================================ */
+    .game-modes-section {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        margin: 0 !important;
+        padding: 8px !important;
+        display: none !important;
+        /* Hide - use daily rewards as main center */
+    }
+
+    /* Daily Rewards - Main center content */
+    .daily-rewards-section {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        margin: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 8px !important;
+        background: linear-gradient(135deg, rgba(25, 35, 55, 0.95) 0%, rgba(20, 30, 50, 0.98) 100%) !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(0, 212, 255, 0.25) !important;
+        height: 100% !important;
+        max-height: calc(100vh - 120px) !important;
+        overflow: hidden !important;
+    }
+
+    .daily-rewards-header {
+        margin-bottom: 5px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-shrink: 0 !important;
+    }
+
+    .daily-rewards-title {
+        font-size: 0.65rem !important;
+    }
+
+    .daily-rewards-timer {
+        font-size: 0.5rem !important;
+    }
+
+    .daily-login-bonus {
+        padding: 6px 8px !important;
+        gap: 6px !important;
+        border-radius: 6px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .gift-icon {
+        font-size: 1.3rem !important;
+    }
+
+    .bonus-info h4 {
+        font-size: 0.65rem !important;
+    }
+
+    .bonus-info p {
+        font-size: 0.5rem !important;
+    }
+
+    .daily-streak-days {
+        gap: 3px !important;
+        margin: 6px 0 !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+    }
+
+    .streak-day {
+        width: 24px !important;
+        height: 24px !important;
+        border-radius: 4px !important;
+    }
+
+    .day-label {
+        font-size: 0.45rem !important;
+    }
+
+    .claim-reward-btn {
+        padding: 6px 8px !important;
+        font-size: 0.55rem !important;
+        border-radius: 6px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .games-progress {
+        font-size: 0.5rem !important;
+        margin-top: 4px !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* ============================================
+       RIGHT COLUMN: Daily Tasks - COMPACT
+       ============================================ */
+    .daily-tasks-section {
+        grid-column: 3 !important;
+        grid-row: 1 !important;
+        margin: 0 !important;
+        padding: 8px !important;
+        height: 100% !important;
+        max-height: calc(100vh - 120px) !important;
+        overflow-y: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        background: linear-gradient(135deg, rgba(25, 35, 55, 0.95) 0%, rgba(20, 30, 50, 0.98) 100%) !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(0, 212, 255, 0.25) !important;
+    }
+
+    .daily-tasks-header {
+        margin-bottom: 5px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-shrink: 0 !important;
+    }
+
+    .daily-tasks-title {
+        font-size: 0.6rem !important;
+    }
+
+    .tasks-earnings {
+        font-size: 0.5rem !important;
+    }
+
+    .tasks-list {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        max-height: none !important;
+    }
+
+    .task-item {
+        padding: 5px 6px !important;
+        margin-bottom: 4px !important;
+        border-radius: 6px !important;
+        gap: 5px !important;
+    }
+
+    .task-icon {
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        font-size: 0.75rem !important;
+        border-radius: 5px !important;
+    }
+
+    .task-info {
+        min-width: 0 !important;
+        flex: 1 !important;
+    }
+
+    .task-title {
+        font-size: 0.55rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .task-desc {
+        font-size: 0.45rem !important;
+        display: none !important;
+        /* Hide to save space */
+    }
+
+    .task-reward {
+        font-size: 0.55rem !important;
+        white-space: nowrap !important;
+    }
+
+    .task-btn {
+        padding: 2px 6px !important;
+        font-size: 0.5rem !important;
+        border-radius: 3px !important;
+        white-space: nowrap !important;
+    }
+
+    /* Hide invite section to save space */
+    .invite-section {
+        display: none !important;
+    }
+
+    /* ============================================
+       BOTTOM NAVIGATION - Compact
+       ============================================ */
+    .bottom-nav {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        display: flex !important;
+        justify-content: space-around !important;
+        align-items: center !important;
+        padding: 5px 15px !important;
+        height: 50px !important;
+        background: rgba(10, 20, 40, 0.98) !important;
+        border-top: 1px solid rgba(0, 212, 255, 0.2) !important;
+        z-index: 100 !important;
+    }
+
+    .nav-btn {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 1px !important;
+        padding: 4px 10px !important;
+        background: transparent !important;
+        border: none !important;
+        cursor: pointer !important;
+        color: #8892a6 !important;
+    }
+
+    .nav-btn .nav-icon {
+        font-size: 1rem !important;
+    }
+
+    .nav-btn .nav-text {
+        font-size: 0.45rem !important;
+        text-transform: uppercase !important;
+    }
+
+    .nav-btn.active {
+        color: #ff4d6d !important;
+    }
+
+    /* ============================================
+       TOP HEADER - Compact
+       ============================================ */
+    .top-header {
+        padding: 5px 10px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+    }
+
+    .header-8ball {
+        font-size: 1.2rem !important;
+    }
+
+    .header-brand-text {
+        font-size: 0.85rem !important;
+    }
+
+    .header-btn {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 0.9rem !important;
+        border-radius: 6px !important;
+    }
+
+    .header-right {
+        gap: 6px !important;
+    }
+}
+
+/* ============================================
+   LARGER LANDSCAPE SCREENS - Show more content
+   ============================================ */
+@media screen and (orientation: landscape) and (min-width: 900px) {
+    .main-content {
+        grid-template-columns: minmax(220px, 280px) 1fr minmax(200px, 260px) !important;
+        gap: 12px !important;
+        padding: 10px 15px 70px 15px !important;
+    }
+
+    .profile-card {
+        display: block !important;
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        margin: 0 0 8px 0 !important;
+    }
+
+    .friends-activity-section {
+        max-height: 45% !important;
+    }
+
+    .task-desc {
+        display: block !important;
+    }
+
+    .invite-section {
+        display: block !important;
+        margin-top: 6px !important;
+        padding: 6px !important;
+    }
+}
+
+/* ============================================
+   DESKTOP LANDSCAPE
+   ============================================ */
+@media screen and (orientation: landscape) and (min-width: 1200px) {
+    .main-content {
+        grid-template-columns: 300px 1fr 280px !important;
+        gap: 16px !important;
+        padding: 12px 20px 80px 20px !important;
+        max-width: 1400px !important;
+        margin: 0 auto !important;
+    }
+}

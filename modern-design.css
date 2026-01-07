@@ -1,0 +1,289 @@
+/* ============================================
+   MODERN & ADVANCED DESIGN OVERHAUL
+   ============================================ */
+
+:root {
+    /* Enhanced Palette */
+    --bg-deep: #05070a;
+    --bg-glass: rgba(20, 30, 50, 0.65);
+    --bg-glass-hover: rgba(30, 45, 70, 0.75);
+
+    --neon-blue: #00f3ff;
+    --neon-pink: #ff00ff;
+    --neon-gold: #ffd700;
+    --neon-green: #00ff9d;
+    --neon-red: #ff4757;
+
+    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+    --font-main: 'Rajdhani', sans-serif;
+    --font-display: 'Orbitron', sans-serif;
+}
+
+/* === ANIMATED BACKGROUND === */
+body {
+    background-color: var(--bg-deep) !important;
+    background-image: url('assets/bg-stunning.png') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    overflow: hidden;
+}
+
+/* Animated Grid Overlay */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 200%;
+    height: 200%;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+    animation: gridMove 20s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes gridMove {
+    0% {
+        transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px);
+    }
+
+    100% {
+        transform: perspective(500px) rotateX(60deg) translateY(50px) translateZ(-200px);
+    }
+}
+
+/* === GLASSMORPHISM UI COMPONENTS === */
+
+/* Header */
+#game-header {
+    background: rgba(10, 15, 25, 0.6) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Player Panels */
+.player {
+    background: var(--bg-glass) !important;
+    border: var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+    backdrop-filter: blur(8px);
+    border-radius: 16px !important;
+    padding: 8px 16px !important;
+}
+
+.player.active {
+    border-color: var(--neon-gold) !important;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.25), inset 0 0 10px rgba(255, 215, 0, 0.1) !important;
+    background: rgba(255, 215, 0, 0.05) !important;
+}
+
+/* Avatars */
+.avatar {
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+/* Turn Indicator */
+.turn-indicator {
+    background: rgba(0, 0, 0, 0.6) !important;
+    border: 1px solid var(--neon-gold);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+    backdrop-filter: blur(5px);
+}
+
+.turn-text {
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px var(--neon-gold);
+    color: var(--neon-gold) !important;
+}
+
+/* === GAME CONTROLS === */
+
+/* Power Gauge */
+.power-bar {
+    background: rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(4px);
+    border-radius: 20px !important;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.power-fill {
+    border-radius: 20px !important;
+    box-shadow: 0 0 15px var(--neon-red);
+}
+
+.power-label,
+.spin-label {
+    color: var(--neon-blue) !important;
+    text-shadow: 0 0 8px rgba(0, 243, 255, 0.5);
+    letter-spacing: 3px !important;
+}
+
+/* Spin Control */
+.spin-ball {
+    background: radial-gradient(circle at 30% 30%, #e0e0e0 0%, #a0a0a0 100%) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+.spin-indicator {
+    background: var(--neon-red) !important;
+    box-shadow: 0 0 10px var(--neon-red), 0 0 20px var(--neon-red) !important;
+}
+
+/* Buttons */
+.btn-primary,
+.reset-spin,
+#close-cues,
+#play-again {
+    background: linear-gradient(135deg, rgba(0, 243, 255, 0.2), rgba(0, 100, 255, 0.2)) !important;
+    border: 1px solid var(--neon-blue) !important;
+    color: var(--neon-blue) !important;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-family: var(--font-display);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+    backdrop-filter: blur(5px);
+}
+
+.btn-primary:hover,
+.reset-spin:hover {
+    background: var(--neon-blue) !important;
+    color: #000 !important;
+    box-shadow: 0 0 30px var(--neon-blue) !important;
+    transform: translateY(-2px) scale(1.02);
+}
+
+/* Chat Panel */
+.chat-container {
+    background: rgba(10, 15, 25, 0.85) !important;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 243, 255, 0.2) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
+}
+
+.chat-header {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--neon-blue) !important;
+}
+
+.quick-btn {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+    transition: all 0.2s;
+}
+
+.quick-btn:hover {
+    background: rgba(0, 243, 255, 0.15) !important;
+    border-color: var(--neon-blue) !important;
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+}
+
+#chat-input {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+#chat-input:focus {
+    border-color: var(--neon-blue) !important;
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.15);
+}
+
+#chat-send {
+    background: var(--neon-blue) !important;
+    color: #000 !important;
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+}
+
+/* === MODALS === */
+.modal-content,
+.cue-modal-content,
+.call-pocket-content,
+.start-content {
+    background: rgba(10, 15, 25, 0.85) !important;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+    border-radius: 24px !important;
+}
+
+.start-content h1 {
+    background: linear-gradient(to right, #fff, #00f3ff) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: 0 0 30px rgba(0, 243, 255, 0.3);
+}
+
+.btn-mode {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(10px);
+}
+
+.btn-mode:hover {
+    border-color: var(--neon-blue) !important;
+    background: rgba(0, 243, 255, 0.05) !important;
+    box-shadow: 0 0 30px rgba(0, 243, 255, 0.15) !important;
+}
+
+/* === LOGIN PAGE SPECIFIC === */
+.auth-card {
+    background: rgba(10, 15, 25, 0.75) !important;
+    backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
+}
+
+.form-group input {
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+.form-group input:focus {
+    border-color: var(--neon-blue) !important;
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.2) !important;
+}
+
+.auth-tab.active {
+    background: linear-gradient(90deg, var(--neon-blue), #00a8ff) !important;
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.4) !important;
+}
+
+/* === START SCREEN OVERRIDES === */
+#start-screen {
+    background: transparent !important;
+}
+
+#start-screen::before,
+#start-screen::after {
+    display: none !important;
+}
+
+/* Hide game controls and table when start screen is visible */
+body:has(#start-screen:not(.hidden)) #power-gauge,
+body:has(#start-screen:not(.hidden)) #spin-control,
+body:has(#start-screen:not(.hidden)) #table-container,
+body:has(#start-screen:not(.hidden)) #chat-panel,
+body:has(#start-screen:not(.hidden)) #ball-rack {
+    visibility: hidden !important;
+}
+/* Hide player avatars on start screen */
+body:has(#start-screen:not(.hidden)) #game-header .player-info {
+    visibility: hidden !important;
+}

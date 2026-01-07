@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="8 Ball Pool - Classic billiards game with realistic physics. Play against AI or friends!">
+    <title>8 Ball Pool | Classic Billiards Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* User Menu Styles */
+        .user-menu {
+            position: fixed;
+            top: 10px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 15px;
+            border-radius: 25px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .user-info:hover {
+            background: rgba(0, 212, 255, 0.15);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4ff, #0088aa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-coins {
+            font-size: 12px;
+            color: #ffd700;
+        }
+
+        .btn-logout {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid rgba(255, 0, 0, 0.4);
+            color: #ff6b6b;
+            padding: 6px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255, 0, 0, 0.3);
+        }
+
+        /* Loading overlay */
+        .auth-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .auth-loading.hidden {
+            display: none;
+        }
+
+        .auth-loading .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 212, 255, 0.2);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .auth-loading p {
+            color: #888;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Auth Loading -->
+    <div id="auth-loading" class="auth-loading">
+        <div class="spinner"></div>
+        <p>Verifying authentication...</p>
+    </div>
+
+    <!-- User Menu -->
+    <div id="user-menu" class="user-menu" style="display: none;">
+        <div class="user-info" onclick="window.location.href='profile.html'" title="View Profile">
+            <div class="user-avatar" id="user-avatar">P</div>
+            <div class="user-details">
+                <span class="user-name" id="user-name">Player</span>
+                <span class="user-coins">💰 <span id="user-coins">1000</span></span>
+            </div>
+        </div>
+        <button class="btn-logout" id="logout-btn">Logout</button>
+    </div>
+
+    <div id="game-container">
+        <!-- Header -->
+        <header id="game-header">
+            <div class="logo">
+                <span class="logo-icon">🎱</span>
+                <span class="logo-text">8 BALL POOL</span>
+            </div>
+            <div class="player-info">
+                <div class="player player-1">
+                    <div class="avatar">P1</div>
+                    <div class="player-details">
+                        <span class="player-name" id="p1-name">Player 1</span>
+                        <span class="ball-type" id="p1-ball-type">--</span>
+                    </div>
+                </div>
+                <div class="turn-indicator" id="turn-indicator">
+                    <span class="turn-text">PLAYER 1's TURN</span>
+                    <span class="timer-text" id="timer-text"></span>
+                </div>
+                <div class="player player-2">
+                    <div class="player-details">
+                        <span class="player-name">Player 2</span>
+                        <span class="ball-type" id="p2-ball-type">--</span>
+                    </div>
+                    <div class="avatar">P2</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Game Area -->
+        <main id="game-main">
+            <div id="table-container">
+                <canvas id="pool-table"></canvas>
+
+                <!-- Power Gauge -->
+                <div id="power-gauge">
+                    <div class="power-label">POWER</div>
+                    <div class="power-bar">
+                        <div class="power-fill" id="power-fill"></div>
+                    </div>
+                    <div class="power-value" id="power-value">0%</div>
+                </div>
+
+                <!-- Enhanced Spin Control -->
+                <div id="spin-control">
+                    <div class="spin-label">ENGLISH</div>
+                    <div class="spin-ball" id="spin-ball-control">
+                        <div class="spin-indicator" id="spin-indicator"></div>
+                        <div class="spin-crosshair"></div>
+                    </div>
+                    <div class="spin-info" id="spin-info">Center Hit</div>
+                    <button class="reset-spin" id="reset-spin">RESET</button>
+                </div>
+            </div>
+
+            <!-- Ball Rack (Pocketed Balls) -->
+            <div id="ball-rack">
+                <div class="rack-section solids">
+                    <div class="rack-label">SOLIDS</div>
+                    <div class="rack-balls" id="solids-rack"></div>
+                </div>
+                <div class="rack-section stripes">
+                    <div class="rack-label">STRIPES</div>
+                    <div class="rack-balls" id="stripes-rack"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Game Messages -->
+        <div id="game-message" class="hidden">
+            <div class="message-content">
+                <h2 id="message-title">FOUL!</h2>
+                <p id="message-text">Cue ball pocketed. Ball in hand.</p>
+            </div>
+        </div>
+
+        <!-- Call Pocket Modal -->
+        <div id="call-pocket-modal" class="hidden">
+            <div class="modal-overlay"></div>
+            <div class="call-pocket-content">
+                <h2>🎯 CALL YOUR POCKET</h2>
+                <p>Select which pocket for the 8-ball</p>
+                <div class="pocket-grid">
+                    <button class="pocket-btn" data-pocket="0">
+                        <span class="pocket-label">Top Left</span>
+                        <span class="pocket-icon">↖️</span>
+                    </button>
+                    <button class="pocket-btn" data-pocket="1">
+                        <span class="pocket-label">Top Center</span>
+                        <span class="pocket-icon">⬆️</span>
+                    </button>
+                    <button class="pocket-btn" data-pocket="2">
+                        <span class="pocket-label">Top Right</span>
+                        <span class="pocket-icon">↗️</span>
+                    </button>
+                    <button class="pocket-btn" data-pocket="3">
+                        <span class="pocket-label">Bottom Left</span>
+                        <span class="pocket-icon">↙️</span>
+                    </button>
+                    <button class="pocket-btn" data-pocket="4">
+                        <span class="pocket-label">Bottom Center</span>
+                        <span class="pocket-icon">⬇️</span>
+                    </button>
+                    <button class="pocket-btn" data-pocket="5">
+                        <span class="pocket-label">Bottom Right</span>
+                        <span class="pocket-icon">↘️</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Winner Screen -->
+        <div id="winner-screen" class="hidden">
+            <div class="winner-content">
+                <div class="trophy">🏆</div>
+                <h1 id="winner-text">PLAYER 1 WINS!</h1>
+                <button id="play-again" class="btn-primary">PLAY AGAIN</button>
+            </div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <div class="start-content">
+                <div class="start-logo">
+                    <span class="big-ball">🎱</span>
+                    <h1>8 BALL POOL</h1>
+                    <p class="tagline">Miniclip Rules Edition</p>
+                </div>
+                <div class="game-modes">
+                    <button id="btn-2player" class="btn-mode">
+                        <span class="mode-icon">👥</span>
+                        <span class="mode-text">2 PLAYERS</span>
+                    </button>
+                    <button id="btn-cues" class="btn-mode">
+                        <span class="mode-icon">🎱</span>
+                        <span class="mode-text">CUES</span>
+                    </button>
+                </div>
+                <div class="instructions">
+                    <h3>HOW TO PLAY</h3>
+                    <ul>
+                        <li>🖱️ Click to lock aim direction</li>
+                        <li>⬅️ Drag back to set power</li>
+                        <li>🔄 Click spin control for English</li>
+                        <li>🎯 Release to shoot</li>
+                        <li>🎱 Pocket the 8-ball last to win!</li>
+                        <li>⏱️ 30 seconds per shot</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cue Selection Modal -->
+        <div id="cue-selection-modal" class="hidden">
+            <div class="cue-modal-content">
+                <h2>SELECT YOUR CUE</h2>
+                <div class="cue-list">
+                    <div class="cue-card active" data-cue="standard">
+                        <div class="cue-image">
+                            <img src="assets/cue_standard.png" alt="Standard Cue">
+                        </div>
+                        <div class="cue-info">
+                            <h3>STANDARD</h3>
+                            <p>Classic maple wood</p>
+                        </div>
+                    </div>
+                    <div class="cue-card" data-cue="premium">
+                        <div class="cue-image">
+                            <img src="assets/cue_premium.png" alt="Premium Cue">
+                        </div>
+                        <div class="cue-info">
+                            <h3>PREMIUM</h3>
+                            <p>Carbon fiber tech</p>
+                        </div>
+                    </div>
+                    <div class="cue-card" data-cue="legendary">
+                        <div class="cue-image">
+                            <img src="assets/cue_legendary.png" alt="Legendary Cue">
+                        </div>
+                        <div class="cue-info">
+                            <h3>LEGENDARY</h3>
+                            <p>Ancient power</p>
+                        </div>
+                    </div>
+                </div>
+                <button id="close-cues" class="btn-primary">CONFIRM</button>
+            </div>
+        </div>
+
+        <!-- Controls Hint -->
+        <div id="controls-hint">
+            <span>🖱️ CLICK TO LOCK AIM</span>
+            <span>⬅️ DRAG BACK FOR POWER</span>
+            <span>🎯 RELEASE TO SHOOT</span>
+        </div>
+    </div>
+
+    <!-- Auth Check Script -->
+    <script>
+        // Check authentication on page load
+        (async function checkAuth() {
+            const loadingEl = document.getElementById('auth-loading');
+            const userMenuEl = document.getElementById('user-menu');
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success && data.user) {
+                    // User is authenticated - show user menu
+                    document.getElementById('user-name').textContent = data.user.username;
+                    document.getElementById('user-coins').textContent = data.user.coins || 1000;
+                    document.getElementById('user-avatar').textContent = data.user.username.charAt(0).toUpperCase();
+
+                    // Update player 1 name to logged-in user
+                    const p1NameEl = document.getElementById('p1-name');
+                    if (p1NameEl) p1NameEl.textContent = data.user.username;
+
+                    // Store user info globally
+                    window.currentUser = data.user;
+
+                    loadingEl.classList.add('hidden');
+                    userMenuEl.style.display = 'flex';
+                } else {
+                    // Not authenticated - redirect to login
+                    window.location.href = '/login.html';
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/login.html';
+            }
+        })();
+
+        // Logout handler
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (e) { }
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        });
+    </script>
+
+    <script src="physics.js?v=17"></script>
+    <script src="game.js?v=17"></script>
+</body>
+
+</html>

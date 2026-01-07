@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Bracket | Mine Pool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0e17 0%, #1a1f2e 100%);
+            min-height: 100vh;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .bracket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: rgba(10, 14, 23, 0.9);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .back-btn {
+            color: #00d4ff;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .tournament-title {
+            font-family: 'Orbitron', sans-serif;
+            color: #00d4ff;
+            font-size: 1.5rem;
+        }
+
+        .prize-display {
+            display: flex;
+            gap: 20px;
+        }
+
+        .prize-item {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .prize-item .label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .prize-item .amount {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            color: #ffd700;
+        }
+
+        /* Bracket Container */
+        .bracket-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 30px;
+            padding: 40px;
+            overflow-x: auto;
+        }
+
+        /* Group Section */
+        .group-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .group-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: #00d4ff;
+            margin-bottom: 20px;
+            padding: 10px 30px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .group-bracket {
+            display: flex;
+            gap: 60px;
+        }
+
+        /* Round Column */
+        .round-column {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            min-height: 400px;
+        }
+
+        .round-title {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.8rem;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        /* Match Card */
+        .match-card {
+            background: rgba(30, 35, 50, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 0;
+            margin: 10px 0;
+            min-width: 180px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .match-card.ready {
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        .match-card.completed {
+            opacity: 0.8;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+            }
+        }
+
+        .match-player {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .match-player:last-child {
+            border-bottom: none;
+        }
+
+        .match-player.winner {
+            background: rgba(0, 255, 136, 0.15);
+        }
+
+        .match-player.loser {
+            opacity: 0.5;
+        }
+
+        .match-player.tbd {
+            opacity: 0.3;
+            font-style: italic;
+        }
+
+        .player-name {
+            font-weight: 600;
+            color: #fff;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .player-seed {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-right: 8px;
+        }
+
+        .player-result {
+            font-weight: 700;
+            color: #00ff88;
+        }
+
+        /* Grand Final Section */
+        .grand-final-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        .grand-final-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, #ffd700, #ffaa00);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+
+        .grand-final-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 170, 0, 0.05));
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 16px;
+            min-width: 220px;
+            overflow: hidden;
+        }
+
+        .grand-final-card .match-player {
+            padding: 15px 20px;
+        }
+
+        .grand-final-card .match-player.winner {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 170, 0, 0.1));
+        }
+
+        .winner-trophy {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+
+        /* Winner Banner */
+        .winner-banner {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 170, 0, 0.05));
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 16px;
+            margin: 30px auto;
+            max-width: 500px;
+        }
+
+        .winner-banner h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+
+        .winner-banner .name {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .winner-banner .prize {
+            margin-top: 15px;
+            font-size: 1.2rem;
+            color: #00ff88;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Connector Lines */
+        .connector {
+            position: relative;
+        }
+
+        .connector::after {
+            content: '';
+            position: absolute;
+            right: -30px;
+            top: 50%;
+            width: 30px;
+            height: 2px;
+            background: rgba(0, 212, 255, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .bracket-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .group-bracket {
+                flex-direction: column;
+                gap: 30px;
+            }
+
+            .round-column {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                min-height: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="bracket-header">
+        <a href="tournament.html" class="back-btn">← Back to Tournaments</a>
+        <h1 class="tournament-title" id="tournament-name">Loading...</h1>
+        <div class="prize-display">
+            <div class="prize-item">
+                <div class="label">🥇 Winner</div>
+                <div class="amount" id="winner-prize">-</div>
+            </div>
+            <div class="prize-item">
+                <div class="label">🥈 Runner-up</div>
+                <div class="amount" id="runner-prize">-</div>
+            </div>
+        </div>
+    </header>
+
+    <div id="bracket-container" class="bracket-container">
+        <div class="loading">Loading bracket...</div>
+    </div>
+
+    <div id="winner-banner" class="winner-banner" style="display: none;">
+        <h2>🏆 TOURNAMENT CHAMPION 🏆</h2>
+        <div class="name" id="winner-name"></div>
+        <div class="prize">Prize: <span id="winner-amount"></span> 🪙</div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        class BracketViewer {
+            constructor() {
+                this.tournamentId = new URLSearchParams(window.location.search).get('id');
+                this.socket = io();
+                this.init();
+            }
+
+            async init() {
+                if (!this.tournamentId) {
+                    alert('No tournament ID provided');
+                    window.location.href = '/tournament.html';
+                    return;
+                }
+
+                await this.loadBracket();
+                this.setupSocketListeners();
+            }
+
+            async loadBracket() {
+                try {
+                    const response = await fetch(`/api/tournaments16/${this.tournamentId}`);
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.error);
+                    }
+
+                    this.tournament = data.tournament;
+                    this.render();
+                } catch (error) {
+                    console.error('Failed to load bracket:', error);
+                    document.getElementById('bracket-container').innerHTML =
+                        '<div class="loading">Failed to load tournament</div>';
+                }
+            }
+
+            render() {
+                const t = this.tournament;
+
+                // Update header
+                document.getElementById('tournament-name').textContent = t.name;
+                document.getElementById('winner-prize').textContent =
+                    (t.prizes?.winner || 0).toLocaleString() + ' 🪙';
+                document.getElementById('runner-prize').textContent =
+                    (t.prizes?.runnerUp || 0).toLocaleString() + ' 🪙';
+
+                // Check if finished
+                if (t.status === 'FINISHED' && t.winner) {
+                    this.showWinner(t.winner, t.prizes?.winner || 0);
+                }
+
+                // Render brackets
+                const container = document.getElementById('bracket-container');
+                container.innerHTML = `
+                    <div class="group-section">
+                        <div class="group-title">GROUP A</div>
+                        <div class="group-bracket" id="group-a-bracket"></div>
+                    </div>
+                    
+                    <div class="grand-final-section">
+                        <div class="grand-final-title">🏆 GRAND FINAL</div>
+                        <div class="grand-final-card" id="grand-final"></div>
+                    </div>
+                    
+                    <div class="group-section">
+                        <div class="group-title">GROUP B</div>
+                        <div class="group-bracket" id="group-b-bracket"></div>
+                    </div>
+                `;
+
+                if (t.brackets) {
+                    this.renderGroupBracket('group-a-bracket', t.brackets.groupA);
+                    this.renderGroupBracket('group-b-bracket', t.brackets.groupB);
+                    this.renderGrandFinal(t.brackets.grandFinal);
+                }
+            }
+
+            renderGroupBracket(containerId, rounds) {
+                const container = document.getElementById(containerId);
+                if (!container || !rounds) return;
+
+                rounds.forEach(round => {
+                    const column = document.createElement('div');
+                    column.className = 'round-column';
+                    column.innerHTML = `<div class="round-title">${round.name}</div>`;
+
+                    round.matches.forEach(match => {
+                        column.appendChild(this.createMatchCard(match));
+                    });
+
+                    container.appendChild(column);
+                });
+            }
+
+            createMatchCard(match) {
+                const card = document.createElement('div');
+                card.className = `match-card ${match.status}`;
+
+                const p1 = match.player1;
+                const p2 = match.player2;
+
+                card.innerHTML = `
+                    <div class="match-player ${this.getPlayerClass(match, p1)}">
+                        <div>
+                            <span class="player-name">${p1?.username || 'TBD'}</span>
+                        </div>
+                        ${match.winner?.id === p1?.id ? '<span class="player-result">✓</span>' : ''}
+                    </div>
+                    <div class="match-player ${this.getPlayerClass(match, p2)}">
+                        <div>
+                            <span class="player-name">${p2?.username || 'TBD'}</span>
+                        </div>
+                        ${match.winner?.id === p2?.id ? '<span class="player-result">✓</span>' : ''}
+                    </div>
+                `;
+
+                return card;
+            }
+
+            getPlayerClass(match, player) {
+                if (!player) return 'tbd';
+                if (match.status !== 'completed') return '';
+                if (match.winner?.id === player.id) return 'winner';
+                return 'loser';
+            }
+
+            renderGrandFinal(finalMatch) {
+                const container = document.getElementById('grand-final');
+                if (!container || !finalMatch) return;
+
+                const p1 = finalMatch.player1;
+                const p2 = finalMatch.player2;
+
+                container.innerHTML = `
+                    <div class="match-player ${this.getPlayerClass(finalMatch, p1)}">
+                        <div>
+                            ${finalMatch.winner?.id === p1?.id ? '<span class="winner-trophy">🏆</span>' : ''}
+                            <span class="player-name">${p1?.username || 'Winner Group A'}</span>
+                        </div>
+                    </div>
+                    <div class="match-player ${this.getPlayerClass(finalMatch, p2)}">
+                        <div>
+                            ${finalMatch.winner?.id === p2?.id ? '<span class="winner-trophy">🏆</span>' : ''}
+                            <span class="player-name">${p2?.username || 'Winner Group B'}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            showWinner(winner, prize) {
+                const banner = document.getElementById('winner-banner');
+                document.getElementById('winner-name').textContent = winner.username;
+                document.getElementById('winner-amount').textContent = prize.toLocaleString();
+                banner.style.display = 'block';
+            }
+
+            setupSocketListeners() {
+                this.socket.on('tournament16:match_completed', (data) => {
+                    if (data.tournamentId === this.tournamentId) {
+                        this.loadBracket();
+                    }
+                });
+
+                this.socket.on('tournament16:finished', (data) => {
+                    if (data.tournamentId === this.tournamentId) {
+                        this.loadBracket();
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new BracketViewer();
+        });
+    </script>
+</body>
+
+</html>

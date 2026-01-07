@@ -1,0 +1,187 @@
+/* Player Info Bar Styles - Above Table */
+
+/* Hide the old player-info in header */
+/* TEMPORARILY COMMENTED OUT - Uncomment when player-info-bar HTML is added
+#game-header .player-info {
+    display: none !important;
+}
+*/
+
+#player-info-bar {
+    display: none !important;
+    /* DISABLED: Removed per user request */
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    margin-bottom: 15px;
+    background: linear-gradient(180deg, rgba(10, 20, 40, 0.95) 0%, rgba(5, 15, 30, 0.9) 100%);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+@media (pointer: coarse) and (orientation: landscape) {
+    #player-info-bar {
+        display: none !important;
+    }
+}
+
+/* Player Panel */
+.player-panel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    background: linear-gradient(135deg, rgba(0, 100, 200, 0.25) 0%, rgba(0, 80, 160, 0.15) 100%);
+    border-radius: 30px;
+    border: 2px solid rgba(0, 150, 255, 0.4);
+    min-width: 70px;
+    transition: all 0.3s ease;
+}
+
+.player-panel.player-2-panel {
+    background: linear-gradient(135deg, rgba(200, 50, 50, 0.25) 0%, rgba(160, 30, 30, 0.15) 100%);
+    border-color: rgba(255, 100, 100, 0.4);
+    flex-direction: row-reverse;
+}
+
+.player-panel.active {
+    border-color: #ffd700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    transform: scale(1.02);
+}
+
+/* Avatar */
+.player-panel .avatar-wrapper {
+    position: relative;
+}
+
+.player-panel .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00bbff 0%, #0077cc 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 18px;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 2px 10px rgba(0, 150, 255, 0.4);
+}
+
+.player-panel.player-2-panel .avatar {
+    background: linear-gradient(135deg, #ff6666 0%, #cc3333 100%);
+    box-shadow: 0 2px 10px rgba(255, 100, 100, 0.4);
+}
+
+/* Player Details */
+.player-panel-details {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.player-panel.player-2-panel .player-panel-details {
+    text-align: right;
+}
+
+.player-panel-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.player-panel-flag {
+    font-size: 20px;
+    line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.player-panel-flag:empty {
+    display: none;
+}
+
+/* Turn Bar */
+.turn-bar {
+    flex: 1;
+    max-width: 450px;
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+    border-radius: 30px;
+    text-align: center;
+    margin: 0 20px;
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.turn-bar-text {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    color: #1a1a2e;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+/* Existing avatar wrapper styles */
+.avatar-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ffd700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.avatar-img[src=""] {
+    display: none !important;
+}
+
+.player-flag {
+    position: absolute;
+    bottom: -4px;
+    right: -6px;
+    font-size: 18px;
+    line-height: 1;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+    z-index: 10;
+}
+
+.player-flag:empty {
+    display: none;
+}
+
+/* Player-specific avatar image styles */
+.player-1 .avatar-img,
+.player-1-panel .avatar-img {
+    border-color: #00bbff;
+    box-shadow: 0 0 12px rgba(0, 187, 255, 0.5);
+}
+
+.player-2 .avatar-img,
+.player-2-panel .avatar-img {
+    border-color: #ff6666;
+    box-shadow: 0 0 12px rgba(255, 102, 102, 0.5);
+}
+
+/* Header avatar wrapper */
+.player .avatar-wrapper {
+    position: relative;
+    width: 40px;
+    height: 40px;
+}
+
+.player .avatar-img {
+    width: 40px;
+    height: 40px;
+}

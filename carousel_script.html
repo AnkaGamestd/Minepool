@@ -1,0 +1,124 @@
+<!-- Cue Selection Script -->
+<script>
+    // Cue Selection Handler
+    (function () {
+        const cueModal = document.getElementById('cue-selection-modal');
+        const cueCards = document.querySelectorAll('.cue-card');
+        const closeCuesBtn = document.getElementById('close-cues');
+        const btnCues = document.getElementById('btn-cues');
+
+        // Load saved cue selection or default to standard
+        let selectedCue = localStorage.getItem('selectedCue') || 'standard';
+
+        // Carousel variables
+        let carousel, prevBtn, nextBtn, dotsContainer;
+        let currentIndex = 0;
+        let carouselInitialized = false;
+
+        // Initialize carousel
+        function initCarousel() {
+            if (carouselInitialized) return;
+
+            carousel = document.getElementById('cue-carousel');
+            prevBtn = document.getElementById('carousel-prev');
+            nextBtn = document.getElementById('carousel-next');
+            dotsContainer = document.getElementById('carousel-dots');
+
+            if (!carousel || !prevBtn || !nextBtn || !dotsContainer) {
+                console.error('Carousel elements not found');
+                return;
+            }
+
+            const cardsPerView = 2.5;
+            const totalCards = cueCards.length;
+
+            // Create dots
+            dotsContainer.innerHTML = '';
+            for (let i = 0; i < Math.ceil(totalCards / cardsPerView); i++) {
+                const dot = document.createElement('div');
+                dot.className = 'carousel-dot';
+                if (i === 0) dot.classList.add('active');
+                dot.addEventListener('click', () => goToSlide(i));
+                dotsContainer.appendChild(dot);
+            }
+
+            function updateCarousel() {
+                const cardWidth = 300;
+                const offset = currentIndex * cardWidth;
+                carousel.style.transform = `translateX(-${offset}px)`;
+
+                document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+                    dot.classList.toggle('active', i === Math.floor(currentIndex / cardsPerView));
+                });
+            }
+
+            function goToSlide(index) {
+                currentIndex = Math.floor(index * cardsPerView);
+                currentIndex = Math.max(0, Math.min(currentIndex, totalCards - 1));
+                updateCarousel();
+            }
+
+            prevBtn.onclick = function (e) {
+                e.preventDefault();
+                console.log('Prev clicked, index:', currentIndex);
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateCarousel();
+                }
+            };
+
+            nextBtn.onclick = function (e) {
+                e.preventDefault();
+                console.log('Next clicked, index:', currentIndex);
+                if (currentIndex < totalCards - 1) {
+                    currentIndex++;
+                    updateCarousel();
+                }
+            };
+
+            document.addEventListener('keydown', (e) => {
+                if (cueModal.classList.contains('hidden')) return;
+                if (e.key === 'ArrowLeft') prevBtn.click();
+                if (e.key === 'ArrowRight') nextBtn.click();
+            });
+
+            carouselInitialized = true;
+            console.log('Carousel initialized');
+        }
+
+        cueCards.forEach(card => {
+            if (card.getAttribute('data-cue') === selectedCue) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
+
+        if (btnCues) {
+            btnCues.addEventListener('click', () => {
+                cueModal.classList.remove('hidden');
+                setTimeout(() => initCarousel(), 100);
+            });
+        }
+
+        cueCards.forEach(card => {
+            card.addEventListener('click', () => {
+                cueCards.forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                selectedCue = card.getAttribute('data-cue');
+                localStorage.setItem('selectedCue', selectedCue);
+            });
+        });
+
+        if (closeCuesBtn) {
+            closeCuesBtn.addEventListener('click', () => {
+                cueModal.classList.add('hidden');
+                if (window.gameInstance) {
+                    window.gameInstance.selectedCue = selectedCue;
+                }
+            });
+        }
+
+        window.selectedCue = selectedCue;
+    })();
+</script>

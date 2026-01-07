@@ -1,0 +1,613 @@
+/* Game UI Adjustments - Mine Pool */
+
+/* ============================================
+   PLAYER 2 - Name below avatar (same as Player 1)
+   ============================================ */
+.game-page #game-header .player-2 {
+    flex-direction: column !important;
+}
+
+/* ============================================
+   POWER GAUGE - Move down and left
+   ============================================ */
+@media (pointer: coarse) and (orientation: landscape) {
+    .game-page #power-gauge {
+        left: 5px !important;
+        top: 60% !important;
+        transform: translateY(-50%) !important;
+    }
+
+    /* SPIN CONTROL - Move more to the right */
+    .game-page #spin-control {
+        right: 5px !important;
+    }
+}
+
+/* Desktop adjustments */
+#power-gauge {
+    left: -90px !important;
+    top: 55% !important;
+}
+
+#spin-control {
+    right: -110px !important;
+}
+
+/* ============================================
+   BACK BUTTON - Match Tournament/Profile style
+   ============================================ */
+.game-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #00d4ff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    backdrop-filter: blur(10px);
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+}
+
+.game-back-btn:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: #00d4ff;
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.4);
+    color: #fff;
+}
+
+/* ============================================
+   PLAYER SPEECH BUTTONS - Small chat buttons under players
+   ============================================ */
+.player-speech-btn {
+    background: rgba(0, 212, 255, 0.2);
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    padding: 0;
+    margin-top: 4px;
+}
+
+.player-speech-btn:hover {
+    background: rgba(0, 212, 255, 0.4);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+    transform: scale(1.1);
+}
+
+/* ============================================
+   QUICK CHAT DROPDOWN - Centered Modal
+   ============================================ */
+.quick-chat-dropdown {
+    position: fixed;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    background: linear-gradient(135deg, rgba(20, 25, 40, 0.98), rgba(30, 35, 50, 0.95));
+    border: 2px solid rgba(0, 212, 255, 0.4);
+    border-radius: 16px;
+    padding: 12px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 200px;
+    max-width: 280px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 212, 255, 0.2);
+    animation: dropdownSlide 0.2s ease;
+}
+
+.quick-chat-dropdown::before {
+    content: '💬 Quick Chat';
+    display: block;
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #00d4ff;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.quick-chat-dropdown.hidden {
+    display: none !important;
+}
+
+@keyframes dropdownSlide {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.quick-chat-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.quick-chat-option:hover {
+    background: rgba(0, 212, 255, 0.25);
+    color: #00d4ff;
+}
+
+/* ============================================
+   CHAT INPUT CONTAINER - Below dropdown
+   ============================================ */
+:not(#chat-panel) > .chat-container > .chat-input-container,
+.game-container > .chat-input-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, calc(-50% + 160px));
+    background: linear-gradient(135deg, rgba(20, 25, 40, 0.98), rgba(30, 35, 50, 0.95));
+    border: 2px solid rgba(0, 212, 255, 0.4);
+    border-radius: 25px;
+    padding: 6px;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 200px;
+    max-width: 280px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.chat-input-container.hidden {
+    display: none !important;
+}
+
+.chat-input-container input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    outline: none;
+    min-width: 0;
+}
+
+.chat-input-container input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.chat-input-container button {
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.chat-input-container button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+}
+
+/* ============================================
+   MOBILE LANDSCAPE - Compact layout
+   ============================================ */
+@media (pointer: coarse) and (orientation: landscape) {
+    .quick-chat-dropdown {
+        max-height: 70vh;
+        padding: 8px;
+        gap: 4px;
+    }
+
+    .quick-chat-dropdown::before {
+        font-size: 10px;
+        padding-bottom: 6px;
+        margin-bottom: 2px;
+    }
+
+    .quick-chat-option {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .chat-input-container {
+        transform: translate(-50%, calc(-50% + 130px));
+        padding: 4px;
+    }
+
+    .chat-input-container input {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+
+    .chat-input-container button {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+}
+
+/* ============================================
+   HIDE OLD CHAT PANEL
+   ============================================ */
+#chat-panel {
+    position: fixed !important;
+    bottom: 15px !important;
+    right: 15px !important;
+    z-index: 500 !important;
+    display: block !important;
+}
+
+/* Chat toggle button in panel */
+#chat-panel .chat-toggle {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+}
+
+/* Chat container - positioned above toggle */
+#chat-panel .chat-container {
+    position: absolute !important;
+    bottom: 55px !important;
+    right: 0 !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    width: 280px;
+    max-height: 350px;
+    background: linear-gradient(135deg, rgba(15, 25, 45, 0.98), rgba(10, 20, 35, 0.98));
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    border-radius: 16px;
+}
+
+/* Override the chat-input-container inside chat-panel */
+#chat-panel .chat-input-container {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 10px !important;
+    min-width: unset !important;
+    max-width: unset !important;
+    width: 100% !important;
+    box-shadow: none !important;
+}
+
+#chat-panel .chat-input-container input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 8px 14px;
+}
+
+#chat-panel .quick-chat {
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+/* ============================================
+   SPEECH BUBBLES - WHITE bubbles next to avatars
+   Like classic comic speech bubbles
+   ============================================ */
+.speech-bubble {
+    position: absolute;
+    background: #ffffff;
+    color: #1a1a2e;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Rajdhani', sans-serif;
+    max-width: 120px;
+    min-width: 60px;
+    text-align: center;
+    word-wrap: break-word;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Speech bubble tail/pointer */
+.speech-bubble::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border: 10px solid transparent;
+}
+
+.speech-bubble.visible {
+    opacity: 1;
+}
+
+.speech-bubble.hidden {
+    opacity: 0;
+}
+
+/* Player 1 bubble - appears to the RIGHT of avatar */
+.player-1 .speech-bubble {
+    top: 20px;
+    left: 100%;
+    margin-left: 15px;
+    transform: translateY(-50%);
+}
+
+.player-1 .speech-bubble::after {
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right-color: #ffffff;
+    border-left: none;
+}
+
+.player-1 .speech-bubble.visible {
+    transform: translateY(-50%) scale(1);
+    animation: bubblePop 0.3s ease;
+}
+
+/* Player 2 bubble - appears to the LEFT of avatar */
+.player-2 .speech-bubble {
+    top: 20px;
+    right: 100%;
+    left: auto;
+    margin-right: 15px;
+    transform: translateY(-50%);
+}
+
+.player-2 .speech-bubble::after {
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left-color: #ffffff;
+    border-right: none;
+}
+
+.player-2 .speech-bubble.visible {
+    transform: translateY(-50%) scale(1);
+    animation: bubblePop 0.3s ease;
+}
+
+@keyframes bubblePop {
+    0% {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.5);
+    }
+
+    50% {
+        transform: translateY(-50%) scale(1.1);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+    }
+}
+
+/* Mobile landscape adjustments for speech bubbles */
+@media (pointer: coarse) and (orientation: landscape) {
+    .speech-bubble {
+        font-size: 12px;
+        padding: 8px 12px;
+        max-width: 100px;
+        border-radius: 14px;
+    }
+
+    .player-1 .speech-bubble {
+        margin-left: 10px;
+    }
+
+    .player-2 .speech-bubble {
+        margin-right: 10px;
+    }
+}
+
+/* ============================================
+   FORCE CHAT PANEL ELEMENTS TO USE PROPER POSITIONING
+   ============================================ */
+#chat-panel,
+#chat-panel * {
+    box-sizing: border-box;
+}
+
+#chat-panel > .chat-container,
+#chat-panel .chat-container {
+    position: absolute !important;
+    bottom: 55px !important;
+    right: 0 !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    width: 280px !important;
+    max-width: 280px !important;
+    z-index: 501 !important;
+}
+
+#chat-panel .chat-container .quick-chat,
+#chat-panel > .chat-container > .quick-chat {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+    padding: 10px !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    z-index: auto !important;
+}
+
+#chat-panel .chat-container .chat-input-container,
+#chat-panel > .chat-container > .chat-input-container {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    bottom: auto !important;
+    right: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: auto !important;
+    padding: 10px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: none !important;
+    border-radius: 0 0 16px 16px !important;
+    box-shadow: none !important;
+    z-index: auto !important;
+}
+
+#chat-panel .chat-container .chat-input-container input {
+    flex: 1 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 20px !important;
+    padding: 10px 16px !important;
+}
+
+
+/* ============================================
+   FORCE HIDE FLOATING ELEMENTS AND USE PROPER CHAT PANEL
+   ============================================ */
+
+/* The chat panel structure:
+   #chat-panel
+     .chat-toggle (button)
+     .chat-container (popup)
+       .chat-header
+       .quick-chat
+       .chat-input-container
+*/
+
+/* Make sure #chat-panel is properly positioned */
+#chat-panel {
+    position: fixed !important;
+    bottom: 15px !important;
+    right: 15px !important;
+    z-index: 500 !important;
+    display: block !important;
+}
+
+/* Reset ALL children inside #chat-panel to use relative/static positioning */
+#chat-panel .chat-container,
+#chat-panel #chat-container {
+    position: absolute !important;
+    top: auto !important;
+    left: auto !important;
+    right: 0 !important;
+    bottom: 55px !important;
+    transform: none !important;
+    width: 260px !important;
+    max-height: 320px !important;
+    background: linear-gradient(135deg, rgba(15, 25, 45, 0.98), rgba(10, 20, 35, 0.99)) !important;
+    border: 2px solid rgba(0, 212, 255, 0.3) !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    z-index: 501 !important;
+}
+
+#chat-panel .quick-chat {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5px !important;
+    padding: 8px !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: none !important;
+    z-index: auto !important;
+}
+
+#chat-panel .chat-input-container {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: auto !important;
+    padding: 8px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    z-index: auto !important;
+}
+
+#chat-panel .chat-input-container input {
+    flex: 1 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 18px !important;
+    padding: 8px 14px !important;
+}
+
+#chat-panel .chat-input-container button {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+}
+
+#chat-panel .quick-btn {
+    padding: 6px 8px !important;
+    font-size: 0.7rem !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+    border-radius: 6px !important;
+}
