@@ -144,8 +144,8 @@ const io = new Server(server, {
     pingInterval: 25000
 });
 
-// Initialize multiplayer server
-const multiplayer = new MultiplayerServer(io, users);
+// Initialize multiplayer server with saveUsers callback
+const multiplayer = new MultiplayerServer(io, users, saveUsers);
 const tournamentManager = new TournamentManager();
 const tournament16Manager = new TournamentManager16();
 

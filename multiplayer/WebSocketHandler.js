@@ -9,9 +9,10 @@ const { MatchHistory } = require('./MatchHistory');
 const { AchievementManager } = require('./Achievements');
 
 class MultiplayerServer {
-    constructor(io, users) {
+    constructor(io, users, saveUsersCallback = null) {
         this.io = io;
         this.users = users; // Reference to user database
+        this.saveUsersCallback = saveUsersCallback; // Callback to persist user data
         this.roomManager = new RoomManager();
         this.matchmaking = new MatchmakingQueue(this.roomManager);
         this.matchmaking.setUsersData(Array.from(this.users.values()));
@@ -620,29 +621,43 @@ class MultiplayerServer {
     }
 
     updateUserStats(winner, loser, wager, eloResult, currency = 'coins') {
+        console.log(`💰 Processing stakes: ${winner.username} wins ${wager} ${currency} from ${loser.username}`);
+
         // Update winner stats
         if (this.users.has(winner.email)) {
             const user = this.users.get(winner.email);
+            const oldBalance = currency === 'coins' ? (user.coins || 0) : (user.tainBalance || 0);
             user.elo = eloResult.winner.newElo;
             if (currency === 'coins') {
                 user.coins = (user.coins || 0) + wager;
+                console.log(`   ✅ ${winner.username} coins: ${oldBalance} → ${user.coins} (+${wager})`);
             } else {
                 user.tainBalance = (user.tainBalance || 0) + wager;
+                console.log(`   ✅ ${winner.username} TAIN: ${oldBalance} → ${user.tainBalance} (+${wager})`);
             }
-            user.gamesPlayed++;
-            user.gamesWon++;
+            user.gamesPlayed = (user.gamesPlayed || 0) + 1;
+            user.gamesWon = (user.gamesWon || 0) + 1;
         }
 
         // Update loser stats
         if (this.users.has(loser.email)) {
             const user = this.users.get(loser.email);
+            const oldBalance = currency === 'coins' ? (user.coins || 0) : (user.tainBalance || 0);
             user.elo = eloResult.loser.newElo;
             if (currency === 'coins') {
                 user.coins = Math.max(0, (user.coins || 0) - wager);
+                console.log(`   ❌ ${loser.username} coins: ${oldBalance} → ${user.coins} (-${wager})`);
             } else {
                 user.tainBalance = Math.max(0, (user.tainBalance || 0) - wager);
+                console.log(`   ❌ ${loser.username} TAIN: ${oldBalance} → ${user.tainBalance} (-${wager})`);
             }
-            user.gamesPlayed++;
+            user.gamesPlayed = (user.gamesPlayed || 0) + 1;
+        }
+
+        // Persist changes to disk
+        if (this.saveUsersCallback) {
+            this.saveUsersCallback();
+            console.log(`   💾 User data persisted to disk`);
         }
     }
 
