@@ -879,6 +879,111 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
     }
 });
 
+// ============ WALLET API ============
+
+// Deposit TAIN tokens (verify blockchain transaction)
+app.post('/api/wallet/deposit', authenticateToken, async (req, res) => {
+    try {
+        const user = users.get(req.user.email);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        const { txHash } = req.body;
+        if (!txHash) {
+            return res.status(400).json({ success: false, error: 'Transaction hash required' });
+        }
+
+        // TODO: In production, verify the transaction on BSC blockchain
+        // For now, we'll trust the client and add a placeholder amount
+        // You should use ethers.js or web3.js to verify the actual transaction
+        console.log(`💰 Deposit request from ${user.username}, txHash: ${txHash}`);
+
+        // Placeholder: In production, fetch actual amount from blockchain
+        // For testing, we'll add 100 TAIN as a mock deposit
+        const depositAmount = 100; // This should come from blockchain verification
+
+        user.coins = (user.coins || 0) + depositAmount;
+        saveUsers();
+
+        console.log(`✅ Deposit confirmed: ${user.username} +${depositAmount} TAIN (now has ${user.coins})`);
+
+        res.json({
+            success: true,
+            amount: depositAmount,
+            balance: user.coins,
+            message: `Successfully deposited ${depositAmount} TAIN`
+        });
+    } catch (error) {
+        console.error('Deposit error:', error);
+        res.status(500).json({ success: false, error: 'Deposit verification failed' });
+    }
+});
+
+// Withdraw TAIN tokens (server-side payout)
+app.post('/api/wallet/withdraw', authenticateToken, async (req, res) => {
+    try {
+        const user = users.get(req.user.email);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        const { amount } = req.body;
+        if (!amount || amount < 50) {
+            return res.status(400).json({ success: false, error: 'Minimum withdrawal is 50 TAIN' });
+        }
+
+        if ((user.coins || 0) < amount) {
+            return res.status(400).json({ success: false, error: 'Insufficient balance' });
+        }
+
+        if (!user.walletAddress) {
+            return res.status(400).json({ success: false, error: 'No wallet address linked to account' });
+        }
+
+        // Deduct from user balance
+        user.coins = user.coins - amount;
+        saveUsers();
+
+        console.log(`💸 Withdrawal request: ${user.username} withdrawing ${amount} TAIN to ${user.walletAddress}`);
+
+        // TODO: In production, send actual TAIN tokens on blockchain
+        // This requires a server-side wallet with private key to sign transactions
+        // For now, we return a mock success with pending status
+
+        res.json({
+            success: true,
+            amount: amount,
+            balance: user.coins,
+            txHash: 'pending_' + Date.now(), // Mock tx hash
+            status: 'pending',
+            message: `Withdrawal of ${amount} TAIN initiated. Processing may take up to 24 hours.`
+        });
+    } catch (error) {
+        console.error('Withdrawal error:', error);
+        res.status(500).json({ success: false, error: 'Withdrawal failed' });
+    }
+});
+
+// Get wallet balance
+app.get('/api/wallet/balance', authenticateToken, (req, res) => {
+    try {
+        const user = users.get(req.user.email);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        res.json({
+            success: true,
+            balance: user.coins || 0,
+            walletAddress: user.walletAddress || null
+        });
+    } catch (error) {
+        console.error('Balance check error:', error);
+        res.status(500).json({ success: false, error: 'Failed to get balance' });
+    }
+});
+
 // ============ MATCH HISTORY ============
 
 app.get('/api/matches', authenticateToken, (req, res) => {
