@@ -881,6 +881,23 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 
 // ============ WALLET API ============
 
+// TAIN Token Configuration for BSC Mainnet
+const TAIN_CONFIG = {
+    CONTRACT_ADDRESS: '0x3fe59e287f58e5a83443bcfd34dd72f045663e8b',
+    TREASURY_ADDRESS: '0xdB6Be62B413dF944d5ABa396F352B8c90b0D0cb8',
+    DECIMALS: 18,
+    BSC_RPC: 'https://bsc-dataseed.binance.org/'
+};
+
+// ERC-20 Transfer event signature
+const TRANSFER_EVENT_SIGNATURE = ethers.id('Transfer(address,address,uint256)');
+
+// Create BSC provider for blockchain queries
+const bscProvider = new ethers.JsonRpcProvider(TAIN_CONFIG.BSC_RPC);
+
+// Track processed deposits to prevent double-crediting
+const processedDeposits = new Set();
+
 // Deposit TAIN tokens (verify blockchain transaction)
 app.post('/api/wallet/deposit', authenticateToken, async (req, res) => {
     try {
@@ -894,29 +911,98 @@ app.post('/api/wallet/deposit', authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Transaction hash required' });
         }
 
-        // TODO: In production, verify the transaction on BSC blockchain
-        // For now, we'll trust the client and add a placeholder amount
-        // You should use ethers.js or web3.js to verify the actual transaction
-        console.log(`💰 Deposit request from ${user.username}, txHash: ${txHash}`);
+        // Validate transaction hash format
+        if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+            return res.status(400).json({ success: false, error: 'Invalid transaction hash format' });
+        }
 
-        // Placeholder: In production, fetch actual amount from blockchain
-        // For testing, we'll add 100 TAIN as a mock deposit
-        const depositAmount = 100; // This should come from blockchain verification
+        // Check if this deposit was already processed
+        if (processedDeposits.has(txHash.toLowerCase())) {
+            return res.status(400).json({ success: false, error: 'This transaction has already been processed' });
+        }
 
+        console.log(`💰 Deposit verification started for ${user.username}, txHash: ${txHash}`);
+
+        // Fetch transaction receipt from BSC
+        const receipt = await bscProvider.getTransactionReceipt(txHash);
+
+        if (!receipt) {
+            return res.status(400).json({ success: false, error: 'Transaction not found. Please wait for confirmation.' });
+        }
+
+        if (receipt.status !== 1) {
+            return res.status(400).json({ success: false, error: 'Transaction failed on blockchain' });
+        }
+
+        // Find the Transfer event for TAIN token to treasury
+        let depositAmount = null;
+        let senderAddress = null;
+
+        for (const log of receipt.logs) {
+            // Check if this is from the TAIN contract
+            if (log.address.toLowerCase() !== TAIN_CONFIG.CONTRACT_ADDRESS.toLowerCase()) {
+                continue;
+            }
+
+            // Check if this is a Transfer event
+            if (log.topics[0] !== TRANSFER_EVENT_SIGNATURE) {
+                continue;
+            }
+
+            // Decode the Transfer event
+            // topics[1] = from address (padded), topics[2] = to address (padded)
+            const from = '0x' + log.topics[1].slice(26);
+            const to = '0x' + log.topics[2].slice(26);
+
+            // Check if the transfer is to the treasury
+            if (to.toLowerCase() === TAIN_CONFIG.TREASURY_ADDRESS.toLowerCase()) {
+                // Decode the amount from the data field
+                const amount = BigInt(log.data);
+                depositAmount = Number(amount) / (10 ** TAIN_CONFIG.DECIMALS);
+                senderAddress = from;
+                break;
+            }
+        }
+
+        if (depositAmount === null) {
+            return res.status(400).json({
+                success: false,
+                error: 'No TAIN transfer to treasury found in this transaction'
+            });
+        }
+
+        // Verify the sender matches the user's wallet (optional security check)
+        if (user.walletAddress && senderAddress.toLowerCase() !== user.walletAddress.toLowerCase()) {
+            console.log(`⚠️ Sender mismatch: tx sender ${senderAddress}, user wallet ${user.walletAddress}`);
+            // Allow it but log warning - user might have multiple wallets
+        }
+
+        // Mark this transaction as processed
+        processedDeposits.add(txHash.toLowerCase());
+
+        // Credit the user's account
         user.coins = (user.coins || 0) + depositAmount;
         saveUsers();
 
-        console.log(`✅ Deposit confirmed: ${user.username} +${depositAmount} TAIN (now has ${user.coins})`);
+        console.log(`✅ Deposit verified: ${user.username} +${depositAmount} TAIN from ${senderAddress} (balance: ${user.coins})`);
 
         res.json({
             success: true,
             amount: depositAmount,
             balance: user.coins,
+            txHash: txHash,
             message: `Successfully deposited ${depositAmount} TAIN`
         });
+
     } catch (error) {
-        console.error('Deposit error:', error);
-        res.status(500).json({ success: false, error: 'Deposit verification failed' });
+        console.error('Deposit verification error:', error);
+
+        // Handle specific errors
+        if (error.code === 'NETWORK_ERROR') {
+            return res.status(503).json({ success: false, error: 'BSC network unavailable. Please try again.' });
+        }
+
+        res.status(500).json({ success: false, error: 'Deposit verification failed: ' + error.message });
     }
 });
 
