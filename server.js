@@ -1005,6 +1005,14 @@ app.post('/api/wallet/deposit', authenticateToken, async (req, res) => {
         res.status(500).json({ success: false, error: 'Deposit verification failed: ' + error.message });
     }
 });
+// ERC-20 ABI for transfer function
+const TAIN_ABI = [
+    'function transfer(address to, uint256 amount) returns (bool)',
+    'function balanceOf(address owner) view returns (uint256)'
+];
+
+// Pending withdrawals tracker (in production, use a database)
+const pendingWithdrawals = new Map();
 
 // Withdraw TAIN tokens (server-side payout)
 app.post('/api/wallet/withdraw', authenticateToken, async (req, res) => {
@@ -1027,27 +1035,124 @@ app.post('/api/wallet/withdraw', authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, error: 'No wallet address linked to account' });
         }
 
-        // Deduct from user balance
+        // Validate wallet address format
+        if (!/^0x[a-fA-F0-9]{40}$/.test(user.walletAddress)) {
+            return res.status(400).json({ success: false, error: 'Invalid wallet address format' });
+        }
+
+        // Check if server wallet private key is configured
+        const TREASURY_PRIVATE_KEY = process.env.TREASURY_PRIVATE_KEY;
+        if (!TREASURY_PRIVATE_KEY) {
+            console.error('❌ TREASURY_PRIVATE_KEY not configured in environment');
+            // Deduct balance and queue for manual processing
+            user.coins = user.coins - amount;
+            saveUsers();
+
+            const withdrawalId = 'manual_' + Date.now();
+            pendingWithdrawals.set(withdrawalId, {
+                userId: user.id,
+                username: user.username,
+                walletAddress: user.walletAddress,
+                amount: amount,
+                status: 'pending_manual',
+                createdAt: new Date().toISOString()
+            });
+
+            console.log(`💸 Manual withdrawal queued: ${user.username} - ${amount} TAIN to ${user.walletAddress}`);
+
+            return res.json({
+                success: true,
+                amount: amount,
+                balance: user.coins,
+                txHash: withdrawalId,
+                status: 'pending',
+                message: `Withdrawal of ${amount} TAIN queued for manual processing.`
+            });
+        }
+
+        console.log(`💸 Withdrawal request: ${user.username} - ${amount} TAIN to ${user.walletAddress}`);
+
+        // Create wallet signer from private key
+        const treasuryWallet = new ethers.Wallet(TREASURY_PRIVATE_KEY, bscProvider);
+
+        // Create TAIN contract instance
+        const tainContract = new ethers.Contract(TAIN_CONFIG.CONTRACT_ADDRESS, TAIN_ABI, treasuryWallet);
+
+        // Check treasury TAIN balance
+        const treasuryBalance = await tainContract.balanceOf(treasuryWallet.address);
+        const treasuryBalanceFormatted = Number(treasuryBalance) / (10 ** TAIN_CONFIG.DECIMALS);
+
+        if (treasuryBalanceFormatted < amount) {
+            console.error(`❌ Insufficient treasury balance: ${treasuryBalanceFormatted} TAIN, need ${amount} TAIN`);
+            return res.status(503).json({
+                success: false,
+                error: 'Withdrawal temporarily unavailable. Please try again later.'
+            });
+        }
+
+        // Deduct from user balance FIRST (before blockchain tx)
+        const previousBalance = user.coins;
         user.coins = user.coins - amount;
         saveUsers();
 
-        console.log(`💸 Withdrawal request: ${user.username} withdrawing ${amount} TAIN to ${user.walletAddress}`);
+        try {
+            // Convert amount to wei
+            const amountWei = ethers.parseUnits(amount.toString(), TAIN_CONFIG.DECIMALS);
 
-        // TODO: In production, send actual TAIN tokens on blockchain
-        // This requires a server-side wallet with private key to sign transactions
-        // For now, we return a mock success with pending status
+            // Send the transaction
+            console.log(`📤 Sending ${amount} TAIN to ${user.walletAddress}...`);
+            const tx = await tainContract.transfer(user.walletAddress, amountWei);
 
-        res.json({
-            success: true,
-            amount: amount,
-            balance: user.coins,
-            txHash: 'pending_' + Date.now(), // Mock tx hash
-            status: 'pending',
-            message: `Withdrawal of ${amount} TAIN initiated. Processing may take up to 24 hours.`
-        });
+            console.log(`⏳ Transaction sent: ${tx.hash}, waiting for confirmation...`);
+
+            // Wait for confirmation (1 block)
+            const receipt = await tx.wait(1);
+
+            if (receipt.status === 1) {
+                console.log(`✅ Withdrawal successful: ${user.username} - ${amount} TAIN, tx: ${tx.hash}`);
+
+                return res.json({
+                    success: true,
+                    amount: amount,
+                    balance: user.coins,
+                    txHash: tx.hash,
+                    status: 'completed',
+                    message: `Successfully withdrew ${amount} TAIN`
+                });
+            } else {
+                // Transaction failed on-chain, refund user
+                console.error(`❌ Transaction failed on-chain: ${tx.hash}`);
+                user.coins = previousBalance;
+                saveUsers();
+
+                return res.status(500).json({
+                    success: false,
+                    error: 'Transaction failed on blockchain. Your balance has been restored.'
+                });
+            }
+        } catch (txError) {
+            // Transaction failed, refund user
+            console.error(`❌ Withdrawal transaction error:`, txError);
+            user.coins = previousBalance;
+            saveUsers();
+
+            // Check for specific error types
+            if (txError.code === 'INSUFFICIENT_FUNDS') {
+                return res.status(503).json({
+                    success: false,
+                    error: 'Treasury needs BNB for gas. Please try again later.'
+                });
+            }
+
+            return res.status(500).json({
+                success: false,
+                error: 'Withdrawal failed. Your balance has been restored.'
+            });
+        }
+
     } catch (error) {
         console.error('Withdrawal error:', error);
-        res.status(500).json({ success: false, error: 'Withdrawal failed' });
+        res.status(500).json({ success: false, error: 'Withdrawal failed: ' + error.message });
     }
 });
 
