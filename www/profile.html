@@ -379,7 +379,7 @@
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 const from = accounts[0];
                 const treasury = '0xdB6Be62B413dF944d5ABa396F352B8c90b0D0cb8';
-                const qwinContract = '0x4bdef5d6eeD17bB3c09e6678ce9690E4E4c7bA8e';
+                const tainContract = '0x3fe59e287f58e5a83443bcfd34dd72f045663e8b';
                 const amountWei = BigInt(Math.floor(amount * 10 ** 18)).toString(16).padStart(64, '0');
                 const treasuryPad = treasury.substring(2).padStart(64, '0');
                 const data = '0xa9059cbb' + treasuryPad + amountWei;
