@@ -25,8 +25,14 @@ const appkit = createAppKit({
     features: {
         analytics: false,
         email: false,
-        socials: false
-    }
+        socials: false,
+        onramp: false
+    },
+    // Force QR code only - prevents opening MetaMask browser
+    enableWalletConnect: true,
+    enableInjected: false,
+    enableEIP6963: false,
+    enableCoinbase: false
 });
 
 // API URL
