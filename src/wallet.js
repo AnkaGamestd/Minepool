@@ -148,8 +148,13 @@ appkit.subscribeState(async (state) => {
     }
 });
 
-// Check if already logged in
+// Check if already logged in (only on login page)
 async function checkAuth() {
+    // Only redirect on login page
+    if (!window.location.pathname.includes('login')) {
+        return;
+    }
+
     try {
         const response = await fetch(`${API_URL}/me`, { credentials: 'include' });
         const data = await response.json();
