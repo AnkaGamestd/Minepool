@@ -100,11 +100,39 @@
             color: #00ff88;
         }
 
-        /* AppKit Button Container */
         .appkit-container {
             display: flex;
             justify-content: center;
             margin: 20px 0;
+        }
+
+        .btn-sign {
+            width: 100%;
+            padding: 16px;
+            margin-top: 15px;
+            background: linear-gradient(135deg, #00d4ff 0%, #0088aa 100%);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: none;
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-sign:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-sign:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-sign.show {
+            display: block;
         }
 
         .features {
@@ -209,6 +237,13 @@
             color: #00d4ff;
             text-decoration: none;
         }
+
+        .hint {
+            text-align: center;
+            font-size: 12px;
+            color: #8892a0;
+            margin-top: 10px;
+        }
     </style>
 </head>
 
@@ -227,6 +262,12 @@
             <div class="appkit-container">
                 <appkit-button></appkit-button>
             </div>
+
+            <!-- Sign & Login Button (appears after wallet is connected) -->
+            <button id="sign-btn" class="btn-sign" onclick="manualSign()">
+                🔐 Sign & Login
+            </button>
+            <p id="hint" class="hint" style="display:none;">Open your wallet app to approve the signature</p>
 
             <div class="features">
                 <div class="feature">
@@ -277,6 +318,95 @@
 
     <!-- Load bundled WalletConnect -->
     <script src="/js/dist/wallet-bundle.iife.js"></script>
+
+    <script>
+        // Manual sign function that can be triggered by button
+        window.manualSign = async function () {
+            const btn = document.getElementById('sign-btn');
+            const hint = document.getElementById('hint');
+
+            if (!window.appkit) {
+                showMsg('AppKit not loaded', 'error');
+                return;
+            }
+
+            const address = window.appkit.getAddress();
+            if (!address) {
+                showMsg('Please connect wallet first', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Signing...';
+            hint.style.display = 'block';
+
+            try {
+                const message = `Login to Mine Pool: ${address} at ${Date.now()}`;
+                const provider = await window.appkit.getWalletProvider();
+
+                if (!provider) {
+                    throw new Error('No provider - try reconnecting wallet');
+                }
+
+                showMsg('Check your wallet app to sign...', 'success');
+
+                const signature = await provider.request({
+                    method: 'personal_sign',
+                    params: [message, address]
+                });
+
+                showMsg('Authenticating...', 'success');
+
+                // Send to backend
+                const response = await fetch('/api/auth/wallet-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        walletAddress: address,
+                        message,
+                        signature,
+                        referralCode: new URLSearchParams(window.location.search).get('ref')
+                    }),
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMsg('Success! Redirecting...', 'success');
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('walletAddress', address);
+                    setTimeout(() => {
+                        window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
+                    }, 1000);
+                } else {
+                    throw new Error(data.error || 'Login failed');
+                }
+            } catch (e) {
+                console.error('Sign error:', e);
+                showMsg('Error: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '🔐 Sign & Login';
+            }
+        };
+
+        function showMsg(text, type) {
+            const el = document.getElementById('message');
+            el.textContent = text;
+            el.className = 'message show ' + type;
+        }
+
+        // Check if wallet is connected and show sign button
+        setInterval(() => {
+            if (window.appkit) {
+                const address = window.appkit.getAddress();
+                const btn = document.getElementById('sign-btn');
+                if (address && !btn.classList.contains('show')) {
+                    btn.classList.add('show');
+                }
+            }
+        }, 1000);
+    </script>
 </body>
 
 </html>
