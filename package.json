@@ -6,7 +6,6 @@
     "scripts": {
         "start": "node server.js",
         "dev": "nodemon server.js",
-        "build:wallet": "vite build",
         "test:e2e": "npx playwright test",
         "test:ui": "npx playwright test --ui"
     },
@@ -23,15 +22,7 @@
         "uuid": "^9.0.0"
     },
     "devDependencies": {
-        "@capacitor/android": "^8.0.0",
-        "@capacitor/assets": "^3.0.5",
-        "@capacitor/cli": "^8.0.0",
-        "@capacitor/core": "^8.0.0",
-        "@capacitor/ios": "^8.0.0",
-        "@playwright/test": "^1.57.0",
-        "@reown/appkit": "^1.8.16",
-        "@reown/appkit-adapter-ethers": "^1.8.16",
-        "nodemon": "^3.0.2",
-        "vite": "^7.3.1"
-    }
+        "nodemon": "^3.0.2"
+    },
+    "optionalDependencies": {}
 }
