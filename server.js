@@ -902,7 +902,7 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 // TAIN Token Configuration for BSC Mainnet
 const TAIN_CONFIG = {
     CONTRACT_ADDRESS: '0x3fe59e287f58e5a83443bcfd34dd72f045663e8b',
-    TREASURY_ADDRESS: '0xdB6Be62B413dF944d5ABa396F352B8c90b0D0cb8',
+    TREASURY_ADDRESS: '0x9ee9a674fA394aFA71DDA09b26b289b390958377',
     DECIMALS: 18,
     BSC_RPC: 'https://bsc-dataseed.binance.org/'
 };

@@ -64,6 +64,6 @@ All endpoints require `X-Admin-Secret` header with ADMIN_SECRET value.
 | MAX_ACCOUNTS_PER_IP | 3 |
 
 ## Notes
-- Treasury wallet: 0xdB6Be62B413dF944d5ABa396F352B8c90b0D0cb8
+- Treasury wallet: 0x9ee9a674fA394aFA71DDA09b26b289b390958377
 - TAIN contract: 0x3fe59e287f58e5a83443bcfd34dd72f045663e8b
 - Add ADMIN_SECRET to Railway environment variables
