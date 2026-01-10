@@ -180,6 +180,9 @@
         </div>
     </div>
 
+    <!-- Load AppKit for WalletConnect transactions -->
+    <script src="/js/dist/wallet-bundle.iife.js"></script>
+
     <!-- SCRIPTS -->
     <script>
         // TAIN Token Configuration
@@ -519,16 +522,32 @@
             btn.disabled = true;
 
             try {
-                if (!window.ethereum) throw new Error('MetaMask not found');
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                const from = accounts[0];
+                // Get provider from AppKit or window.ethereum
+                let provider = null;
+                let from = localStorage.getItem('walletAddress');
+
+                if (window.appkit) {
+                    provider = await window.appkit.getWalletProvider();
+                }
+                if (!provider && window.ethereum) {
+                    provider = window.ethereum;
+                    const accounts = await provider.request({ method: 'eth_requestAccounts' });
+                    from = accounts[0];
+                }
+
+                if (!provider) {
+                    throw new Error('Please reconnect your wallet');
+                }
+
                 const treasury = '0x9ee9a674fA394aFA71DDA09b26b289b390958377';
                 const tainContract = '0x3fe59e287f58e5a83443bcfd34dd72f045663e8b';
                 const amountWei = BigInt(Math.floor(amount * 10 ** 18)).toString(16).padStart(64, '0');
                 const treasuryPad = treasury.substring(2).padStart(64, '0');
                 const data = '0xa9059cbb' + treasuryPad + amountWei;
 
-                const txHash = await window.ethereum.request({
+                alert('Please confirm the transaction in your wallet app...');
+
+                const txHash = await provider.request({
                     method: 'eth_sendTransaction',
                     params: [{ from: from, to: tainContract, data: data }]
                 });
@@ -548,6 +567,7 @@
                     alert(`Success! Deposited ${resData.amount} TAIN.`);
                     closeDepositModal();
                     loadProfile();
+                    refreshWalletBalance();
                 } else {
                     alert('Verification failed: ' + resData.error);
                 }
