@@ -24,6 +24,9 @@ const { TournamentManager } = require('./multiplayer/Tournament');
 const { TournamentManager16, ENTRY_FEE_TIERS, TournamentState } = require('./multiplayer/Tournament16');
 const { EloCalculator } = require('./multiplayer/MatchmakingQueue');
 
+// Anti-fraud system
+const antifraud = require('./antifraud');
+
 const app = express();
 const PORT = process.env.PORT || 8000;
 
@@ -420,6 +423,21 @@ app.post('/api/auth/wallet-login', async (req, res) => {
         console.error('Wallet login error:', error);
         res.status(500).json({ success: false, error: 'Wallet login failed' });
     }
+});
+
+// Anti-fraud: Track IP for all authenticated requests
+app.use('/api', (req, res, next) => {
+    if (req.user && req.user.email) {
+        const user = users.get(req.user.email);
+        if (user) {
+            const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+            const ipCheck = antifraud.trackUserIP(user.id, ip);
+            if (ipCheck.flagged) {
+                console.log(`⚠️ Multi-account warning: ${user.username} from IP ${ip} - ${ipCheck.warning}`);
+            }
+        }
+    }
+    next();
 });
 
 // Get current user
@@ -906,6 +924,13 @@ app.post('/api/wallet/deposit', authenticateToken, async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
+        // Anti-fraud: Rate limiting
+        const depositCheck = antifraud.canDeposit(user.id);
+        if (!depositCheck.allowed) {
+            console.log(`🚫 Deposit rate limit: ${user.username} - ${depositCheck.reason}`);
+            return res.status(429).json({ success: false, error: depositCheck.reason });
+        }
+
         const { txHash } = req.body;
         if (!txHash) {
             return res.status(400).json({ success: false, error: 'Transaction hash required' });
@@ -986,6 +1011,9 @@ app.post('/api/wallet/deposit', authenticateToken, async (req, res) => {
 
         console.log(`✅ Deposit verified: ${user.username} +${depositAmount} TAIN from ${senderAddress} (balance: ${user.coins})`);
 
+        // Anti-fraud: Log transaction for audit
+        antifraud.logTransaction('DEPOSIT', user.id, user.username, depositAmount, { txHash, senderAddress });
+
         res.json({
             success: true,
             amount: depositAmount,
@@ -1038,6 +1066,31 @@ app.post('/api/wallet/withdraw', authenticateToken, async (req, res) => {
         // Validate wallet address format
         if (!/^0x[a-fA-F0-9]{40}$/.test(user.walletAddress)) {
             return res.status(400).json({ success: false, error: 'Invalid wallet address format' });
+        }
+
+        // Anti-fraud: Account verification
+        const accountCheck = antifraud.verifyAccountForWithdrawal(user);
+        if (!accountCheck.verified) {
+            console.log(`🚫 Withdrawal denied (account): ${user.username} - ${accountCheck.reason}`);
+            return res.status(403).json({ success: false, error: accountCheck.reason });
+        }
+
+        // Anti-fraud: Rate limiting and withdrawal limits
+        const withdrawCheck = antifraud.canWithdraw(user.id, amount);
+        if (!withdrawCheck.allowed) {
+            console.log(`🚫 Withdrawal denied (limit): ${user.username} - ${withdrawCheck.reason}`);
+            if (withdrawCheck.requiresReview) {
+                return res.status(403).json({ success: false, error: withdrawCheck.reason, requiresReview: true });
+            }
+            return res.status(429).json({ success: false, error: withdrawCheck.reason });
+        }
+
+        // Anti-fraud: Check win rate anomaly
+        const winRateCheck = antifraud.checkWinRateAnomaly(user);
+        if (winRateCheck.suspicious) {
+            console.log(`🚨 Suspicious win rate: ${user.username} - ${winRateCheck.winRate}`);
+            antifraud.flagUser(user.id, winRateCheck.reason);
+            return res.status(403).json({ success: false, error: 'Account under review due to unusual activity. Please contact support.' });
         }
 
         // Check if server wallet private key is configured
@@ -1110,6 +1163,13 @@ app.post('/api/wallet/withdraw', authenticateToken, async (req, res) => {
 
             if (receipt.status === 1) {
                 console.log(`✅ Withdrawal successful: ${user.username} - ${amount} TAIN, tx: ${tx.hash}`);
+
+                // Anti-fraud: Record withdrawal and log for audit
+                antifraud.recordWithdrawal(user.id, amount);
+                antifraud.logTransaction('WITHDRAWAL', user.id, user.username, amount, {
+                    txHash: tx.hash,
+                    walletAddress: user.walletAddress
+                });
 
                 return res.json({
                     success: true,
@@ -2030,6 +2090,106 @@ app.post('/api/tournaments16/:id/match/:matchId/walkover', authenticateToken, (r
         console.error('Walkover error:', error);
         res.status(500).json({ success: false, error: 'Failed to process walkover' });
     }
+});
+
+// ============ ANTI-FRAUD ADMIN API ============
+
+// Admin secret for accessing anti-fraud data (should be in environment)
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'tain-admin-secret-change-me';
+
+// Get anti-fraud audit log
+app.get('/api/admin/antifraud/transactions', (req, res) => {
+    const secret = req.headers['x-admin-secret'];
+    if (secret !== ADMIN_SECRET) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const limit = parseInt(req.query.limit) || 100;
+    const transactions = antifraud.getRecentTransactions(limit);
+
+    res.json({
+        success: true,
+        count: transactions.length,
+        transactions
+    });
+});
+
+// Get suspicious users
+app.get('/api/admin/antifraud/suspicious', (req, res) => {
+    const secret = req.headers['x-admin-secret'];
+    if (secret !== ADMIN_SECRET) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const suspiciousUserIds = antifraud.getSuspiciousUsers();
+    const suspiciousUsers = [];
+
+    for (const [email, user] of users) {
+        if (suspiciousUserIds.includes(user.id)) {
+            suspiciousUsers.push({
+                id: user.id,
+                username: user.username,
+                walletAddress: user.walletAddress,
+                coins: user.coins,
+                gamesPlayed: user.gamesPlayed,
+                gamesWon: user.gamesWon,
+                winRate: user.gamesPlayed > 0 ? ((user.gamesWon / user.gamesPlayed) * 100).toFixed(1) + '%' : 'N/A',
+                createdAt: user.createdAt
+            });
+        }
+    }
+
+    res.json({
+        success: true,
+        count: suspiciousUsers.length,
+        users: suspiciousUsers
+    });
+});
+
+// Unflag a user
+app.post('/api/admin/antifraud/unflag/:userId', (req, res) => {
+    const secret = req.headers['x-admin-secret'];
+    if (secret !== ADMIN_SECRET) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const userId = parseInt(req.params.userId);
+    antifraud.unflagUser(userId);
+
+    res.json({
+        success: true,
+        message: `User ${userId} has been unflagged`
+    });
+});
+
+// Flag a user manually
+app.post('/api/admin/antifraud/flag/:userId', (req, res) => {
+    const secret = req.headers['x-admin-secret'];
+    if (secret !== ADMIN_SECRET) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const userId = parseInt(req.params.userId);
+    const { reason } = req.body;
+    antifraud.flagUser(userId, reason || 'Manually flagged by admin');
+
+    res.json({
+        success: true,
+        message: `User ${userId} has been flagged`
+    });
+});
+
+// Get anti-fraud configuration
+app.get('/api/admin/antifraud/config', (req, res) => {
+    const secret = req.headers['x-admin-secret'];
+    if (secret !== ADMIN_SECRET) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    res.json({
+        success: true,
+        config: antifraud.ANTIFRAUD_CONFIG
+    });
 });
 
 // ============ SERVER STATS ============
