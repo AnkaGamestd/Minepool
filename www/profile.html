@@ -526,17 +526,35 @@
                 let provider = null;
                 let from = localStorage.getItem('walletAddress');
 
+                // Try AppKit first
                 if (window.appkit) {
-                    provider = await window.appkit.getWalletProvider();
+                    try {
+                        provider = await window.appkit.getWalletProvider();
+                    } catch (e) {
+                        console.log('AppKit provider not available:', e);
+                    }
                 }
+
+                // Fallback to window.ethereum
                 if (!provider && window.ethereum) {
                     provider = window.ethereum;
                     const accounts = await provider.request({ method: 'eth_requestAccounts' });
                     from = accounts[0];
                 }
 
+                // If still no provider, prompt to reconnect
                 if (!provider) {
-                    throw new Error('Please reconnect your wallet');
+                    closeDepositModal();
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    alert('Wallet session expired. Please reconnect your wallet.');
+                    // Open AppKit modal to reconnect
+                    if (window.appkit && window.appkit.open) {
+                        window.appkit.open();
+                    } else {
+                        window.location.href = '/login.html';
+                    }
+                    return;
                 }
 
                 const treasury = '0x9ee9a674fA394aFA71DDA09b26b289b390958377';
