@@ -1235,6 +1235,105 @@ app.get('/api/wallet/balance', authenticateToken, (req, res) => {
     }
 });
 
+// ============ AI GAME RESULTS ============
+
+// Report AI game result (for updating user stats after playing against AI)
+app.post('/api/game/ai-result', authenticateToken, async (req, res) => {
+    try {
+        const user = users.get(req.user.email);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        const { won, wager = 0, gameDuration = 0 } = req.body;
+
+        // Validate
+        if (typeof won !== 'boolean') {
+            return res.status(400).json({ success: false, error: 'Invalid game result' });
+        }
+
+        // Anti-fraud: Check game duration (games < 30s are suspicious)
+        const gameCheck = antifraud.validateGameResult(user.id, 'AI', gameDuration, wager);
+        if (!gameCheck.valid) {
+            console.log(`🚨 Suspicious AI game: ${user.username} - ${gameCheck.flags.join(', ')}`);
+            // Don't block, but log suspicion
+        }
+
+        // Anti-fraud: Rate limit AI games (prevent farming) - max 20 games per hour
+        const now = Date.now();
+        const aiGameKey = `ai_${user.id}`;
+        if (!user.aiGameHistory) user.aiGameHistory = [];
+
+        // Clean old entries (older than 1 hour)  
+        user.aiGameHistory = user.aiGameHistory.filter(t => now - t < 60 * 60 * 1000);
+
+        if (user.aiGameHistory.length >= 20) {
+            console.log(`🚫 AI game rate limit: ${user.username} played 20+ games in 1 hour`);
+            return res.status(429).json({
+                success: false,
+                error: 'Too many games. Please take a break and try again later.'
+            });
+        }
+
+        user.aiGameHistory.push(now);
+
+        // Update stats
+        user.gamesPlayed = (user.gamesPlayed || 0) + 1;
+
+        let coinsChange = 0;
+
+        if (won) {
+            user.gamesWon = (user.gamesWon || 0) + 1;
+            user.winStreak = (user.winStreak || 0) + 1;
+
+            if (wager > 0) {
+                // AI games give reduced rewards (50% of wager as winnings)
+                coinsChange = Math.floor(wager * 0.5);
+                user.coins = (user.coins || 0) + coinsChange;
+                console.log(`🎮 AI Win: ${user.username} +${coinsChange} coins (50% of ${wager} wager)`);
+            } else {
+                // No wager = practice mode, small coin bonus
+                coinsChange = 10;
+                user.coins = (user.coins || 0) + coinsChange;
+                console.log(`🎮 AI Practice Win: ${user.username} +${coinsChange} coins`);
+            }
+        } else {
+            user.winStreak = 0;
+
+            if (wager > 0) {
+                // Losing against AI = no coin loss (it's practice with stakes display only)
+                coinsChange = 0;
+                console.log(`🎮 AI Loss: ${user.username} (no coin loss for AI games)`);
+            } else {
+                console.log(`🎮 AI Practice Loss: ${user.username}`);
+            }
+        }
+
+        saveUsers();
+
+        // Log for audit
+        antifraud.logTransaction('AI_GAME', user.id, user.username, coinsChange, {
+            won,
+            wager,
+            gameDuration
+        });
+
+        res.json({
+            success: true,
+            won,
+            coinsChange,
+            newBalance: user.coins || 0,
+            gamesPlayed: user.gamesPlayed,
+            gamesWon: user.gamesWon || 0,
+            winStreak: user.winStreak || 0
+        });
+
+    } catch (error) {
+        console.error('AI game result error:', error);
+        res.status(500).json({ success: false, error: 'Failed to record game result' });
+    }
+});
+
 // ============ MATCH HISTORY ============
 
 app.get('/api/matches', authenticateToken, (req, res) => {

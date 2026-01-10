@@ -307,6 +307,7 @@ class PoolGame {
             this.initializeBalls();
             this.gameState = 'aiming';
             this.currentPlayer = 1;
+            this.gameStartTime = Date.now(); // Track game start for duration calculation
 
             // Enable ball placement in kitchen for break shot
             this.ballInHand = true;
@@ -1776,17 +1777,28 @@ class PoolGame {
 
     showWinner(player, reason) {
         let winnerText;
+        let isWin = false;
 
         if (this.isMultiplayer) {
             // Show personalized message for multiplayer
             if (player === this.myPlayerNumber) {
                 winnerText = '🎉 YOU WON! 🎉';
+                isWin = true;
             } else {
                 winnerText = '😞 YOU LOSE 😞';
             }
         } else {
-            // Show generic message for single player
-            winnerText = `PLAYER ${player} WINS!`;
+            // Single player/AI mode
+            // Player 1 is always the human
+            if (player === 1) {
+                winnerText = '🎉 YOU WIN! 🎉';
+                isWin = true;
+            } else {
+                winnerText = '😞 YOU LOSE 😞';
+            }
+
+            // Report AI game result to server
+            this.reportAIGameResult(isWin);
         }
 
         document.getElementById('winner-text').textContent = winnerText;
@@ -1802,6 +1814,48 @@ class PoolGame {
         document.getElementById('winner-text').appendChild(sub);
 
         this.winnerScreen.classList.remove('hidden');
+    }
+
+    // Report AI game result to server for stats and coin update
+    async reportAIGameResult(won) {
+        try {
+            // Calculate game duration
+            const gameDuration = this.gameStartTime ? Math.floor((Date.now() - this.gameStartTime) / 1000) : 0;
+
+            const response = await fetch('/api/game/ai-result', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    won: won,
+                    wager: this.currentWager || 0,
+                    gameDuration: gameDuration
+                }),
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                console.log(`🎮 AI game reported: ${won ? 'WIN' : 'LOSS'}, coins: ${data.coinsChange > 0 ? '+' : ''}${data.coinsChange}`);
+
+                // Update local storage with new balance
+                const storedUser = localStorage.getItem('user');
+                if (storedUser) {
+                    const user = JSON.parse(storedUser);
+                    user.coins = data.newBalance;
+                    user.gamesPlayed = data.gamesPlayed;
+                    user.gamesWon = data.gamesWon;
+                    user.winStreak = data.winStreak;
+                    localStorage.setItem('user', JSON.stringify(user));
+                }
+
+                // Show coin update notification
+                if (data.coinsChange > 0) {
+                    this.showMessage('COINS EARNED', `+${data.coinsChange} 💰`, 2000);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to report AI game result:', error);
+        }
     }
 
     resetGame() {
