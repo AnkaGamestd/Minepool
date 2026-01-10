@@ -5,8 +5,8 @@
  */
 
 const WALLETCONNECT_CONFIG = {
-    // You need to get this from https://cloud.walletconnect.com/
-    PROJECT_ID: 'YOUR_PROJECT_ID', // TODO: Replace with your WalletConnect Project ID
+    // Reown/WalletConnect Project ID from https://cloud.reown.com/
+    PROJECT_ID: '552b76549cfdaa2c137b7670d9edfd69',
 
     // BSC Mainnet configuration
     CHAIN_ID: 56,
