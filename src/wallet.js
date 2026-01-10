@@ -27,12 +27,7 @@ const appkit = createAppKit({
         email: false,
         socials: false,
         onramp: false
-    },
-    // Force QR code only - prevents opening MetaMask browser
-    enableWalletConnect: true,
-    enableInjected: false,
-    enableEIP6963: false,
-    enableCoinbase: false
+    }
 });
 
 // API URL
@@ -45,6 +40,7 @@ function showMessage(text, type) {
         msgEl.textContent = text;
         msgEl.className = 'message show ' + type;
     }
+    console.log(`[${type}] ${text}`);
 }
 
 // Authenticate with backend
@@ -62,53 +58,93 @@ async function authenticateWithBackend(walletAddress, message, signature) {
     return response.json();
 }
 
-// Handle wallet connection state changes
+// Handle wallet connection
+let isAuthenticating = false;
 let lastAddress = null;
 
-appkit.subscribeState(async (state) => {
-    console.log('AppKit state:', state);
+async function handleWalletConnection(address) {
+    if (isAuthenticating || !address || address === lastAddress) return;
 
-    // Check if newly connected
-    if (state.address && state.address !== lastAddress) {
-        lastAddress = state.address;
+    isAuthenticating = true;
+    lastAddress = address;
 
-        showMessage('Connected! Signing in...', 'success');
+    showMessage('Connected! Requesting signature...', 'success');
 
-        try {
-            const walletAddress = state.address;
-            const message = `Login to Mine Pool: ${walletAddress} at ${Date.now()}`;
+    try {
+        const walletAddress = address;
+        const message = `Login to Mine Pool: ${walletAddress} at ${Date.now()}`;
 
-            // Get the wallet provider from appkit
-            const provider = appkit.getWalletProvider();
+        // Wait a bit for provider to be ready
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-            if (!provider) {
-                throw new Error('No provider available');
-            }
+        // Get the wallet provider
+        const provider = await appkit.getWalletProvider();
+        console.log('Provider:', provider);
 
-            // Request signature
-            const signature = await provider.request({
-                method: 'personal_sign',
-                params: [message, walletAddress]
-            });
-
-            // Authenticate with backend
-            const data = await authenticateWithBackend(walletAddress, message, signature);
-
-            if (data.success) {
-                showMessage('Success! Redirecting...', 'success');
-                localStorage.setItem('user', JSON.stringify(data.user));
-                localStorage.setItem('walletAddress', walletAddress);
-
-                setTimeout(() => {
-                    window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
-                }, 1000);
+        if (!provider) {
+            // Try to get from window
+            if (window.ethereum) {
+                showMessage('Using injected provider...', 'success');
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, walletAddress]
+                });
+                await completeLogin(walletAddress, message, signature);
             } else {
-                showMessage(data.error || 'Login failed', 'error');
+                throw new Error('No wallet provider available');
             }
-        } catch (e) {
-            console.error('Auth error:', e);
-            showMessage('Signature failed. Please try again.', 'error');
+            return;
         }
+
+        showMessage('Please sign the message in your wallet...', 'success');
+
+        // Request signature
+        const signature = await provider.request({
+            method: 'personal_sign',
+            params: [message, walletAddress]
+        });
+
+        await completeLogin(walletAddress, message, signature);
+
+    } catch (e) {
+        console.error('Auth error:', e);
+        showMessage('Error: ' + e.message, 'error');
+        isAuthenticating = false;
+    }
+}
+
+async function completeLogin(walletAddress, message, signature) {
+    showMessage('Authenticating...', 'success');
+
+    const data = await authenticateWithBackend(walletAddress, message, signature);
+
+    if (data.success) {
+        showMessage('Success! Redirecting...', 'success');
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('walletAddress', walletAddress);
+
+        setTimeout(() => {
+            window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
+        }, 1000);
+    } else {
+        showMessage(data.error || 'Login failed', 'error');
+        isAuthenticating = false;
+    }
+}
+
+// Subscribe to connection events
+appkit.subscribeAccount(async (account) => {
+    console.log('Account update:', account);
+    if (account && account.address && account.isConnected) {
+        await handleWalletConnection(account.address);
+    }
+});
+
+// Also subscribe to state
+appkit.subscribeState(async (state) => {
+    console.log('State update:', state);
+    if (state.address && state.selectedNetworkId) {
+        await handleWalletConnection(state.address);
     }
 });
 
@@ -121,7 +157,7 @@ async function checkAuth() {
             window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
         }
     } catch (e) {
-        // Not logged in
+        console.log('Not logged in');
     }
 }
 
@@ -129,3 +165,4 @@ checkAuth();
 
 // Export for debugging
 window.appkit = appkit;
+window.handleWalletConnection = handleWalletConnection;
