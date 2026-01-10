@@ -208,6 +208,11 @@
 
         // Get connected wallet address
         async function getConnectedWallet() {
+            // First check localStorage (set during WalletConnect login)
+            const storedWallet = localStorage.getItem('walletAddress');
+            if (storedWallet) return storedWallet;
+
+            // Fallback to window.ethereum for injected wallets
             if (!window.ethereum) return null;
             try {
                 const accounts = await window.ethereum.request({ method: 'eth_accounts' });
