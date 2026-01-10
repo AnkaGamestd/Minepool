@@ -11,10 +11,6 @@
         "test:ui": "npx playwright test --ui"
     },
     "dependencies": {
-        "@capacitor/android": "^8.0.0",
-        "@capacitor/cli": "^8.0.0",
-        "@capacitor/core": "^8.0.0",
-        "@capacitor/ios": "^8.0.0",
         "bcryptjs": "^2.4.3",
         "cookie-parser": "^1.4.6",
         "cors": "^2.8.5",
@@ -27,7 +23,11 @@
         "uuid": "^9.0.0"
     },
     "devDependencies": {
+        "@capacitor/android": "^8.0.0",
         "@capacitor/assets": "^3.0.5",
+        "@capacitor/cli": "^8.0.0",
+        "@capacitor/core": "^8.0.0",
+        "@capacitor/ios": "^8.0.0",
         "@playwright/test": "^1.57.0",
         "@reown/appkit": "^1.8.16",
         "@reown/appkit-adapter-ethers": "^1.8.16",
