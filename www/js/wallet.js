@@ -1,14 +1,12 @@
 /**
  * Wallet Manager for TAIN Token Integration
- * Handles wallet connection, network switching, and token interactions.
- * Supports both injected wallets (MetaMask, Trust Wallet) and WalletConnect.
+ * Handles Metamask connection, network switching, and token interactions.
  */
 
 const TAIN_CONFIG = {
     // TAIN Token on BSC Mainnet
     CONTRACT_ADDRESS: '0x3fe59e287f58e5a83443bcfd34dd72f045663e8b',
     CHAIN_ID: 56, // BNB Smart Chain Mainnet
-    CHAIN_ID_HEX: '0x38',
     CHAIN_NAME: 'BNB Smart Chain',
     RPC_URL: 'https://bsc-dataseed.binance.org/',
     BLOCK_EXPLORER: 'https://bscscan.com',
@@ -37,14 +35,6 @@ class WalletManager {
         this.userAddress = null;
         this.contract = null;
         this.isConnected = false;
-        this.connectionMethod = null; // 'injected' or 'walletconnect'
-    }
-
-    /**
-     * Check if an injected wallet is available
-     */
-    hasInjectedWallet() {
-        return typeof window.ethereum !== 'undefined';
     }
 
     /**
@@ -57,29 +47,26 @@ class WalletManager {
             console.log('✅ Web3 Provider Initialized');
             return true;
         } else {
-            console.warn('⚠️ No crypto wallet found.');
+            console.warn('⚠️ No crypto wallet found. Please install Metamask.');
             return false;
         }
     }
 
     /**
-     * Connect to the wallet (injected provider)
+     * Connect to the wallet
      */
     async connect() {
-        if (!this.hasInjectedWallet()) {
-            throw new Error('No wallet detected. Please install MetaMask or Trust Wallet.');
+        if (!this.init()) {
+            alert('Please install Metamask or TrustWallet to use this feature!');
+            return null;
         }
 
         try {
             // Request account access
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const accounts = await this.provider.send("eth_requestAccounts", []);
             this.userAddress = accounts[0];
-
-            // Create provider and signer
-            this.provider = new ethers.providers.Web3Provider(window.ethereum);
             this.signer = this.provider.getSigner();
             this.isConnected = true;
-            this.connectionMethod = 'injected';
 
             console.log('👛 Wallet Connected:', this.userAddress);
 
@@ -105,18 +92,13 @@ class WalletManager {
      * Check and switch to BNB Chain if necessary
      */
     async checkNetwork() {
-        if (!window.ethereum) return;
-
         const network = await this.provider.getNetwork();
         if (network.chainId !== TAIN_CONFIG.CHAIN_ID) {
             try {
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: TAIN_CONFIG.CHAIN_ID_HEX }],
+                    params: [{ chainId: ethers.utils.hexValue(TAIN_CONFIG.CHAIN_ID) }],
                 });
-                // Refresh provider after network switch
-                this.provider = new ethers.providers.Web3Provider(window.ethereum);
-                this.signer = this.provider.getSigner();
             } catch (switchError) {
                 // This error code indicates that the chain has not been added to MetaMask.
                 if (switchError.code === 4902) {
@@ -124,7 +106,7 @@ class WalletManager {
                         await window.ethereum.request({
                             method: 'wallet_addEthereumChain',
                             params: [{
-                                chainId: TAIN_CONFIG.CHAIN_ID_HEX,
+                                chainId: ethers.utils.hexValue(TAIN_CONFIG.CHAIN_ID),
                                 chainName: TAIN_CONFIG.CHAIN_NAME,
                                 nativeCurrency: {
                                     name: 'BNB',
@@ -135,9 +117,6 @@ class WalletManager {
                                 blockExplorerUrls: [TAIN_CONFIG.BLOCK_EXPLORER]
                             }],
                         });
-                        // Refresh provider after adding network
-                        this.provider = new ethers.providers.Web3Provider(window.ethereum);
-                        this.signer = this.provider.getSigner();
                     } catch (addError) {
                         console.error('Failed to add network:', addError);
                         throw addError;
@@ -214,32 +193,7 @@ class WalletManager {
         await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
         return true;
     }
-
-    /**
-     * Disconnect wallet
-     */
-    disconnect() {
-        this.provider = null;
-        this.signer = null;
-        this.userAddress = null;
-        this.contract = null;
-        this.isConnected = false;
-        this.connectionMethod = null;
-        console.log('👋 Wallet disconnected');
-    }
-
-    /**
-     * Get connection status
-     */
-    getStatus() {
-        return {
-            isConnected: this.isConnected,
-            address: this.userAddress,
-            method: this.connectionMethod
-        };
-    }
 }
 
 // Export global instance
 window.walletManager = new WalletManager();
-window.TAIN_CONFIG = TAIN_CONFIG;

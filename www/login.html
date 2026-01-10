@@ -9,7 +9,6 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
         rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -261,6 +260,7 @@
             text-decoration: underline;
         }
 
+        /* Floating balls decoration */
         .deco-ball {
             position: fixed;
             border-radius: 50%;
@@ -418,20 +418,25 @@
 
             try {
                 if (!window.ethereum) {
-                    // No injected wallet - open MetaMask with deep link
-                    // After connecting, MetaMask will redirect back to our app via minepool:// or https://minepool.app
-                    const returnUrl = 'https://minepool.app/login.html';
-                    const metamaskDeepLink = 'https://metamask.app.link/dapp/minepool.app/login.html';
-
-                    showSuccess('Opening MetaMask...');
-
-                    setTimeout(() => {
-                        window.location.href = metamaskDeepLink;
-                    }, 500);
-                    return;
+                    // Check if we are on mobile or in a WebView (like Capacitor)
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    const isCapacitor = !!(window.Capacitor);
+                    
+                    if (isMobile || isCapacitor) {
+                        // Open MetaMask in-app browser via deep link
+                        const appUrl = window.location.host + window.location.pathname;
+                        const metamaskDeepLink = 'https://metamask.app.link/dapp/' + appUrl;
+                        showError('Opening MetaMask...');
+                        setTimeout(() => {
+                            window.location.href = metamaskDeepLink;
+                        }, 500);
+                        return;
+                    } else {
+                        showError('Please install MetaMask or Trust Wallet');
+                        return;
+                    }
                 }
 
-                // Injected wallet available - connect directly
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 const walletAddress = accounts[0];
                 const message = `Login to Mine Pool: ${walletAddress} at ${Date.now()}`;
