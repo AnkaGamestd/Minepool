@@ -132,21 +132,25 @@ async function completeLogin(walletAddress, message, signature) {
     }
 }
 
-// Subscribe to connection events
-appkit.subscribeAccount(async (account) => {
-    console.log('Account update:', account);
-    if (account && account.address && account.isConnected) {
-        await handleWalletConnection(account.address);
-    }
-});
+// Subscribe to connection events (only on login page for auto-auth)
+const isLoginPage = window.location.pathname.includes('login');
 
-// Also subscribe to state
-appkit.subscribeState(async (state) => {
-    console.log('State update:', state);
-    if (state.address && state.selectedNetworkId) {
-        await handleWalletConnection(state.address);
-    }
-});
+if (isLoginPage) {
+    appkit.subscribeAccount(async (account) => {
+        console.log('Account update:', account);
+        if (account && account.address && account.isConnected) {
+            await handleWalletConnection(account.address);
+        }
+    });
+
+    // Also subscribe to state
+    appkit.subscribeState(async (state) => {
+        console.log('State update:', state);
+        if (state.address && state.selectedNetworkId) {
+            await handleWalletConnection(state.address);
+        }
+    });
+}
 
 // Check if already logged in (only on login page)
 async function checkAuth() {
