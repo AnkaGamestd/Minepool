@@ -9,7 +9,6 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
         rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -101,38 +100,11 @@
             color: #00ff88;
         }
 
-        .btn-wallet {
-            width: 100%;
-            padding: 20px;
-            font-size: 18px;
-            background: linear-gradient(135deg, #f0b90b 0%, #d4a00a 50%, #b8860b 100%);
-            border: none;
-            border-radius: 16px;
-            color: #1a1a1a;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: 700;
-            cursor: pointer;
+        /* AppKit Button Container */
+        .appkit-container {
             display: flex;
-            align-items: center;
             justify-content: center;
-            gap: 12px;
-            box-shadow: 0 8px 32px rgba(240, 185, 11, 0.4);
-            transition: all 0.3s;
-        }
-
-        .btn-wallet:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 40px rgba(240, 185, 11, 0.5);
-        }
-
-        .btn-wallet:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-wallet .icon {
-            font-size: 28px;
+            margin: 20px 0;
         }
 
         .features {
@@ -251,10 +223,10 @@
 
             <div id="message" class="message"></div>
 
-            <button class="btn-wallet" id="connect-btn">
-                <span class="icon">🪙</span>
-                <span id="btn-text">Connect Wallet</span>
-            </button>
+            <!-- AppKit Connect Button -->
+            <div class="appkit-container">
+                <appkit-button></appkit-button>
+            </div>
 
             <div class="features">
                 <div class="feature">
@@ -303,94 +275,8 @@
         </div>
     </div>
 
-    <script>
-        const API_URL = '/api/auth';
-        const msgEl = document.getElementById('message');
-        const btn = document.getElementById('connect-btn');
-        const btnText = document.getElementById('btn-text');
-
-        function showMessage(text, type) {
-            msgEl.textContent = text;
-            msgEl.className = 'message show ' + type;
-        }
-
-        function setLoading(loading) {
-            btn.disabled = loading;
-            btnText.textContent = loading ? 'Connecting...' : 'Connect Wallet';
-        }
-
-        // Check if injected wallet exists (we're in MetaMask/TrustWallet browser)
-        async function connectInjected() {
-            try {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                const walletAddress = accounts[0];
-                const message = `Login to Mine Pool: ${walletAddress} at ${Date.now()}`;
-
-                btnText.textContent = 'Sign message...';
-                const signature = await window.ethereum.request({ method: 'personal_sign', params: [message, walletAddress] });
-
-                btnText.textContent = 'Signing in...';
-                const urlParams = new URLSearchParams(window.location.search);
-                const response = await fetch(`${API_URL}/wallet-login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ walletAddress, message, signature, referralCode: urlParams.get('ref') }),
-                    credentials: 'include'
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    showMessage('Success! Redirecting...', 'success');
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    localStorage.setItem('walletAddress', walletAddress);
-                    setTimeout(() => {
-                        window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
-                    }, 1000);
-                } else {
-                    showMessage(data.error || 'Login failed', 'error');
-                    setLoading(false);
-                }
-            } catch (e) {
-                if (e.code === 4001) {
-                    showMessage('Connection rejected', 'error');
-                } else {
-                    showMessage('Connection failed: ' + e.message, 'error');
-                }
-                setLoading(false);
-            }
-        }
-
-        // Open MetaMask deep link for mobile
-        function openMetaMaskDeepLink() {
-            showMessage('Opening MetaMask...', 'success');
-            // This deep link opens MetaMask and loads our dApp in its browser
-            // After user connects, they'll be in MetaMask browser viewing our app
-            window.location.href = 'https://metamask.app.link/dapp/minepool.app/login.html';
-        }
-
-        btn.addEventListener('click', async () => {
-            setLoading(true);
-
-            if (window.ethereum) {
-                // We have an injected wallet (running in wallet browser)
-                await connectInjected();
-            } else {
-                // No injected wallet - open MetaMask
-                openMetaMaskDeepLink();
-            }
-        });
-
-        // Check if already logged in
-        (async () => {
-            try {
-                const response = await fetch(`${API_URL}/me`, { credentials: 'include' });
-                const data = await response.json();
-                if (data.success && data.user) {
-                    window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
-                }
-            } catch (e) { }
-        })();
-    </script>
+    <!-- Load bundled WalletConnect -->
+    <script src="/js/dist/wallet-bundle.iife.js"></script>
 </body>
 
 </html>
