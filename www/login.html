@@ -9,6 +9,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
         rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -84,32 +85,54 @@
             display: none;
         }
 
-        .message.error {
+        .message.show {
             display: block;
+        }
+
+        .message.error {
             background: rgba(255, 68, 102, 0.15);
             border: 1px solid rgba(255, 68, 102, 0.5);
             color: #ff4466;
         }
 
         .message.success {
-            display: block;
             background: rgba(0, 255, 136, 0.15);
             border: 1px solid rgba(0, 255, 136, 0.5);
             color: #00ff88;
         }
 
-        .message.info {
-            display: block;
-            background: rgba(0, 212, 255, 0.15);
-            border: 1px solid rgba(0, 212, 255, 0.5);
-            color: #00d4ff;
+        .btn-wallet {
+            width: 100%;
+            padding: 20px;
+            font-size: 18px;
+            background: linear-gradient(135deg, #f0b90b 0%, #d4a00a 50%, #b8860b 100%);
+            border: none;
+            border-radius: 16px;
+            color: #1a1a1a;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 8px 32px rgba(240, 185, 11, 0.4);
+            transition: all 0.3s;
         }
 
-        /* AppKit button container */
-        #appkit-container {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
+        .btn-wallet:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(240, 185, 11, 0.5);
+        }
+
+        .btn-wallet:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-wallet .icon {
+            font-size: 28px;
         }
 
         .features {
@@ -228,10 +251,10 @@
 
             <div id="message" class="message"></div>
 
-            <!-- Reown AppKit button will be inserted here -->
-            <div id="appkit-container">
-                <appkit-button></appkit-button>
-            </div>
+            <button class="btn-wallet" id="connect-btn">
+                <span class="icon">🪙</span>
+                <span id="btn-text">Connect Wallet</span>
+            </button>
 
             <div class="features">
                 <div class="feature">
@@ -280,91 +303,87 @@
         </div>
     </div>
 
-    <!-- Reown AppKit CDN -->
-    <script type="module">
-        import { createAppKit } from 'https://cdn.jsdelivr.net/npm/@reown/appkit@1.6.8/+esm';
-        import { EthersAdapter } from 'https://cdn.jsdelivr.net/npm/@reown/appkit-adapter-ethers@1.6.8/+esm';
-        import { bsc } from 'https://cdn.jsdelivr.net/npm/@reown/appkit/networks/+esm';
+    <script>
+        const API_URL = '/api/auth';
+        const msgEl = document.getElementById('message');
+        const btn = document.getElementById('connect-btn');
+        const btnText = document.getElementById('btn-text');
 
-        const projectId = '552b76549cfdaa2c137b7670d9edfd69';
+        function showMessage(text, type) {
+            msgEl.textContent = text;
+            msgEl.className = 'message show ' + type;
+        }
 
-        const metadata = {
-            name: 'Mine Pool',
-            description: 'Play 8-Ball Pool and Win TAIN Tokens',
-            url: 'https://minepool.app',
-            icons: ['https://minepool.app/icon.png']
-        };
+        function setLoading(loading) {
+            btn.disabled = loading;
+            btnText.textContent = loading ? 'Connecting...' : 'Connect Wallet';
+        }
 
-        const appkit = createAppKit({
-            adapters: [new EthersAdapter()],
-            metadata,
-            networks: [bsc],
-            projectId,
-            themeMode: 'dark',
-            themeVariables: {
-                '--w3m-accent': '#ffd700'
-            },
-            features: {
-                analytics: false
-            }
-        });
+        // Check if injected wallet exists (we're in MetaMask/TrustWallet browser)
+        async function connectInjected() {
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const walletAddress = accounts[0];
+                const message = `Login to Mine Pool: ${walletAddress} at ${Date.now()}`;
 
-        // Listen for connection
-        appkit.subscribeState(async (state) => {
-            if (state.selectedNetworkId && state.address) {
-                const msgEl = document.getElementById('message');
-                msgEl.className = 'message info';
-                msgEl.textContent = 'Connected! Signing in...';
+                btnText.textContent = 'Sign message...';
+                const signature = await window.ethereum.request({ method: 'personal_sign', params: [message, walletAddress] });
 
-                try {
-                    const walletAddress = state.address;
-                    const message = `Login to Mine Pool: ${walletAddress} at ${Date.now()}`;
+                btnText.textContent = 'Signing in...';
+                const urlParams = new URLSearchParams(window.location.search);
+                const response = await fetch(`${API_URL}/wallet-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletAddress, message, signature, referralCode: urlParams.get('ref') }),
+                    credentials: 'include'
+                });
+                const data = await response.json();
 
-                    // Get provider and sign
-                    const provider = appkit.getWalletProvider();
-                    const signature = await provider.request({
-                        method: 'personal_sign',
-                        params: [message, walletAddress]
-                    });
-
-                    // Authenticate with backend
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const referralCode = urlParams.get('ref');
-
-                    const response = await fetch('/api/auth/wallet-login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ walletAddress, message, signature, referralCode }),
-                        credentials: 'include'
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        msgEl.className = 'message success';
-                        msgEl.textContent = 'Success! Redirecting...';
-                        localStorage.setItem('user', JSON.stringify(data.user));
-                        localStorage.setItem('walletAddress', walletAddress);
-                        setTimeout(() => {
-                            window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
-                        }, 1000);
-                    } else {
-                        msgEl.className = 'message error';
-                        msgEl.textContent = data.error || 'Login failed';
-                    }
-                } catch (e) {
-                    console.error('Sign error:', e);
-                    const msgEl = document.getElementById('message');
-                    msgEl.className = 'message error';
-                    msgEl.textContent = 'Signature failed. Please try again.';
+                if (data.success) {
+                    showMessage('Success! Redirecting...', 'success');
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('walletAddress', walletAddress);
+                    setTimeout(() => {
+                        window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
+                    }, 1000);
+                } else {
+                    showMessage(data.error || 'Login failed', 'error');
+                    setLoading(false);
                 }
+            } catch (e) {
+                if (e.code === 4001) {
+                    showMessage('Connection rejected', 'error');
+                } else {
+                    showMessage('Connection failed: ' + e.message, 'error');
+                }
+                setLoading(false);
+            }
+        }
+
+        // Open MetaMask deep link for mobile
+        function openMetaMaskDeepLink() {
+            showMessage('Opening MetaMask...', 'success');
+            // This deep link opens MetaMask and loads our dApp in its browser
+            // After user connects, they'll be in MetaMask browser viewing our app
+            window.location.href = 'https://metamask.app.link/dapp/minepool.app/login.html';
+        }
+
+        btn.addEventListener('click', async () => {
+            setLoading(true);
+
+            if (window.ethereum) {
+                // We have an injected wallet (running in wallet browser)
+                await connectInjected();
+            } else {
+                // No injected wallet - open MetaMask
+                openMetaMaskDeepLink();
             }
         });
 
         // Check if already logged in
         (async () => {
             try {
-                const response = await fetch('/api/auth/me', { credentials: 'include' });
+                const response = await fetch(`${API_URL}/me`, { credentials: 'include' });
                 const data = await response.json();
                 if (data.success && data.user) {
                     window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
