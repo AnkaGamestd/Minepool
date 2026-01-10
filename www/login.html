@@ -9,6 +9,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
         rel="stylesheet">
+    <!-- Ethers.js for blockchain interaction -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -113,10 +115,18 @@
             color: #00ff88;
         }
 
+        /* Wallet buttons container */
+        .wallet-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
         .btn-wallet {
             width: 100%;
-            padding: 20px;
-            font-size: 18px;
+            padding: 18px 20px;
+            font-size: 16px;
             background: linear-gradient(135deg, #f0b90b 0%, #d4a00a 50%, #b8860b 100%);
             border: none;
             border-radius: 16px;
@@ -144,14 +154,54 @@
         }
 
         .btn-wallet .icon {
-            font-size: 28px;
+            font-size: 24px;
+        }
+
+        .btn-wallet.btn-walletconnect {
+            background: linear-gradient(135deg, #3B99FC 0%, #2980b9 100%);
+            box-shadow: 0 8px 32px rgba(59, 153, 252, 0.4);
+        }
+
+        .btn-wallet.btn-walletconnect:hover {
+            box-shadow: 0 12px 40px rgba(59, 153, 252, 0.5);
+        }
+
+        .btn-wallet.btn-injected {
+            background: linear-gradient(135deg, #e2761b 0%, #cd6116 100%);
+            box-shadow: 0 8px 32px rgba(226, 118, 27, 0.4);
+        }
+
+        .btn-wallet.btn-injected:hover {
+            box-shadow: 0 12px 40px rgba(226, 118, 27, 0.5);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: #667;
+            font-size: 12px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .divider span {
+            padding: 0 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
         .features {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 12px;
-            margin: 30px 0;
+            margin: 25px 0;
         }
 
         .feature {
@@ -225,6 +275,12 @@
 
         .wallet-item {
             text-align: center;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .wallet-item:hover {
+            opacity: 1;
         }
 
         .wallet-item .icon {
@@ -307,6 +363,28 @@
             }
         }
 
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Hide buttons based on wallet availability */
+        .btn-injected.hidden {
+            display: none;
+        }
+
         @media (max-width: 480px) {
             .auth-card {
                 padding: 30px 20px;
@@ -318,8 +396,80 @@
 
             .btn-wallet {
                 padding: 16px;
-                font-size: 16px;
+                font-size: 14px;
             }
+
+            .features {
+                gap: 8px;
+            }
+
+            .feature {
+                padding: 12px;
+            }
+        }
+
+        /* QR Modal Styles (for WalletConnect) */
+        .qr-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .qr-modal.show {
+            display: flex;
+        }
+
+        .qr-modal-content {
+            background: linear-gradient(135deg, rgba(15, 25, 45, 0.98), rgba(10, 20, 35, 0.99));
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 24px;
+            padding: 30px;
+            text-align: center;
+            max-width: 380px;
+            width: 90%;
+        }
+
+        .qr-modal-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            color: #00d4ff;
+            margin-bottom: 20px;
+        }
+
+        .qr-code-container {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .qr-modal-instructions {
+            color: #8892a0;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .btn-close-modal {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 12px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-close-modal:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
@@ -340,10 +490,19 @@
             <div id="error-message" class="error-message"></div>
             <div id="success-message" class="success-message"></div>
 
-            <button class="btn-wallet" id="wallet-login">
-                <span class="icon">🪙</span>
-                <span class="btn-text">Connect Wallet</span>
-            </button>
+            <div class="wallet-buttons">
+                <!-- WalletConnect Button - Always visible -->
+                <button class="btn-wallet btn-walletconnect" id="btn-walletconnect">
+                    <span class="icon">🔗</span>
+                    <span class="btn-text">Connect with WalletConnect</span>
+                </button>
+
+                <!-- Injected Wallet Button - Only visible if MetaMask/Trust Wallet detected -->
+                <button class="btn-wallet btn-injected" id="btn-injected">
+                    <span class="icon">🦊</span>
+                    <span class="btn-text">Connect MetaMask</span>
+                </button>
+            </div>
 
             <div class="features">
                 <div class="feature">
@@ -369,7 +528,7 @@
             </div>
 
             <div class="wallets">
-                <p class="wallets-title">Supported Wallets</p>
+                <p class="wallets-title">Compatible Wallets</p>
                 <div class="wallets-grid">
                     <div class="wallet-item">
                         <div class="icon">🦊</div>
@@ -380,8 +539,12 @@
                         <div class="name">Trust Wallet</div>
                     </div>
                     <div class="wallet-item">
-                        <div class="icon">🔗</div>
-                        <div class="name">WalletConnect</div>
+                        <div class="icon">🔵</div>
+                        <div class="name">Coinbase</div>
+                    </div>
+                    <div class="wallet-item">
+                        <div class="icon">🌈</div>
+                        <div class="name">Rainbow</div>
                     </div>
                 </div>
                 <p class="network">Network: BSC Mainnet (Chain ID: 56)</p>
@@ -393,8 +556,65 @@
         </div>
     </div>
 
+    <!-- QR Code Modal for WalletConnect -->
+    <div class="qr-modal" id="qr-modal">
+        <div class="qr-modal-content">
+            <h2 class="qr-modal-title">Scan QR Code</h2>
+            <div class="qr-code-container" id="qr-code-container">
+                <!-- QR code will be rendered here -->
+                <div class="spinner" style="color: #000;"></div>
+            </div>
+            <p class="qr-modal-instructions">
+                Open your wallet app and scan this QR code to connect
+            </p>
+            <button class="btn-close-modal" id="btn-close-modal">Cancel</button>
+        </div>
+    </div>
+
     <script>
         const API_URL = '/api/auth';
+
+        // BSC Mainnet configuration
+        const BSC_CONFIG = {
+            CHAIN_ID: 56,
+            CHAIN_ID_HEX: '0x38',
+            CHAIN_NAME: 'BNB Smart Chain',
+            RPC_URL: 'https://bsc-dataseed.binance.org/',
+            BLOCK_EXPLORER: 'https://bscscan.com',
+            NATIVE_CURRENCY: {
+                name: 'BNB',
+                symbol: 'BNB',
+                decimals: 18
+            }
+        };
+
+        // Check if injected wallet is available
+        function hasInjectedWallet() {
+            return typeof window.ethereum !== 'undefined';
+        }
+
+        // Update UI based on wallet availability
+        function updateWalletButtons() {
+            const injectedBtn = document.getElementById('btn-injected');
+            const wcBtn = document.getElementById('btn-walletconnect');
+
+            if (hasInjectedWallet()) {
+                injectedBtn.classList.remove('hidden');
+
+                // Detect wallet type
+                if (window.ethereum.isMetaMask) {
+                    injectedBtn.innerHTML = '<span class="icon">🦊</span><span class="btn-text">Connect MetaMask</span>';
+                } else if (window.ethereum.isTrust) {
+                    injectedBtn.innerHTML = '<span class="icon">💙</span><span class="btn-text">Connect Trust Wallet</span>';
+                } else if (window.ethereum.isCoinbaseWallet) {
+                    injectedBtn.innerHTML = '<span class="icon">🔵</span><span class="btn-text">Connect Coinbase Wallet</span>';
+                } else {
+                    injectedBtn.innerHTML = '<span class="icon">👛</span><span class="btn-text">Connect Browser Wallet</span>';
+                }
+            } else {
+                injectedBtn.classList.add('hidden');
+            }
+        }
 
         function showError(msg) {
             const el = document.getElementById('error-message');
@@ -410,72 +630,156 @@
             document.getElementById('error-message').classList.remove('show');
         }
 
-        // Wallet Login
-        document.getElementById('wallet-login').addEventListener('click', async () => {
-            const btn = document.getElementById('wallet-login');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="icon">🔄</span><span class="btn-text">Connecting...</span>';
+        function setButtonLoading(btn, loading, text = '') {
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner"></span><span class="btn-text">${text || 'Connecting...'}</span>`;
+            } else {
+                btn.disabled = false;
+            }
+        }
+
+        // Switch to BSC network
+        async function switchToCorrectNetwork() {
+            if (!window.ethereum) return;
 
             try {
-                if (!window.ethereum) {
-                    // Check if we are on mobile or in a WebView (like Capacitor)
-                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                    const isCapacitor = !!(window.Capacitor);
-                    
-                    if (isMobile || isCapacitor) {
-                        // Open MetaMask in-app browser via deep link
-                        const appUrl = window.location.host + window.location.pathname;
-                        const metamaskDeepLink = 'https://metamask.app.link/dapp/' + appUrl;
-                        showError('Opening MetaMask...');
-                        setTimeout(() => {
-                            window.location.href = metamaskDeepLink;
-                        }, 500);
-                        return;
-                    } else {
-                        showError('Please install MetaMask or Trust Wallet');
-                        return;
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: BSC_CONFIG.CHAIN_ID_HEX }],
+                });
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: BSC_CONFIG.CHAIN_ID_HEX,
+                                chainName: BSC_CONFIG.CHAIN_NAME,
+                                nativeCurrency: BSC_CONFIG.NATIVE_CURRENCY,
+                                rpcUrls: [BSC_CONFIG.RPC_URL],
+                                blockExplorerUrls: [BSC_CONFIG.BLOCK_EXPLORER]
+                            }],
+                        });
+                    } catch (addError) {
+                        throw new Error('Failed to add BSC network to wallet');
                     }
+                } else {
+                    throw switchError;
                 }
+            }
+        }
 
+        // Authenticate with backend
+        async function authenticateWithBackend(walletAddress, message, signature) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const referralCode = urlParams.get('ref');
+
+            const response = await fetch(`${API_URL}/wallet-login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ walletAddress, message, signature, referralCode }),
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showSuccess('Connected! Redirecting...');
+                localStorage.setItem('user', JSON.stringify(data.user));
+                localStorage.setItem('walletAddress', walletAddress);
+                setTimeout(() => {
+                    window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
+                }, 1000);
+            } else {
+                throw new Error(data.error || 'Login failed');
+            }
+        }
+
+        // Connect with injected wallet (MetaMask, etc.)
+        async function connectInjected() {
+            const btn = document.getElementById('btn-injected');
+            const originalHTML = btn.innerHTML;
+
+            try {
+                setButtonLoading(btn, true, 'Connecting...');
+
+                // Request account access
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 const walletAddress = accounts[0];
+
+                // Switch to BSC network
+                await switchToCorrectNetwork();
+
+                // Create signature message
                 const message = `Login to Mine Pool: ${walletAddress} at ${Date.now()}`;
-                const signature = await window.ethereum.request({ method: 'personal_sign', params: [message, walletAddress] });
 
-                // Check for referral code in URL
-                const urlParams = new URLSearchParams(window.location.search);
-                const referralCode = urlParams.get('ref');
+                setButtonLoading(btn, true, 'Sign message...');
 
-                const response = await fetch(`${API_URL}/wallet-login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ walletAddress, message, signature, referralCode }),
-                    credentials: 'include'
+                // Request signature
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, walletAddress]
                 });
 
-                const data = await response.json();
+                setButtonLoading(btn, true, 'Authenticating...');
 
-                if (data.success) {
-                    showSuccess('Connected! Redirecting...');
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    localStorage.setItem('walletAddress', walletAddress);
-                    setTimeout(() => {
-                        window.location.href = data.user.profileComplete ? '/index.html' : '/complete-profile.html';
-                    }, 1000);
-                } else {
-                    showError(data.error || 'Login failed');
-                }
+                // Authenticate with backend
+                await authenticateWithBackend(walletAddress, message, signature);
+
             } catch (e) {
+                console.error('Connection error:', e);
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+
                 if (e.code === 4001) {
                     showError('Connection rejected by user');
+                } else if (e.message) {
+                    showError(e.message);
                 } else {
                     showError('Connection failed. Please try again.');
                 }
-                console.error(e);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<span class="icon">🪙</span><span class="btn-text">Connect Wallet</span>';
             }
+        }
+
+        // Connect with WalletConnect
+        async function connectWalletConnect() {
+            const btn = document.getElementById('btn-walletconnect');
+            const originalHTML = btn.innerHTML;
+
+            try {
+                setButtonLoading(btn, true, 'Opening WalletConnect...');
+
+                // For now, show a message about WalletConnect setup needed
+                // In production, this would open the WalletConnect modal
+                showError('WalletConnect requires a Project ID. Please get one from cloud.walletconnect.com and configure it in wallet-connect.js, or use an injected wallet like MetaMask.');
+
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+
+                // TODO: When WalletConnect Project ID is configured, uncomment below:
+                /*
+                const { createWeb3Modal, defaultWagmiConfig } = await import('https://cdn.jsdelivr.net/npm/@web3modal/wagmi@3.0.0/+esm');
+                
+                // Initialize and open the modal
+                // Refer to WalletConnect documentation for full implementation
+                */
+
+            } catch (e) {
+                console.error('WalletConnect error:', e);
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+                showError('WalletConnect connection failed. Please try again.');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('btn-injected').addEventListener('click', connectInjected);
+        document.getElementById('btn-walletconnect').addEventListener('click', connectWalletConnect);
+
+        // Close QR modal
+        document.getElementById('btn-close-modal').addEventListener('click', () => {
+            document.getElementById('qr-modal').classList.remove('show');
         });
 
         // Check if already logged in
@@ -490,6 +794,9 @@
                 // Not logged in
             }
         }
+
+        // Initialize
+        updateWalletButtons();
         checkAuth();
     </script>
 </body>
