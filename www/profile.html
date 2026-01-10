@@ -55,10 +55,19 @@
         <!-- COL 2: WALLET & STATS -->
         <div class="center-column">
             <div class="wallet-card glass-panel">
+                <!-- Wallet Connection Indicator -->
+                <div class="wallet-connection" id="wallet-connection"
+                    style="background: rgba(0, 212, 255, 0.1); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 11px;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #00ff88;"
+                        id="wallet-status-dot"></span>
+                    <span style="color: #8892a0;">Connected:</span>
+                    <span id="wallet-address" style="color: #00d4ff; font-family: monospace;">Not connected</span>
+                </div>
+
                 <div class="wallet-header">
                     <div class="wallet-label">
-                        <span class="wallet-icon">🪙</span>
-                        <span>TAIN Balance</span>
+                        <span class="wallet-icon">🎮</span>
+                        <span>In-Game Balance</span>
                     </div>
                 </div>
                 <div class="balance-display">
@@ -66,7 +75,26 @@
                         <span id="coin-balance">0</span>
                         <span style="font-size: 24px; color: #ffd700;">TAIN</span>
                     </div>
+                    <div style="font-size: 11px; color: #8892a0; margin-top: 4px;">Available for playing</div>
                 </div>
+
+                <!-- Wallet (On-Chain) Balance -->
+                <div
+                    style="background: rgba(255, 215, 0, 0.05); border: 1px solid rgba(255, 215, 0, 0.2); border-radius: 10px; padding: 12px; margin: 12px 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 11px; color: #8892a0; margin-bottom: 4px;">💳 Wallet Balance
+                                (On-Chain)</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #fff;">
+                                <span id="wallet-tain-balance">--</span>
+                                <span style="font-size: 14px; color: #ffd700;">TAIN</span>
+                            </div>
+                        </div>
+                        <button onclick="refreshWalletBalance()"
+                            style="background: rgba(255, 215, 0, 0.1); border: 1px solid #ffd700; color: #ffd700; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">🔄</button>
+                    </div>
+                </div>
+
                 <div class="wallet-actions">
                     <button class="action-btn btn-deposit" onclick="depositTain()">
                         ⬆️ Deposit
@@ -74,6 +102,12 @@
                     <button class="action-btn btn-withdraw" onclick="openWithdrawModal()">
                         ⬇️ Withdraw
                     </button>
+                </div>
+
+                <!-- Help Text -->
+                <div style="font-size: 10px; color: #667788; text-align: center; margin-top: 10px; line-height: 1.4;">
+                    💡 Deposit transfers TAIN from your wallet to the game.<br>
+                    Each wallet has its own game account.
                 </div>
             </div>
 
@@ -148,6 +182,19 @@
 
     <!-- SCRIPTS -->
     <script>
+        // TAIN Token Configuration
+        const TAIN_CONTRACT = '0x3fe59e287f58e5a83443bcfd34dd72f045663e8b';
+        const BSC_RPC = 'https://bsc-dataseed.binance.org/';
+
+        // ERC-20 balanceOf ABI
+        const ERC20_BALANCE_ABI = [{
+            "constant": true,
+            "inputs": [{ "name": "_owner", "type": "address" }],
+            "name": "balanceOf",
+            "outputs": [{ "name": "balance", "type": "uint256" }],
+            "type": "function"
+        }];
+
         // Rank info helper
         function getRankFromElo(elo) {
             if (elo >= 2400) return { rank: 'Grandmaster', icon: '👑', color: '#FF6B6B' };
@@ -157,6 +204,98 @@
             if (elo >= 1100) return { rank: 'Gold', icon: '🥇', color: '#FFD700' };
             if (elo >= 800) return { rank: 'Silver', icon: '🥈', color: '#A0A0A0' };
             return { rank: 'Bronze', icon: '🥉', color: '#CD7F32' };
+        }
+
+        // Get connected wallet address
+        async function getConnectedWallet() {
+            if (!window.ethereum) return null;
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                return accounts[0] || null;
+            } catch (e) {
+                console.error('Error getting wallet:', e);
+                return null;
+            }
+        }
+
+        // Update wallet address display
+        async function updateWalletDisplay() {
+            const walletAddress = await getConnectedWallet();
+            const addrEl = document.getElementById('wallet-address');
+            const dotEl = document.getElementById('wallet-status-dot');
+
+            if (walletAddress) {
+                const short = walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
+                addrEl.textContent = short;
+                addrEl.title = walletAddress;
+                dotEl.style.background = '#00ff88';
+
+                // Fetch on-chain balance
+                refreshWalletBalance();
+            } else {
+                addrEl.textContent = 'Not connected';
+                dotEl.style.background = '#ff4444';
+                document.getElementById('wallet-tain-balance').textContent = '--';
+            }
+        }
+
+        // Refresh wallet TAIN balance from BSC
+        async function refreshWalletBalance() {
+            const balanceEl = document.getElementById('wallet-tain-balance');
+            balanceEl.textContent = '...';
+
+            try {
+                const walletAddress = await getConnectedWallet();
+                if (!walletAddress) {
+                    balanceEl.textContent = '--';
+                    return;
+                }
+
+                // Create balanceOf call data
+                const functionSelector = '0x70a08231'; // balanceOf(address)
+                const paddedAddress = walletAddress.slice(2).padStart(64, '0');
+                const data = functionSelector + paddedAddress;
+
+                // Call BSC RPC
+                const response = await fetch(BSC_RPC, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'eth_call',
+                        params: [{
+                            to: TAIN_CONTRACT,
+                            data: data
+                        }, 'latest']
+                    })
+                });
+
+                const result = await response.json();
+                if (result.result) {
+                    const balanceWei = BigInt(result.result);
+                    const balance = Number(balanceWei) / (10 ** 18);
+                    balanceEl.textContent = balance.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                } else {
+                    balanceEl.textContent = '0';
+                }
+            } catch (e) {
+                console.error('Error fetching wallet balance:', e);
+                balanceEl.textContent = 'Error';
+            }
+        }
+
+        // Listen for wallet changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', function (accounts) {
+                console.log('Wallet changed:', accounts[0]);
+                updateWalletDisplay();
+                // Alert user about account switch
+                if (accounts[0]) {
+                    const short = accounts[0].slice(0, 6) + '...' + accounts[0].slice(-4);
+                    alert('⚠️ Wallet changed to ' + short + '\\n\\nNote: Each wallet has its own game account.\\nPlease refresh the page to switch accounts.');
+                }
+            });
         }
 
         // Load user data
@@ -521,6 +660,7 @@
         }
 
         loadProfile();
+        updateWalletDisplay();
     </script>
 
     <!-- Deposit Modal -->
