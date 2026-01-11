@@ -621,10 +621,16 @@ class MultiplayerServer {
     }
 
     updateUserStats(winner, loser, wager, eloResult, currency = 'coins') {
-        console.log(`💰 Processing stakes: ${winner.username} wins ${wager} ${currency} from ${loser.username}`);
+        console.log(`💰 Processing stakes: ${winner.username} wins ${wager} ${currency} from ${loser?.username || 'AI'}`);
+        console.log(`   Winner email: ${winner.email}, Loser email: ${loser?.email || 'N/A'}`);
 
-        // Update winner stats
-        if (this.users.has(winner.email)) {
+        const isAiWinner = !winner.email || winner.username?.startsWith('AI_');
+        const isAiLoser = !loser?.email || loser?.username?.startsWith('AI_');
+
+        console.log(`   Is AI winner: ${isAiWinner}, Is AI loser: ${isAiLoser}`);
+
+        // Update winner stats (skip if AI is the winner)
+        if (!isAiWinner && winner.email && this.users.has(winner.email)) {
             const user = this.users.get(winner.email);
             const oldBalance = currency === 'coins' ? (user.coins || 0) : (user.tainBalance || 0);
             user.elo = eloResult.winner.newElo;
@@ -637,10 +643,14 @@ class MultiplayerServer {
             }
             user.gamesPlayed = (user.gamesPlayed || 0) + 1;
             user.gamesWon = (user.gamesWon || 0) + 1;
+        } else if (isAiWinner) {
+            console.log(`   🤖 AI won - no balance update for AI`);
+        } else {
+            console.log(`   ⚠️ Winner ${winner.username} not found in users database`);
         }
 
-        // Update loser stats
-        if (this.users.has(loser.email)) {
+        // Update loser stats (skip if AI is the loser)
+        if (!isAiLoser && loser?.email && this.users.has(loser.email)) {
             const user = this.users.get(loser.email);
             const oldBalance = currency === 'coins' ? (user.coins || 0) : (user.tainBalance || 0);
             user.elo = eloResult.loser.newElo;
@@ -652,12 +662,18 @@ class MultiplayerServer {
                 console.log(`   ❌ ${loser.username} TAIN: ${oldBalance} → ${user.tainBalance} (-${wager})`);
             }
             user.gamesPlayed = (user.gamesPlayed || 0) + 1;
+        } else if (isAiLoser) {
+            console.log(`   🤖 AI lost - no balance deduction from AI`);
+        } else {
+            console.log(`   ⚠️ Loser ${loser?.username} not found in users database`);
         }
 
         // Persist changes to disk
         if (this.saveUsersCallback) {
             this.saveUsersCallback();
             console.log(`   💾 User data persisted to disk`);
+        } else {
+            console.log(`   ⚠️ No saveUsersCallback - changes NOT saved!`);
         }
     }
 
