@@ -4,7 +4,7 @@
  */
 
 class AIPlayer {
-    constructor(difficulty = 'hard') {
+    constructor(difficulty = 'expert') {
         this.difficulty = difficulty;
 
         // Difficulty settings - enhanced for smarter play
