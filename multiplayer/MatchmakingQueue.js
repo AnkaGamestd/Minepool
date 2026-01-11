@@ -81,9 +81,11 @@ class MatchmakingQueue {
         const actualCurrency = currency || tierConfig.currency;
 
         console.log(`🎮 Queue entry: tier=${tier}, stake=${actualStake}, currency=${actualCurrency}`);
+        console.log(`   Player data: email=${player.email}, wallet=${player.walletAddress}, oderId=${player.oderId}`);
 
         const queueEntry = {
             id: player.id,
+            oderId: player.oderId,  // CRITICAL for user lookup
             username: player.username,
             elo: player.elo || 1200,
             coins: player.coins || 1000,
