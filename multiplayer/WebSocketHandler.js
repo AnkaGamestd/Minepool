@@ -627,22 +627,68 @@ class MultiplayerServer {
     }
 
     updateUserStats(winner, loser, wager, eloResult, currency = 'coins') {
-        console.log(`💰 Processing stakes: ${winner.username} wins ${wager} ${currency} from ${loser?.username || 'AI'}`);
+        console.log(`\n💰 ========== BALANCE UPDATE ==========`);
+        console.log(`   Wager: ${wager} ${currency}`);
+        console.log(`   Winner: ${winner?.username}`);
+        console.log(`   Winner email: ${winner?.email}`);
+        console.log(`   Winner wallet: ${winner?.walletAddress}`);
+        console.log(`   Winner oderId: ${winner?.oderId}`);
+        console.log(`   Loser: ${loser?.username}`);
+        console.log(`   Loser email: ${loser?.email}`);
+        console.log(`   Total users in database: ${this.users.size}`);
 
-        const isAiWinner = !winner.email || winner.username?.startsWith('AI_');
+        const isAiWinner = !winner?.email || winner?.username?.startsWith('AI_');
         const isAiLoser = !loser?.email || loser?.username?.startsWith('AI_');
 
-        // Helper to find user by email or wallet address
+        console.log(`   Is AI winner: ${isAiWinner}, Is AI loser: ${isAiLoser}`);
+
+        // Comprehensive user finder with multiple fallbacks
         const findUser = (player) => {
-            if (!player) return null;
+            if (!player) {
+                console.log(`   findUser: player is null`);
+                return null;
+            }
+
+            console.log(`   findUser: Looking for ${player.username}...`);
+
+            // Method 1: Direct email lookup
             if (player.email && this.users.has(player.email)) {
+                console.log(`   findUser: ✓ Found by email: ${player.email}`);
                 return this.users.get(player.email);
             }
+
+            // Method 2: Wallet address search
             if (player.walletAddress) {
                 for (const [email, user] of this.users) {
-                    if (user.walletAddress === player.walletAddress) return user;
+                    if (user.walletAddress === player.walletAddress) {
+                        console.log(`   findUser: ✓ Found by wallet: ${player.walletAddress}`);
+                        return user;
+                    }
                 }
             }
+
+            // Method 3: User ID search
+            if (player.oderId) {
+                for (const [email, user] of this.users) {
+                    if (user.id === player.oderId) {
+                        console.log(`   findUser: ✓ Found by oderId: ${player.oderId}`);
+                        return user;
+                    }
+                }
+            }
+
+            // Method 4: Username search (last resort)
+            if (player.username) {
+                for (const [email, user] of this.users) {
+                    if (user.username === player.username) {
+                        console.log(`   findUser: ✓ Found by username: ${player.username}`);
+                        return user;
+                    }
+                }
+            }
+
+            console.log(`   findUser: ✗ NOT FOUND for ${player.username}`);
+            console.log(`   Searched with: email=${player.email}, wallet=${player.walletAddress}, oderId=${player.oderId}`);
             return null;
         };
 
@@ -654,18 +700,18 @@ class MultiplayerServer {
                 user.elo = eloResult.winner.newElo;
                 if (currency === 'coins') {
                     user.coins = (user.coins || 0) + wager;
-                    console.log(`   ✅ ${winner.username} coins: ${oldBalance} → ${user.coins} (+${wager})`);
+                    console.log(`   ✅ WINNER ${winner.username}: coins ${oldBalance} → ${user.coins} (+${wager})`);
                 } else {
                     user.tainBalance = (user.tainBalance || 0) + wager;
-                    console.log(`   ✅ ${winner.username} TAIN: ${oldBalance} → ${user.tainBalance} (+${wager})`);
+                    console.log(`   ✅ WINNER ${winner.username}: TAIN ${oldBalance} → ${user.tainBalance} (+${wager})`);
                 }
                 user.gamesPlayed = (user.gamesPlayed || 0) + 1;
                 user.gamesWon = (user.gamesWon || 0) + 1;
             } else {
-                console.log(`   ⚠️ Winner ${winner.username} not found`);
+                console.log(`   ❌ FAILED: Winner ${winner.username} NOT FOUND in database!`);
             }
         } else {
-            console.log(`   🤖 AI won`);
+            console.log(`   🤖 AI won - no balance update needed`);
         }
 
         // Update loser stats
@@ -676,24 +722,27 @@ class MultiplayerServer {
                 user.elo = eloResult.loser.newElo;
                 if (currency === 'coins') {
                     user.coins = Math.max(0, (user.coins || 0) - wager);
-                    console.log(`   ❌ ${loser.username} coins: ${oldBalance} → ${user.coins} (-${wager})`);
+                    console.log(`   ❌ LOSER ${loser.username}: coins ${oldBalance} → ${user.coins} (-${wager})`);
                 } else {
                     user.tainBalance = Math.max(0, (user.tainBalance || 0) - wager);
-                    console.log(`   ❌ ${loser.username} TAIN: ${oldBalance} → ${user.tainBalance} (-${wager})`);
+                    console.log(`   ❌ LOSER ${loser.username}: TAIN ${oldBalance} → ${user.tainBalance} (-${wager})`);
                 }
                 user.gamesPlayed = (user.gamesPlayed || 0) + 1;
             } else {
-                console.log(`   ⚠️ Loser ${loser?.username} not found`);
+                console.log(`   ❌ FAILED: Loser ${loser?.username} NOT FOUND in database!`);
             }
         } else {
-            console.log(`   🤖 AI lost`);
+            console.log(`   🤖 AI lost - no balance deduction needed`);
         }
 
         // Persist changes
         if (this.saveUsersCallback) {
             this.saveUsersCallback();
-            console.log(`   💾 Saved`);
+            console.log(`   💾 Changes saved to disk`);
+        } else {
+            console.log(`   ⚠️ WARNING: No saveUsersCallback - changes NOT persisted!`);
         }
+        console.log(`💰 ======================================\n`);
     }
 
     // === Chat ===
