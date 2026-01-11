@@ -633,12 +633,18 @@ class MultiplayerServer {
         console.log(`   Winner email: ${winner?.email}`);
         console.log(`   Winner wallet: ${winner?.walletAddress}`);
         console.log(`   Winner oderId: ${winner?.oderId}`);
+        console.log(`   Winner isBot: ${winner?.isBot}`);
         console.log(`   Loser: ${loser?.username}`);
         console.log(`   Loser email: ${loser?.email}`);
+        console.log(`   Loser isBot: ${loser?.isBot}`);
         console.log(`   Total users in database: ${this.users.size}`);
 
-        const isAiWinner = !winner?.email || winner?.username?.startsWith('AI_');
-        const isAiLoser = !loser?.email || loser?.username?.startsWith('AI_');
+        // FIX: Better AI detection - only AI if isBot=true or (no oderId AND username starts with AI_)
+        // A player with oderId is ALWAYS a real user from the database
+        const isAiWinner = winner?.isBot === true ||
+            (!winner?.oderId && !winner?.email && winner?.username?.startsWith('AI_'));
+        const isAiLoser = loser?.isBot === true ||
+            (!loser?.oderId && !loser?.email && loser?.username?.startsWith('AI_'));
 
         console.log(`   Is AI winner: ${isAiWinner}, Is AI loser: ${isAiLoser}`);
 
