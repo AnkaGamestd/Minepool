@@ -974,16 +974,36 @@ class NetworkManager {
                 b.id > 0 && b.id !== 8 && b.type === aiGroup && b.active
             ).length === 0;
 
+            let winner, reason;
             if (aiHadAllBallsCleared && !pocketedBalls.some(b => b.id === 0)) {
                 // AI cleared all its balls and pocketed 8-ball legally - AI WINS
                 console.log('🤖 AI pocketed 8-ball legally - AI WINS!');
-                const aiWinnerNum = this.myPlayerNumber === 1 ? 2 : 1;
-                this.game.onGameOver({ winner: aiWinnerNum, reason: 'AI pocketed the 8-ball!' });
+                winner = this.myPlayerNumber === 1 ? 2 : 1;
+                reason = 'AI pocketed the 8-ball!';
             } else {
                 // AI pocketed 8-ball illegally - HUMAN WINS
                 console.log('🏆 AI pocketed 8-ball early - YOU WIN!');
-                this.game.onGameOver({ winner: this.myPlayerNumber, reason: 'Opponent pocketed 8-ball early!' });
+                winner = this.myPlayerNumber;
+                reason = 'Opponent pocketed 8-ball early!';
             }
+
+            // CRITICAL: Send game over to server for balance update!
+            console.log('📤 Sending game over to server for balance update...');
+            this.socket.emit('shot_result', {
+                isAiShot: true,
+                gameOver: true,
+                winner: winner,
+                reason: reason,
+                balls: this.game.balls.map(b => ({
+                    id: b.id,
+                    x: b.x,
+                    y: b.y,
+                    active: b.active,
+                    pocketed: !b.active
+                }))
+            });
+
+            this.game.onGameOver({ winner, reason });
             return;
         }
 
