@@ -150,9 +150,9 @@ class AIPlayer {
         // Calculate shot angle (in radians)
         const angle = Math.atan2(cueToGhost.y, cueToGhost.x);
 
-        // Calculate power based on distance
+        // Calculate power based on distance - higher power for AI
         const totalDist = distToGhost + distToPocket;
-        const power = Math.min(0.85, Math.max(0.3, totalDist / 800));
+        const power = Math.min(0.95, Math.max(0.45, totalDist / 600));
 
         return {
             angle,
@@ -247,7 +247,7 @@ class AIPlayer {
             );
             return {
                 angle,
-                power: 0.3, // Soft safety shot
+                power: 0.55, // Medium power shot
                 spinX: 0,
                 spinY: -0.3, // Draw for position
                 targetBall: nearestBall.id,

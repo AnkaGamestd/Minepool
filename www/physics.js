@@ -8,7 +8,7 @@ class PhysicsEngine {
         // Table scale
         this.SCALE = 100;
         this.BALL_RADIUS = 14;
-        this.MAX_CUE_SPEED = 750;      // Increased for more powerful shots
+        this.MAX_CUE_SPEED = 950;      // Higher for more powerful shots and ball movement
 
         // Detect mobile device (for UI purposes, not physics)
         this.isMobile = ('ontouchstart' in window) ||
