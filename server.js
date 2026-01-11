@@ -353,7 +353,7 @@ app.post('/api/auth/wallet-login', async (req, res) => {
                 username: `Player_${shortAddress}`,
                 email: userEmail,
                 walletAddress: normalizedAddress,
-                coins: 0, // No coins, only TAIN
+                coins: 500, // Welcome bonus - 500 TAIN for new users
                 tainBalance: 0, // Off-chain TAIN balance
                 diamonds: 100,
                 elo: 1200,
