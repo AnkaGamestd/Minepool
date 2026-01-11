@@ -83,6 +83,7 @@ class MultiplayerServer {
             oderId: user.id,
             username: user.username,
             email: user.email,
+            walletAddress: user.walletAddress,  // CRITICAL for balance updates!
             elo: user.elo || 1200,
             coins: user.coins || 1000,
             tainBalance: user.tainBalance || 0,
