@@ -563,6 +563,11 @@ class MultiplayerServer {
         const winner = winnerNum === 1 ? room.host : room.guest;
         const loser = winnerNum === 1 ? room.guest : room.host;
 
+        console.log(`🏁 Game Over: Room ${room.id}`);
+        console.log(`   Wager: ${room.wager} ${room.currency}`);
+        console.log(`   Winner: ${winner?.username} (email: ${winner?.email})`);
+        console.log(`   Loser: ${loser?.username} (email: ${loser?.email})`);
+
         // Calculate ELO changes
         const eloResult = EloCalculator.calculateNewRatings(
             winner.elo || 1200,

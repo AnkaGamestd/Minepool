@@ -54,14 +54,44 @@ class MatchmakingQueue {
             tier = 'casual';
         }
 
+        // Tier-to-stake mapping (ensures correct wager even if stake=0)
+        const tierStakes = {
+            // Coins tiers
+            casual: { stake: 50, currency: 'coins' },
+            competitive: { stake: 250, currency: 'coins' },
+            highStakes: { stake: 1000, currency: 'coins' },
+            bronze: { stake: 50, currency: 'coins' },
+            silver: { stake: 100, currency: 'coins' },
+            gold: { stake: 250, currency: 'coins' },
+            diamond: { stake: 500, currency: 'coins' },
+            ruby: { stake: 1000, currency: 'coins' },
+            crown: { stake: 2500, currency: 'coins' },
+            // TAIN tiers
+            starter: { stake: 10, currency: 'tainBalance' },
+            rookie: { stake: 50, currency: 'tainBalance' },
+            pro: { stake: 100, currency: 'tainBalance' },
+            elite: { stake: 250, currency: 'tainBalance' },
+            master: { stake: 500, currency: 'tainBalance' },
+            legend: { stake: 1000, currency: 'tainBalance' }
+        };
+
+        // Determine actual stake and currency from tier if not explicitly provided
+        const tierConfig = tierStakes[tier] || tierStakes.casual;
+        const actualStake = stake > 0 ? stake : tierConfig.stake;
+        const actualCurrency = currency || tierConfig.currency;
+
+        console.log(`🎮 Queue entry: tier=${tier}, stake=${actualStake}, currency=${actualCurrency}`);
+
         const queueEntry = {
             id: player.id,
             username: player.username,
             elo: player.elo || 1200,
             coins: player.coins || 1000,
             tainBalance: player.tainBalance || 0,
-            currency: player.currency || 'coins',
-            stake: player.stake || 50,
+            walletAddress: player.walletAddress,
+            email: player.email,
+            currency: actualCurrency,
+            stake: actualStake,
             joinedAt: Date.now()
         };
 
