@@ -668,31 +668,58 @@ class NetworkManager {
 
                     if (!cueToBallClear || !ballToPocketClear) continue;
 
-                    // IMPROVED SCORING - favor easier shots more strongly
-                    // Base: closer = better
-                    const distScore = 1200 / (cueToGhostDist + ballToPocketDist + 1);
+                    // EXPERT SCORING - heavily favor easy high-percentage shots
+                    // Base distance score (closer = exponentially better)
+                    const totalDist = cueToGhostDist + ballToPocketDist;
+                    const distScore = 2000 / (totalDist + 50);
 
-                    // Strong cut angle penalty - straight shots are MUCH better
-                    const cutPenalty = cutAngle * cutAngle * 400; // Quadratic penalty for cuts
+                    // MASSIVE cut angle penalty - straight shots are MUCH MUCH better
+                    // cutAngle in radians: 0 = straight, PI/2 = 90 degrees
+                    const cutDegrees = cutAngle * 180 / Math.PI;
+                    let cutPenalty = 0;
+                    if (cutDegrees < 15) cutPenalty = 0;           // Straight shot - no penalty
+                    else if (cutDegrees < 30) cutPenalty = 50;     // Good cut - small penalty
+                    else if (cutDegrees < 45) cutPenalty = 150;    // Medium cut - moderate penalty
+                    else if (cutDegrees < 60) cutPenalty = 350;    // Hard cut - big penalty
+                    else cutPenalty = 600;                          // Very hard cut - huge penalty
 
-                    // Huge bonus for balls very close to pocket (hanger shots)
+                    // HUGE bonus for balls very close to pocket (hanger shots)
                     let nearPocketBonus = 0;
-                    if (ballToPocketDist < 60) nearPocketBonus = 500;  // Hanger!
-                    else if (ballToPocketDist < 100) nearPocketBonus = 300;
-                    else if (ballToPocketDist < 150) nearPocketBonus = 150;
+                    if (ballToPocketDist < 50) nearPocketBonus = 800;     // Absolute hanger!
+                    else if (ballToPocketDist < 80) nearPocketBonus = 500; // Very close
+                    else if (ballToPocketDist < 120) nearPocketBonus = 300; // Close
+                    else if (ballToPocketDist < 180) nearPocketBonus = 150; // Reasonable
 
-                    // Bonus for straight shots (cut < 15 degrees)
-                    const straightBonus = cutAngle < 0.26 ? 200 : 0;
+                    // Bonus for straight shots (cut < 20 degrees)
+                    const straightBonus = cutDegrees < 20 ? 300 : (cutDegrees < 35 ? 100 : 0);
 
-                    const score = distScore + nearPocketBonus + straightBonus - cutPenalty;
+                    // Corner pocket bonus (easier than side pockets)
+                    const isCornerPocket = (pocket.x < 100 || pocket.x > 850) && (pocket.y < 100 || pocket.y > 400);
+                    const cornerBonus = isCornerPocket ? 80 : 0;
+
+                    // Short cue-to-ball distance bonus (easier to aim)
+                    const shortCueBonus = cueToGhostDist < 150 ? 100 : (cueToGhostDist < 250 ? 50 : 0);
+
+                    // Center table position bonus (more options for next shot)
+                    const ballCenterX = Math.abs(ball.x - 480);
+                    const ballCenterY = Math.abs(ball.y - 250);
+                    const centerBonus = (ballCenterX < 200 && ballCenterY < 150) ? 30 : 0;
+
+                    const score = distScore + nearPocketBonus + straightBonus + cornerBonus + shortCueBonus + centerBonus - cutPenalty;
+
+                    // Calculate power with cut angle adjustment
+                    // Harder cuts need more power to overcome throw effect
+                    let power = calcPower(cueToGhostDist, ballToPocketDist);
+                    if (cutDegrees > 30) power = Math.min(90, power * 1.1); // Add 10% for medium cuts
+                    if (cutDegrees > 50) power = Math.min(95, power * 1.15); // Add 15% for hard cuts
 
                     shots.push({
                         ball,
                         pocket,
                         ghostBall: { x: ghostX, y: ghostY },
                         angle: aimAngle,
-                        power: calcPower(cueToGhostDist, ballToPocketDist),
-                        cutAngle: cutAngle * 180 / Math.PI,
+                        power,
+                        cutAngle: cutDegrees,
                         score,
                         cueToBallDist: cueToGhostDist,
                         ballToPocketDist
@@ -1046,9 +1073,14 @@ class NetworkManager {
             const finalAngle = bestShot.angle;
             const finalPower = bestShot.power;
 
+            // Better logging
+            let shotTypeStr = 'DIRECT';
+            if (bestShot.isCombo) shotTypeStr = `COMBO (${bestShot.ball.id}→${bestShot.comboBall.id})`;
+            else if (bestShot.isBank) shotTypeStr = 'BANK';
+            else if (bestShot.isSafety) shotTypeStr = 'SAFETY';
+
             const spinInfo = `spin=(${spin.spinX.toFixed(1)},${spin.spinY.toFixed(1)})`;
-            const shotType = bestShot.isSafety ? 'SAFETY' : `cut=${bestShot.cutAngle.toFixed(0)}°, ${spinInfo}`;
-            console.log(`🤖 EXPERT AI: ball ${bestShot.ball.id} → pocket, ${shotType}, power=${finalPower.toFixed(0)}%`);
+            console.log(`🤖 EXPERT AI: ${shotTypeStr} ball ${bestShot.ball.id}, cut=${(bestShot.cutAngle || 0).toFixed(0)}°, power=${finalPower.toFixed(0)}%, score=${bestShot.score?.toFixed(0) || '?'}, ${spinInfo}`);
 
             // Execute AI shot with spin
             this.game.gameState = 'shooting';
