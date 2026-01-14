@@ -596,83 +596,98 @@ class NetworkManager {
 
             alert('AIPlayer class is loaded, creating instance...');
 
-            // Create AI player instance if not exists
-            if (!this.aiPlayerInstance) {
-                this.aiPlayerInstance = new AIPlayer('expert');
-            }
+            try {
+                // Create AI player instance if not exists
+                if (!this.aiPlayerInstance) {
+                    this.aiPlayerInstance = new AIPlayer('expert');
+                }
 
-            // Determine target type for AI
-            let targetType = null;
-            if (aiGroup === 'solid') targetType = 'solids';
-            else if (aiGroup === 'stripe') targetType = 'stripes';
+                // Determine target type for AI
+                let targetType = null;
+                if (aiGroup === 'solid') targetType = 'solids';
+                else if (aiGroup === 'stripe') targetType = 'stripes';
 
-            // Calculate the best shot using AIPlayer
-            const aiShot = this.aiPlayerInstance.calculateShot(
-                this.game.gameState || {},
-                freshBalls,
-                freshCueBall,
-                pockets,
-                targetType
-            );
+                alert('Calling calculateShot...');
 
-            if (!aiShot) {
-                console.log('🤖 AIPlayer returned no shot, using simple fallback');
-                // Fallback: just hit the nearest ball at medium power
-                const nearestBall = freshBalls
-                    .filter(b => b.id > 0 && b.active && b.id !== 8)
-                    .sort((a, b) => {
-                        const distA = Math.sqrt((a.x - freshCueBall.x) ** 2 + (a.y - freshCueBall.y) ** 2);
-                        const distB = Math.sqrt((b.x - freshCueBall.x) ** 2 + (b.y - freshCueBall.y) ** 2);
-                        return distA - distB;
-                    })[0];
+                // Calculate the best shot using AIPlayer
+                const aiShot = this.aiPlayerInstance.calculateShot(
+                    this.game.gameState || {},
+                    freshBalls,
+                    freshCueBall,
+                    pockets,
+                    targetType
+                );
 
-                if (nearestBall) {
-                    const angle = Math.atan2(nearestBall.y - freshCueBall.y, nearestBall.x - freshCueBall.x);
-                    this.game.physics.applyShot(freshCueBall, angle, 50, 0, 0);
-                    if (this.game.sound) this.game.sound.playCueHit(50);
-                    console.log('🤖 Fallback shot executed at nearest ball');
+                alert(`calculateShot returned: ${aiShot ? 'GOT SHOT' : 'NULL'}`);
+
+                if (!aiShot) {
+                    console.log('🤖 AIPlayer returned no shot, using simple fallback');
+                    alert('Using fallback shot...');
+                    // Fallback: just hit the nearest ball at medium power
+                    const nearestBall = freshBalls
+                        .filter(b => b.id > 0 && b.active && b.id !== 8)
+                        .sort((a, b) => {
+                            const distA = Math.sqrt((a.x - freshCueBall.x) ** 2 + (a.y - freshCueBall.y) ** 2);
+                            const distB = Math.sqrt((b.x - freshCueBall.x) ** 2 + (b.y - freshCueBall.y) ** 2);
+                            return distA - distB;
+                        })[0];
+
+                    if (nearestBall) {
+                        alert(`Fallback: shooting at ball ${nearestBall.id}`);
+                        const angle = Math.atan2(nearestBall.y - freshCueBall.y, nearestBall.x - freshCueBall.x);
+                        this.game.physics.applyShot(freshCueBall, angle, 50, 0, 0);
+                        if (this.game.sound) this.game.sound.playCueHit(50);
+                        console.log('🤖 Fallback shot executed at nearest ball');
+                        this.aiShotPending = false;
+                        this.waitForAiShotComplete();
+                        return;
+                    }
                     this.aiShotPending = false;
-                    this.waitForAiShotComplete();
                     return;
                 }
+
+                // Convert AIPlayer shot format to our format
+                const bestShot = {
+                    ball: freshBalls.find(b => b.id === aiShot.targetBall) || freshBalls.find(b => b.id > 0 && b.active),
+                    pocket: aiShot.pocket || pockets[0],
+                    angle: aiShot.angle,
+                    power: aiShot.power * 100, // Convert 0-1 to 0-100
+                    cutAngle: (aiShot.cutAngle || 0) * 180 / Math.PI,
+                    isSafety: aiShot.type === 'safety' || aiShot.isSafety,
+                    ghostBall: aiShot.ghostBall
+                };
+
+                // Get spin from AI shot
+                const spin = {
+                    spinX: aiShot.spinX || 0,
+                    spinY: aiShot.spinY || 0
+                };
+
+                console.log(`🤖 AIPlayer shot: ${aiShot.type || 'direct'} on ball ${aiShot.targetBall}, power=${(aiShot.power * 100).toFixed(0)}%`);
+
+                // Set final angle and power from AIPlayer calculation
+                const finalAngle = bestShot.angle;
+                const finalPower = bestShot.power;
+
+                alert(`About to apply shot: angle=${finalAngle?.toFixed(2)}, power=${finalPower?.toFixed(0)}`);
+
+                this.game.physics.applyShot(freshCueBall, finalAngle, finalPower, spin.spinX, spin.spinY);
+
+                if (this.game.sound) {
+                    this.game.sound.playCueHit(finalPower);
+                }
+
+                alert('AI SHOT APPLIED!');
+                console.log('🤖 AI shot executed');
                 this.aiShotPending = false;
-                return;
+
+                // Wait for balls to stop and handle result LOCALLY (don't use checkShotResult which talks to server)
+                this.waitForAiShotComplete();
+            } catch (error) {
+                alert(`ERROR in AI: ${error.message}`);
+                console.error('AI shot error:', error);
+                this.aiShotPending = false;
             }
-
-            // Convert AIPlayer shot format to our format
-            const bestShot = {
-                ball: freshBalls.find(b => b.id === aiShot.targetBall) || freshBalls.find(b => b.id > 0 && b.active),
-                pocket: aiShot.pocket || pockets[0],
-                angle: aiShot.angle,
-                power: aiShot.power * 100, // Convert 0-1 to 0-100
-                cutAngle: (aiShot.cutAngle || 0) * 180 / Math.PI,
-                isSafety: aiShot.type === 'safety' || aiShot.isSafety,
-                ghostBall: aiShot.ghostBall
-            };
-
-            // Get spin from AI shot
-            const spin = {
-                spinX: aiShot.spinX || 0,
-                spinY: aiShot.spinY || 0
-            };
-
-            console.log(`🤖 AIPlayer shot: ${aiShot.type || 'direct'} on ball ${aiShot.targetBall}, power=${(aiShot.power * 100).toFixed(0)}%`);
-
-            // Set final angle and power from AIPlayer calculation
-            const finalAngle = bestShot.angle;
-            const finalPower = bestShot.power;
-
-            this.game.physics.applyShot(freshCueBall, finalAngle, finalPower, spin.spinX, spin.spinY);
-
-            if (this.game.sound) {
-                this.game.sound.playCueHit(finalPower);
-            }
-
-            console.log('🤖 AI shot executed');
-            this.aiShotPending = false;
-
-            // Wait for balls to stop and handle result LOCALLY (don't use checkShotResult which talks to server)
-            this.waitForAiShotComplete();
         }, thinkingTime);
     }
 
