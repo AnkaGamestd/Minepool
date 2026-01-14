@@ -161,22 +161,16 @@ class NetworkManager {
                 const isHost = data.host && data.host.id === this.playerId;
                 this.myPlayerNumber = isHost ? 1 : 2;
                 this.aiOpponent = isHost ? data.guest : data.host;
+                this.aiDifficulty = this.aiOpponent?.aiDifficulty || 'expert';
                 console.log(`🤖 I am Player ${this.myPlayerNumber}, AI is Player ${this.myPlayerNumber === 1 ? 2 : 1}`);
-                console.log(`🤖 AI Opponent: ${this.aiOpponent?.username}`);
+                console.log(`🤖 AI Opponent: ${this.aiOpponent?.username}, Difficulty: ${this.aiDifficulty}`);
 
                 // Verify AIPlayer class is loaded
                 if (typeof AIPlayer === 'undefined') {
                     console.error('🚨 AIPlayer class is NOT loaded! AI will not work.');
-                    alert('ERROR: AIPlayer class NOT loaded!');
                 } else {
                     console.log('✅ AIPlayer class is loaded and ready');
                 }
-
-                // VISIBLE DEBUG - shows on Android screen
-                alert(`AI MATCH DETECTED!\nisAiMatch: ${this.isAiMatch}\nmyPlayerNumber: ${this.myPlayerNumber}\nAI: ${this.aiOpponent?.username}`);
-            } else {
-                // VISIBLE DEBUG - shows AI was NOT detected
-                alert(`NOT AI MATCH\ndata.isAiMatch: ${data.isAiMatch}\nhostIsBot: ${hostIsBot}\nguestIsBot: ${guestIsBot}`);
             }
 
             this.emit('game_start', data);
@@ -214,12 +208,8 @@ class NetworkManager {
                 const isAiTurn = currentPlayer !== this.myPlayerNumber;
                 console.log(`🔍 Turn Check: currentPlayer=${currentPlayer}, myPlayerNumber=${this.myPlayerNumber}, isAiTurn=${isAiTurn}`);
 
-                // DEBUG ALERT
-                alert(`GAME STATE UPDATE\ncurrentPlayer: ${currentPlayer}\nmyPlayerNumber: ${this.myPlayerNumber}\nisAiTurn: ${isAiTurn}\naiShotPending: ${this.aiShotPending}`);
-
                 if (isAiTurn && this.game && !this.aiShotPending) {
                     console.log('🤖 AI turn detected from server update, executing shot...');
-                    alert('EXECUTING AI TURN NOW!');
                     this.executeAiTurn(data);
                 } else if (this.aiShotPending) {
                     console.log('🤖 AI shot already pending, skipping duplicate trigger');
@@ -489,17 +479,11 @@ class NetworkManager {
 
     // === AI Turn Execution ===
     executeAiTurn(data) {
-        alert('executeAiTurn START');
-
-        if (!this.game || !this.isAiMatch) {
-            alert('executeAiTurn: no game or not AI match');
-            return;
-        }
+        if (!this.game || !this.isAiMatch) return;
 
         // Prevent duplicate AI shots
         if (this.aiShotPending) {
             console.log('🤖 AI shot already pending, skipping...');
-            alert('executeAiTurn: shot already pending');
             return;
         }
         this.aiShotPending = true;
@@ -509,26 +493,20 @@ class NetworkManager {
         const cueBall = balls.find(b => b.id === 0);
         if (!cueBall || !cueBall.active) {
             console.log('🤖 Cue ball not available, skipping AI turn');
-            alert(`executeAiTurn: cue ball issue - cueBall: ${!!cueBall}, active: ${cueBall?.active}`);
             this.aiShotPending = false;
             return;
         }
-
-        alert(`executeAiTurn: Got cue ball, starting ${1500}ms+ thinking delay...`);
 
         // Add thinking delay (1.5-3 seconds)
         const thinkingTime = 1500 + Math.random() * 1500;
         console.log(`🤖 AI thinking for ${Math.round(thinkingTime)}ms...`);
 
         setTimeout(() => {
-            alert('setTimeout callback started!');
-
             // Get fresh ball references
             const freshBalls = this.game.balls || [];
             let freshCueBall = freshBalls.find(b => b.id === 0);
             if (!freshCueBall || !freshCueBall.active) {
                 console.log('🤖 Cue ball not ready, aborting shot');
-                alert('setTimeout: cue ball not ready');
                 this.aiShotPending = false;
                 return;
             }
@@ -589,25 +567,22 @@ class NetworkManager {
             // Use the AIPlayer class for intelligent shot selection
             if (typeof AIPlayer === 'undefined') {
                 console.error('🤖 AIPlayer class not loaded!');
-                alert('ERROR: AIPlayer class not loaded!');
                 this.aiShotPending = false;
                 return;
             }
 
-            alert('AIPlayer class is loaded, creating instance...');
-
             try {
-                // Create AI player instance if not exists
+                // Create AI player instance with proper difficulty
                 if (!this.aiPlayerInstance) {
-                    this.aiPlayerInstance = new AIPlayer('expert');
+                    const difficulty = this.aiDifficulty || 'expert';
+                    console.log(`🤖 Creating AIPlayer with difficulty: ${difficulty}`);
+                    this.aiPlayerInstance = new AIPlayer(difficulty);
                 }
 
                 // Determine target type for AI
                 let targetType = null;
                 if (aiGroup === 'solid') targetType = 'solids';
                 else if (aiGroup === 'stripe') targetType = 'stripes';
-
-                alert('Calling calculateShot...');
 
                 // Calculate the best shot using AIPlayer
                 const aiShot = this.aiPlayerInstance.calculateShot(
@@ -618,11 +593,8 @@ class NetworkManager {
                     targetType
                 );
 
-                alert(`calculateShot returned: ${aiShot ? 'GOT SHOT' : 'NULL'}`);
-
                 if (!aiShot) {
                     console.log('🤖 AIPlayer returned no shot, using simple fallback');
-                    alert('Using fallback shot...');
                     // Fallback: just hit the nearest ball at medium power
                     const nearestBall = freshBalls
                         .filter(b => b.id > 0 && b.active && b.id !== 8)
@@ -633,7 +605,6 @@ class NetworkManager {
                         })[0];
 
                     if (nearestBall) {
-                        alert(`Fallback: shooting at ball ${nearestBall.id}`);
                         const angle = Math.atan2(nearestBall.y - freshCueBall.y, nearestBall.x - freshCueBall.x);
 
                         // CRITICAL: Set gameState to shooting!
@@ -674,8 +645,6 @@ class NetworkManager {
                 const finalAngle = bestShot.angle;
                 const finalPower = bestShot.power;
 
-                alert(`About to apply shot: angle=${finalAngle?.toFixed(2)}, power=${finalPower?.toFixed(0)}`);
-
                 // CRITICAL FIX: Set gameState to 'shooting' so physics loop will update!
                 // Without this, the game loop ignores physics because gameState === 'waiting'
                 this.game.gameState = 'shooting';
@@ -687,14 +656,12 @@ class NetworkManager {
                     this.game.sound.playCueHit(finalPower);
                 }
 
-                alert('AI SHOT APPLIED!');
                 console.log('🤖 AI shot executed');
                 this.aiShotPending = false;
 
                 // Wait for balls to stop and handle result LOCALLY (don't use checkShotResult which talks to server)
                 this.waitForAiShotComplete();
             } catch (error) {
-                alert(`ERROR in AI: ${error.message}`);
                 console.error('AI shot error:', error);
                 this.aiShotPending = false;
             }
