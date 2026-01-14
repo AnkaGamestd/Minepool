@@ -214,8 +214,12 @@ class NetworkManager {
                 const isAiTurn = currentPlayer !== this.myPlayerNumber;
                 console.log(`🔍 Turn Check: currentPlayer=${currentPlayer}, myPlayerNumber=${this.myPlayerNumber}, isAiTurn=${isAiTurn}`);
 
+                // DEBUG ALERT
+                alert(`GAME STATE UPDATE\ncurrentPlayer: ${currentPlayer}\nmyPlayerNumber: ${this.myPlayerNumber}\nisAiTurn: ${isAiTurn}\naiShotPending: ${this.aiShotPending}`);
+
                 if (isAiTurn && this.game && !this.aiShotPending) {
                     console.log('🤖 AI turn detected from server update, executing shot...');
+                    alert('EXECUTING AI TURN NOW!');
                     this.executeAiTurn(data);
                 } else if (this.aiShotPending) {
                     console.log('🤖 AI shot already pending, skipping duplicate trigger');
