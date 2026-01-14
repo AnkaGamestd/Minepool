@@ -167,9 +167,16 @@ class NetworkManager {
                 // Verify AIPlayer class is loaded
                 if (typeof AIPlayer === 'undefined') {
                     console.error('🚨 AIPlayer class is NOT loaded! AI will not work.');
+                    alert('ERROR: AIPlayer class NOT loaded!');
                 } else {
                     console.log('✅ AIPlayer class is loaded and ready');
                 }
+
+                // VISIBLE DEBUG - shows on Android screen
+                alert(`AI MATCH DETECTED!\nisAiMatch: ${this.isAiMatch}\nmyPlayerNumber: ${this.myPlayerNumber}\nAI: ${this.aiOpponent?.username}`);
+            } else {
+                // VISIBLE DEBUG - shows AI was NOT detected
+                alert(`NOT AI MATCH\ndata.isAiMatch: ${data.isAiMatch}\nhostIsBot: ${hostIsBot}\nguestIsBot: ${guestIsBot}`);
             }
 
             this.emit('game_start', data);
