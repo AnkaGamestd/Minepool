@@ -798,6 +798,116 @@ class NetworkManager {
                 }
             }
 
+            // EXPERT AI: Add COMBO shot detection (hit ball A into ball B to pocket B)
+            const findComboShots = () => {
+                const comboShots = [];
+
+                for (const firstBall of targetBalls) {
+                    for (const secondBall of targetBalls) {
+                        if (firstBall.id === secondBall.id) continue;
+
+                        for (const pocket of pockets) {
+                            // Check if second ball can go into pocket
+                            const ballToPocketDx = pocket.x - secondBall.x;
+                            const ballToPocketDy = pocket.y - secondBall.y;
+                            const ballToPocketDist = Math.sqrt(ballToPocketDx ** 2 + ballToPocketDy ** 2);
+
+                            // Only consider short combos (second ball close to pocket)
+                            if (ballToPocketDist > 200) continue;
+
+                            const dirX = ballToPocketDx / ballToPocketDist;
+                            const dirY = ballToPocketDy / ballToPocketDist;
+
+                            // Ghost ball position for second ball (where first ball needs to hit)
+                            const secondGhostX = secondBall.x - dirX * (ballRadius * 2);
+                            const secondGhostY = secondBall.y - dirY * (ballRadius * 2);
+
+                            // Check if first ball can reach second ghost position
+                            const firstToSecondDx = secondGhostX - firstBall.x;
+                            const firstToSecondDy = secondGhostY - firstBall.y;
+                            const firstToSecondDist = Math.sqrt(firstToSecondDx ** 2 + firstToSecondDy ** 2);
+
+                            if (firstToSecondDist > 250) continue; // Too far for combo
+
+                            // Ghost ball for cue to hit first ball toward second
+                            const firstDirX = firstToSecondDx / firstToSecondDist;
+                            const firstDirY = firstToSecondDy / firstToSecondDist;
+                            const firstGhostX = firstBall.x - firstDirX * (ballRadius * 2);
+                            const firstGhostY = firstBall.y - firstDirY * (ballRadius * 2);
+
+                            // Check paths are clear
+                            if (!isPathClear(freshCueBall.x, freshCueBall.y, firstGhostX, firstGhostY, firstBall.id)) continue;
+                            if (!isPathClear(firstBall.x, firstBall.y, secondGhostX, secondGhostY, secondBall.id)) continue;
+                            if (!isPathClear(secondBall.x, secondBall.y, pocket.x, pocket.y, secondBall.id)) continue;
+
+                            const cueToFirstDx = firstGhostX - freshCueBall.x;
+                            const cueToFirstDy = firstGhostY - freshCueBall.y;
+                            const cueToFirstDist = Math.sqrt(cueToFirstDx ** 2 + cueToFirstDy ** 2);
+
+                            // Score combo shots (lower than direct but useful when no direct available)
+                            const score = 100 + (200 - ballToPocketDist); // Bonus for close pocket
+
+                            comboShots.push({
+                                ball: firstBall,
+                                comboBall: secondBall,
+                                pocket,
+                                ghostBall: { x: firstGhostX, y: firstGhostY },
+                                angle: Math.atan2(cueToFirstDy, cueToFirstDx),
+                                power: Math.min(75, 55 + cueToFirstDist * 0.05),
+                                cutAngle: 0,
+                                score,
+                                isCombo: true
+                            });
+                        }
+                    }
+                }
+                return comboShots;
+            };
+
+            // Add combo shots if no good direct/bank shots
+            if (shots.length === 0 || (shots.length > 0 && shots[0].score < 100)) {
+                const comboShots = findComboShots();
+                shots.push(...comboShots);
+                if (comboShots.length > 0) {
+                    console.log(`🤖 Found ${comboShots.length} combo shot opportunities`);
+                }
+            }
+
+            // EXPERT AI: Add position play bonus - prefer shots that leave cue ball near next target
+            if (targetBalls.length > 1) {
+                for (const shot of shots) {
+                    if (shot.isSafety || shot.isCombo) continue;
+
+                    // Estimate cue ball position after shot (simplified)
+                    const ghostBall = shot.ghostBall || { x: shot.ball.x, y: shot.ball.y };
+
+                    // Find next best target (excluding current shot's ball)
+                    const otherTargets = targetBalls.filter(b => b.id !== shot.ball.id);
+                    if (otherTargets.length === 0) continue;
+
+                    let bestNextDist = Infinity;
+                    for (const nextBall of otherTargets) {
+                        for (const pocket of pockets) {
+                            const distToPocket = Math.sqrt((pocket.x - nextBall.x) ** 2 + (pocket.y - nextBall.y) ** 2);
+                            if (distToPocket < 300) {
+                                // This could be a next shot - check distance from ghost ball
+                                const distFromGhost = Math.sqrt((nextBall.x - ghostBall.x) ** 2 + (nextBall.y - ghostBall.y) ** 2);
+                                if (distFromGhost < bestNextDist) {
+                                    bestNextDist = distFromGhost;
+                                }
+                            }
+                        }
+                    }
+
+                    // Add position bonus (closer to next shot = better)
+                    if (bestNextDist < 200) {
+                        shot.score += 50; // Good position bonus
+                    } else if (bestNextDist < 350) {
+                        shot.score += 20; // OK position bonus
+                    }
+                }
+            }
+
             // Sort by score (best first)
             shots.sort((a, b) => b.score - a.score);
 
