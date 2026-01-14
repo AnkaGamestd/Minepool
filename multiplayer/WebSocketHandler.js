@@ -1007,6 +1007,13 @@ class MultiplayerServer {
                                 if (r && (r.status === 'ready' || r.status === 'waiting')) {
                                     r.isAiMatch = true;  // Mark room as AI match for shot_result handling
                                     const gameState = r.startGame();
+
+                                    // DEBUG: Log the exact data being sent
+                                    console.log(`🔍 DEBUG game_start data:`);
+                                    console.log(`   host: ${r.host?.username} (isBot: ${r.host?.isBot})`);
+                                    console.log(`   guest: ${r.guest?.username} (isBot: ${r.guest?.isBot})`);
+                                    console.log(`   isAiMatch: true`);
+
                                     this.io.to(result.roomId).emit('game_start', {
                                         roomId: r.id,
                                         gameState,
