@@ -521,11 +521,14 @@ class NetworkManager {
         console.log(`🤖 AI thinking for ${Math.round(thinkingTime)}ms...`);
 
         setTimeout(() => {
+            alert('setTimeout callback started!');
+
             // Get fresh ball references
             const freshBalls = this.game.balls || [];
             let freshCueBall = freshBalls.find(b => b.id === 0);
             if (!freshCueBall || !freshCueBall.active) {
                 console.log('🤖 Cue ball not ready, aborting shot');
+                alert('setTimeout: cue ball not ready');
                 this.aiShotPending = false;
                 return;
             }
@@ -586,9 +589,12 @@ class NetworkManager {
             // Use the AIPlayer class for intelligent shot selection
             if (typeof AIPlayer === 'undefined') {
                 console.error('🤖 AIPlayer class not loaded!');
+                alert('ERROR: AIPlayer class not loaded!');
                 this.aiShotPending = false;
                 return;
             }
+
+            alert('AIPlayer class is loaded, creating instance...');
 
             // Create AI player instance if not exists
             if (!this.aiPlayerInstance) {
