@@ -635,6 +635,11 @@ class NetworkManager {
                     if (nearestBall) {
                         alert(`Fallback: shooting at ball ${nearestBall.id}`);
                         const angle = Math.atan2(nearestBall.y - freshCueBall.y, nearestBall.x - freshCueBall.x);
+
+                        // CRITICAL: Set gameState to shooting!
+                        this.game.gameState = 'shooting';
+                        this.game.shotPocketedBalls = [];
+
                         this.game.physics.applyShot(freshCueBall, angle, 50, 0, 0);
                         if (this.game.sound) this.game.sound.playCueHit(50);
                         console.log('🤖 Fallback shot executed at nearest ball');
@@ -670,6 +675,11 @@ class NetworkManager {
                 const finalPower = bestShot.power;
 
                 alert(`About to apply shot: angle=${finalAngle?.toFixed(2)}, power=${finalPower?.toFixed(0)}`);
+
+                // CRITICAL FIX: Set gameState to 'shooting' so physics loop will update!
+                // Without this, the game loop ignores physics because gameState === 'waiting'
+                this.game.gameState = 'shooting';
+                this.game.shotPocketedBalls = []; // Reset pocketed balls for this shot
 
                 this.game.physics.applyShot(freshCueBall, finalAngle, finalPower, spin.spinX, spin.spinY);
 
