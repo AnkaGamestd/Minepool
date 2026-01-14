@@ -340,6 +340,14 @@ app.post('/api/auth/wallet-login', async (req, res) => {
             if (u.walletAddress === normalizedAddress) {
                 user = u;
                 userEmail = email;
+
+                // Migration: If user has a custom username (not default Player_0x format), mark as profileComplete
+                if (!user.profileComplete && user.username && !user.username.startsWith('Player_0x')) {
+                    user.profileComplete = true;
+                    users.set(email, user);
+                    saveUsers();
+                    console.log(`✅ Migrated ${user.username} to profileComplete=true`);
+                }
                 break;
             }
         }
