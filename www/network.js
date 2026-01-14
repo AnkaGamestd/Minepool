@@ -611,8 +611,17 @@ class NetworkManager {
                 return true;
             };
 
-            // Helper: Calculate optimal power for distance
-            const calcPower = (distance) => Math.min(85, Math.max(40, 30 + distance * 0.12));
+            // Helper: Calculate optimal power for distance (smarter power control)
+            const calcPower = (cueToGhostDist, ballToPocketDist) => {
+                const totalDist = cueToGhostDist + ballToPocketDist;
+                // Scale power based on total distance
+                // Short shots (< 150): 35-50%
+                // Medium shots (150-400): 50-70%
+                // Long shots (> 400): 70-85%
+                if (totalDist < 150) return 35 + totalDist * 0.1;
+                if (totalDist < 400) return 50 + (totalDist - 150) * 0.08;
+                return Math.min(85, 70 + (totalDist - 400) * 0.05);
+            };
 
             // Find all possible shots with scoring
             let shots = [];
@@ -624,8 +633,8 @@ class NetworkManager {
                     const ballToPocketDy = pocket.y - ball.y;
                     const ballToPocketDist = Math.sqrt(ballToPocketDx * ballToPocketDx + ballToPocketDy * ballToPocketDy);
 
-                    // Skip if ball is too far from pocket (>400 units)
-                    if (ballToPocketDist > 400) continue;
+                    // Skip if ball is too far from pocket (>600 units) - increased range
+                    if (ballToPocketDist > 600) continue;
 
                     // Direction to pocket (normalized)
                     const dirX = ballToPocketDx / ballToPocketDist;
@@ -648,8 +657,8 @@ class NetworkManager {
                     let cutAngle = Math.abs(aimAngle - pocketAngle);
                     if (cutAngle > Math.PI) cutAngle = Math.PI * 2 - cutAngle;
 
-                    // Skip impossible cuts (> 80 degrees)
-                    if (cutAngle > Math.PI * 0.44) continue;
+                    // Skip impossible cuts (> 75 degrees) - slightly more lenient 
+                    if (cutAngle > Math.PI * 0.42) continue;
 
                     // Check if cue ball path to ghost ball is clear
                     const cueToBallClear = isPathClear(freshCueBall.x, freshCueBall.y, ghostX, ghostY, ball.id);
@@ -659,19 +668,30 @@ class NetworkManager {
 
                     if (!cueToBallClear || !ballToPocketClear) continue;
 
-                    // Score this shot (higher = better)
-                    const totalDist = cueToGhostDist + ballToPocketDist;
-                    const distScore = 1000 / (totalDist + 1);
-                    const cutScore = 300 * (1 - cutAngle / (Math.PI * 0.5));
-                    const nearPocketBonus = ballToPocketDist < 100 ? 200 : 0;
-                    const score = distScore + cutScore + nearPocketBonus;
+                    // IMPROVED SCORING - favor easier shots more strongly
+                    // Base: closer = better
+                    const distScore = 1200 / (cueToGhostDist + ballToPocketDist + 1);
+
+                    // Strong cut angle penalty - straight shots are MUCH better
+                    const cutPenalty = cutAngle * cutAngle * 400; // Quadratic penalty for cuts
+
+                    // Huge bonus for balls very close to pocket (hanger shots)
+                    let nearPocketBonus = 0;
+                    if (ballToPocketDist < 60) nearPocketBonus = 500;  // Hanger!
+                    else if (ballToPocketDist < 100) nearPocketBonus = 300;
+                    else if (ballToPocketDist < 150) nearPocketBonus = 150;
+
+                    // Bonus for straight shots (cut < 15 degrees)
+                    const straightBonus = cutAngle < 0.26 ? 200 : 0;
+
+                    const score = distScore + nearPocketBonus + straightBonus - cutPenalty;
 
                     shots.push({
                         ball,
                         pocket,
                         ghostBall: { x: ghostX, y: ghostY },
                         angle: aimAngle,
-                        power: calcPower(cueToGhostDist),
+                        power: calcPower(cueToGhostDist, ballToPocketDist),
                         cutAngle: cutAngle * 180 / Math.PI,
                         score,
                         cueToBallDist: cueToGhostDist,
