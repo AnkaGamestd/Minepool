@@ -347,7 +347,7 @@ class MatchmakingQueue {
             elo: bot.elo,
             coins: bot.coins || 5000,
             isBot: true,
-            aiDifficulty: bot.aiDifficulty || 'medium-hard',
+            aiDifficulty: bot.aiDifficulty || 'expert',
             profilePicture: bot.profilePicture,
             nationality: bot.nationality
         };
