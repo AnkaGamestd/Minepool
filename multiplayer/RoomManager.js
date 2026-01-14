@@ -274,7 +274,8 @@ class GameRoom {
                 elo: this.host.elo || 1200,
                 profilePicture: this.host.profilePicture || null,
                 nationality: this.host.nationality || null,
-                isBot: this.host.isBot || false
+                isBot: this.host.isBot || false,
+                aiDifficulty: this.host.aiDifficulty || null
             },
             guest: this.guest ? {
                 id: this.guest.id,
@@ -282,7 +283,8 @@ class GameRoom {
                 elo: this.guest.elo || 1200,
                 profilePicture: this.guest.profilePicture || null,
                 nationality: this.guest.nationality || null,
-                isBot: this.guest.isBot || false
+                isBot: this.guest.isBot || false,
+                aiDifficulty: this.guest.aiDifficulty || null
             } : null,
             spectators: this.spectators.map(s => ({ id: s.id, username: s.username })),
             spectatorCount: this.spectators.length,
