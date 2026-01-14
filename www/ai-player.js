@@ -73,8 +73,8 @@ class AIPlayer {
 
         this.config = this.settings[difficulty] || this.settings['expert'];
         this.BALL_RADIUS = 14;
-        this.TABLE_WIDTH = 800;
-        this.TABLE_HEIGHT = 400;
+        this.TABLE_WIDTH = 1000;  // Match actual table dimensions
+        this.TABLE_HEIGHT = 500;  // Match actual table dimensions
         this.CUSHION = 25;
     }
 
