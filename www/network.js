@@ -572,11 +572,13 @@ class NetworkManager {
             }
 
             try {
-                // Create AI player instance with proper difficulty
-                if (!this.aiPlayerInstance) {
-                    const difficulty = this.aiDifficulty || 'expert';
-                    console.log(`🤖 Creating AIPlayer with difficulty: ${difficulty}`);
-                    this.aiPlayerInstance = new AIPlayer(difficulty);
+                // Always use expert difficulty for Live Matches
+                const targetDifficulty = 'expert';
+
+                // Recreate if difficulty changed
+                if (!this.aiPlayerInstance || this.aiPlayerInstance.difficulty !== targetDifficulty) {
+                    console.log(`🤖 Creating AIPlayer with difficulty: ${targetDifficulty}`);
+                    this.aiPlayerInstance = new AIPlayer(targetDifficulty);
                 }
 
                 // Determine target type for AI
