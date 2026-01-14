@@ -273,14 +273,16 @@ class GameRoom {
                 username: this.host.username,
                 elo: this.host.elo || 1200,
                 profilePicture: this.host.profilePicture || null,
-                nationality: this.host.nationality || null
+                nationality: this.host.nationality || null,
+                isBot: this.host.isBot || false
             },
             guest: this.guest ? {
                 id: this.guest.id,
                 username: this.guest.username,
                 elo: this.guest.elo || 1200,
                 profilePicture: this.guest.profilePicture || null,
-                nationality: this.guest.nationality || null
+                nationality: this.guest.nationality || null,
+                isBot: this.guest.isBot || false
             } : null,
             spectators: this.spectators.map(s => ({ id: s.id, username: s.username })),
             spectatorCount: this.spectators.length,
