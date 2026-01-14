@@ -584,6 +584,16 @@ class NetworkManager {
                 if (aiGroup === 'solid') targetType = 'solids';
                 else if (aiGroup === 'stripe') targetType = 'stripes';
 
+                // Debug: Log what we're passing to AI
+                const activeBalls = freshBalls.filter(b => b.active && b.id > 0);
+                console.log(`🤖 AI calculating shot:`, {
+                    difficulty: this.aiPlayerInstance.difficulty,
+                    aiGroup,
+                    targetType,
+                    activeBalls: activeBalls.map(b => b.id),
+                    cueBallPos: { x: freshCueBall.x?.toFixed(0), y: freshCueBall.y?.toFixed(0) }
+                });
+
                 // Calculate the best shot using AIPlayer
                 const aiShot = this.aiPlayerInstance.calculateShot(
                     this.game.gameState || {},
@@ -592,6 +602,13 @@ class NetworkManager {
                     pockets,
                     targetType
                 );
+
+                console.log(`🤖 AI returned:`, aiShot ? {
+                    type: aiShot.type,
+                    targetBall: aiShot.targetBall,
+                    power: (aiShot.power * 100).toFixed(0) + '%',
+                    score: aiShot.score?.toFixed(1)
+                } : 'NULL');
 
                 if (!aiShot) {
                     console.log('🤖 AIPlayer returned no shot, using simple fallback');
