@@ -19,6 +19,8 @@ class NetworkManager {
         this.isAiMatch = false;
         this.aiOpponent = null;
         this.myPlayerNumber = 0;
+        this.aiShotPending = false;
+        this.aiPlayerInstance = null;
 
         // 8-Ball pocket call
         this.calledPocket = null;
@@ -149,12 +151,25 @@ class NetworkManager {
             const guestIsBot = data.guest && data.guest.isBot;
             this.isAiMatch = data.isAiMatch || hostIsBot || guestIsBot;
 
+            console.log(`🔍 AI Detection: isAiMatch=${data.isAiMatch}, hostIsBot=${hostIsBot}, guestIsBot=${guestIsBot} => this.isAiMatch=${this.isAiMatch}`);
+            console.log(`🔍 Host: ${data.host?.username} (id: ${data.host?.id}, isBot: ${data.host?.isBot})`);
+            console.log(`🔍 Guest: ${data.guest?.username} (id: ${data.guest?.id}, isBot: ${data.guest?.isBot})`);
+            console.log(`🔍 My playerId: ${this.playerId}`);
+
             if (this.isAiMatch) {
                 console.log('🤖 Playing against AI opponent!');
                 const isHost = data.host && data.host.id === this.playerId;
                 this.myPlayerNumber = isHost ? 1 : 2;
                 this.aiOpponent = isHost ? data.guest : data.host;
                 console.log(`🤖 I am Player ${this.myPlayerNumber}, AI is Player ${this.myPlayerNumber === 1 ? 2 : 1}`);
+                console.log(`🤖 AI Opponent: ${this.aiOpponent?.username}`);
+
+                // Verify AIPlayer class is loaded
+                if (typeof AIPlayer === 'undefined') {
+                    console.error('🚨 AIPlayer class is NOT loaded! AI will not work.');
+                } else {
+                    console.log('✅ AIPlayer class is loaded and ready');
+                }
             }
 
             this.emit('game_start', data);
@@ -575,7 +590,25 @@ class NetworkManager {
             );
 
             if (!aiShot) {
-                console.log('🤖 AIPlayer returned no shot, using fallback');
+                console.log('🤖 AIPlayer returned no shot, using simple fallback');
+                // Fallback: just hit the nearest ball at medium power
+                const nearestBall = freshBalls
+                    .filter(b => b.id > 0 && b.active && b.id !== 8)
+                    .sort((a, b) => {
+                        const distA = Math.sqrt((a.x - freshCueBall.x) ** 2 + (a.y - freshCueBall.y) ** 2);
+                        const distB = Math.sqrt((b.x - freshCueBall.x) ** 2 + (b.y - freshCueBall.y) ** 2);
+                        return distA - distB;
+                    })[0];
+
+                if (nearestBall) {
+                    const angle = Math.atan2(nearestBall.y - freshCueBall.y, nearestBall.x - freshCueBall.x);
+                    this.game.physics.applyShot(freshCueBall, angle, 50, 0, 0);
+                    if (this.game.sound) this.game.sound.playCueHit(50);
+                    console.log('🤖 Fallback shot executed at nearest ball');
+                    this.aiShotPending = false;
+                    this.waitForAiShotComplete();
+                    return;
+                }
                 this.aiShotPending = false;
                 return;
             }

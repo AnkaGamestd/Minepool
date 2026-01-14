@@ -214,7 +214,8 @@ class MultiplayerServer {
                 currentPlayer: room.gameState?.currentPlayer || 1,
                 host: room.host,
                 guest: room.guest,
-                wager: room.wager
+                wager: room.wager,
+                isAiMatch: room.isAiMatch || false
             });
             return;
         }
@@ -345,13 +346,19 @@ class MultiplayerServer {
             this.io.to(result.roomId).emit('match_found', {
                 roomId: result.roomId,
                 room: room.toJSON(),
-                room: room.toJSON(),
                 wager: result.wager,
                 currency: result.currency,
-                tier: result.tier
+                tier: result.tier,
+                isAiMatch: result.isAiMatch || false,
+                opponent: result.opponent
             });
 
-            console.log(`⚡ Match found: ${player.username} vs ${result.opponent.username}`);
+            console.log(`⚡ Match found: ${player.username} vs ${result.opponent.username}${result.isAiMatch ? ' (AI)' : ''}`);
+
+            // Mark room as AI match if applicable (for shot_result handling)
+            if (result.isAiMatch) {
+                room.isAiMatch = true;
+            }
 
             // AUTO-START: Start game automatically after 2 seconds
             setTimeout(() => {
@@ -365,10 +372,11 @@ class MultiplayerServer {
                         currentPlayer: 1,
                         host: currentRoom.host,
                         guest: currentRoom.guest,
-                        wager: currentRoom.wager
+                        wager: currentRoom.wager,
+                        isAiMatch: currentRoom.isAiMatch || false
                     });
 
-                    console.log(`🎮 Game auto-started in room ${currentRoom.id}`);
+                    console.log(`🎮 Game auto-started in room ${currentRoom.id}${currentRoom.isAiMatch ? ' (AI match)' : ''}`);
                 }
             }, 2000);
         } else {
@@ -415,10 +423,11 @@ class MultiplayerServer {
             currentPlayer: 1,
             host: room.host,
             guest: room.guest,
-            wager: room.wager
+            wager: room.wager,
+            isAiMatch: room.isAiMatch || false
         });
 
-        console.log(`🎮 Game started in room ${room.id}`);
+        console.log(`🎮 Game started in room ${room.id}${room.isAiMatch ? ' (AI match)' : ''}`);
     }
 
     handleAimUpdate(socket, data) {
