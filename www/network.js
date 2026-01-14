@@ -489,11 +489,17 @@ class NetworkManager {
 
     // === AI Turn Execution ===
     executeAiTurn(data) {
-        if (!this.game || !this.isAiMatch) return;
+        alert('executeAiTurn START');
+
+        if (!this.game || !this.isAiMatch) {
+            alert('executeAiTurn: no game or not AI match');
+            return;
+        }
 
         // Prevent duplicate AI shots
         if (this.aiShotPending) {
             console.log('🤖 AI shot already pending, skipping...');
+            alert('executeAiTurn: shot already pending');
             return;
         }
         this.aiShotPending = true;
@@ -503,9 +509,12 @@ class NetworkManager {
         const cueBall = balls.find(b => b.id === 0);
         if (!cueBall || !cueBall.active) {
             console.log('🤖 Cue ball not available, skipping AI turn');
+            alert(`executeAiTurn: cue ball issue - cueBall: ${!!cueBall}, active: ${cueBall?.active}`);
             this.aiShotPending = false;
             return;
         }
+
+        alert(`executeAiTurn: Got cue ball, starting ${1500}ms+ thinking delay...`);
 
         // Add thinking delay (1.5-3 seconds)
         const thinkingTime = 1500 + Math.random() * 1500;
