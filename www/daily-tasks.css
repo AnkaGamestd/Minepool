@@ -411,3 +411,8 @@
         min-width: 60px;
     }
 }
+
+/* Zealy Icon */
+.task-icon.zealy {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}

@@ -3,27 +3,20 @@
 // Social tasks to earn coins
 // ============================================
 (function initDailyTasks() {
+    // Zealy community URL - Replace with your actual Zealy community URL
+    const ZEALY_URL = 'https://zealy.io/cw/taingames';
+
     // Task definitions
     const TASKS = [
         {
-            id: 'twitter_follow',
-            name: 'Follow on Twitter',
-            description: 'Follow @TAINGames',
-            icon: '🐦',
-            iconClass: 'twitter',
-            reward: 500,
-            url: 'https://twitter.com/TAINGames',
-            type: 'social'
-        },
-        {
-            id: 'telegram_join',
-            name: 'Join Telegram',
-            description: 'Join our community',
-            icon: '✈️',
-            iconClass: 'telegram',
-            reward: 500,
-            url: 'https://t.me/TAINGames',
-            type: 'social'
+            id: 'zealy_quests',
+            name: 'Complete Quests on Zealy',
+            description: 'Follow Twitter, Join Telegram & more',
+            icon: '🏆',
+            iconClass: 'zealy',
+            reward: 1000,
+            url: ZEALY_URL,
+            type: 'zealy'
         },
         {
             id: 'invite_friend',
