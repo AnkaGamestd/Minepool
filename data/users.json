@@ -1164,5 +1164,31 @@
     "avatar": "🐯",
     "profileComplete": true,
     "referralCode": "BLEDJWOB"
+  },
+  {
+    "id": 54,
+    "username": "Turkmen",
+    "email": "wallet_0x9ee9a674fa394afa71dda09b26b289b390958377@minepool.game",
+    "walletAddress": "0x9ee9a674fa394afa71dda09b26b289b390958377",
+    "coins": 500,
+    "tainBalance": 0,
+    "diamonds": 100,
+    "elo": 1222,
+    "gamesPlayed": 2,
+    "gamesWon": 1,
+    "createdAt": "2026-01-11T18:18:24.246Z",
+    "achievements": [],
+    "matchHistory": [],
+    "nationality": "TR",
+    "profilePicture": null,
+    "cues": [
+      "standard"
+    ],
+    "referralCode": "TURK7MF9",
+    "referredBy": null,
+    "referrals": [],
+    "referralRewardsClaimed": 0,
+    "avatar": "🐉",
+    "profileComplete": true
   }
 ]
