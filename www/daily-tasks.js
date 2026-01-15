@@ -8,11 +8,11 @@
         {
             id: 'twitter_follow',
             name: 'Follow on Twitter',
-            description: 'Follow @MinePoolGame',
+            description: 'Follow @TAINGames',
             icon: '🐦',
             iconClass: 'twitter',
             reward: 500,
-            url: 'https://twitter.com/MinePoolGame',
+            url: 'https://twitter.com/TAINGames',
             type: 'social'
         },
         {
@@ -22,7 +22,7 @@
             icon: '✈️',
             iconClass: 'telegram',
             reward: 500,
-            url: 'https://t.me/MinePoolGame',
+            url: 'https://t.me/TAINGames',
             type: 'social'
         },
         {
