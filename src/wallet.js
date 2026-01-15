@@ -7,8 +7,8 @@ const projectId = '552b76549cfdaa2c137b7670d9edfd69';
 const metadata = {
     name: 'Mine Pool',
     description: 'Play 8-Ball Pool and Win TAIN Tokens',
-    url: 'https://minepool.app',
-    icons: ['https://minepool.app/icon.png']
+    url: 'https://api.taingames.com',
+    icons: ['https://api.taingames.com/icon.png']
 };
 
 // Create AppKit instance
