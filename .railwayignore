@@ -1,0 +1,14 @@
+# Keep Railway's build context limited to the Node.js web service.
+.git/
+.github/
+android/
+ios/
+design/
+release/
+test-results/
+tests/
+
+# Historical and local-only files are not part of the running service.
+*.backup
+old_network_backup.js
+temp_old_ai.txt
