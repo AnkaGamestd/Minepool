@@ -159,19 +159,6 @@
             margin-top: 6px;
             display: none;
         }
-
-        .wallet-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(240, 185, 11, 0.15);
-            border: 1px solid rgba(240, 185, 11, 0.4);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            color: #f0b90b;
-            margin-bottom: 20px;
-        }
     </style>
 </head>
 
@@ -179,10 +166,6 @@
     <div class="profile-container">
         <h1>Complete Your Profile</h1>
         <p class="subtitle">Set up your gaming identity</p>
-
-        <div class="wallet-badge" id="wallet-badge">
-            🪙 <span id="wallet-display">0x1234...5678</span>
-        </div>
 
         <form id="profile-form">
             <div class="form-group">
@@ -240,13 +223,6 @@
     <script>
         const API_URL = '/api';
         let selectedAvatar = '🎱';
-
-        // Load wallet address from localStorage
-        const walletAddress = localStorage.getItem('walletAddress') || '';
-        if (walletAddress) {
-            document.getElementById('wallet-display').textContent =
-                walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4);
-        }
 
         // Avatar selection
         document.querySelectorAll('.avatar-option').forEach(opt => {

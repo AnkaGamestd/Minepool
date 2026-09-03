@@ -8,28 +8,27 @@ class PhysicsEngine {
         // Table scale
         this.SCALE = 100;
         this.BALL_RADIUS = 14;
-        this.MAX_CUE_SPEED = 950;      // Higher for more powerful shots and ball movement
+        this.MAX_CUE_SPEED = 750;      // Preferred arcade power level
 
-        // Detect mobile device (for UI purposes, not physics)
+        // Detect mobile device
         this.isMobile = ('ontouchstart' in window) ||
             (navigator.maxTouchPoints > 0) ||
             (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
-        // NOTE: We use fixed timesteps (1/60) for physics simulation, which handles
-        // frame rate differences automatically. No friction multiplier needed - this
-        // was causing desync between mobile and PC players!
+        // Preserve the original mobile feel at lower frame rates.
+        this.mobileFrictionMultiplier = this.isMobile ? 1.9 : 1.0;
 
-        // Friction - tuned for realistic pool physics
+        // Original arcade friction profile
         this.GRAVITY = 980;
-        this.MU_ROLL = 0.014;      // Increased friction for faster ball stop
-        this.MU_SLIDE = 0.05;      // Sliding friction
-        this.MU_SPIN = 0.04;       // Spin friction
+        this.MU_ROLL = 0.018 * this.mobileFrictionMultiplier;
+        this.MU_SLIDE = 0.10 * this.mobileFrictionMultiplier;
+        this.MU_SPIN = 0.12 * this.mobileFrictionMultiplier;
 
-        // Elasticity - realistic values for pool balls
-        this.E_BALL = 0.92;        // More realistic elasticity (real pool balls ~0.92-0.95)
-        this.E_CUSHION = 0.75;     // Cushions absorb more energy for realistic rebounds
+        // Original high-impact arcade elasticity
+        this.E_BALL = 0.98;
+        this.E_CUSHION = 0.80;
 
-        // Time step - fixed for deterministic simulation
+        // Time step
         this.dt = 1 / 60;
 
         // Table
@@ -73,9 +72,7 @@ class PhysicsEngine {
             if (ball.sidespin === undefined) ball.sidespin = 0;
         });
 
-        // FIXED TIMESTEP PHYSICS
-        // Same physics on all devices - 4 sub-steps per frame at 1/60 second
-        // Frame rate differences handled by visual smoothness, not physics
+        // Use fixed timestep for consistent physics
         const steps = 4;
         const dt = this.dt / steps;
 
@@ -95,7 +92,7 @@ class PhysicsEngine {
     updateBallPhysics(ball, dt) {
         const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
 
-        // STOP if very slow - lower threshold so balls roll longer
+        // STOP if very slow (lower threshold for gradual slowdown)
         if (speed < 0.5) {
             ball.vx = 0;
             ball.vy = 0;
@@ -105,20 +102,8 @@ class PhysicsEngine {
             return;
         }
 
-        // === REALISTIC FRICTION ===
-        // Use velocity-dependent friction for more natural deceleration
-        // Fast balls have less relative friction (they roll nicely)
-        // Slow balls have more relative friction (they stop naturally)
-
-        // Base rolling friction
-        let effectiveFriction = this.MU_ROLL;
-
-        // Add slight extra friction at low speeds for natural stop (reduced effect)
-        if (speed < 20) {
-            effectiveFriction += 0.002 * (1 - speed / 20);
-        }
-
-        const deceleration = effectiveFriction * this.GRAVITY;
+        // === FRICTION ===
+        const deceleration = this.MU_ROLL * this.GRAVITY;
         const speedLoss = deceleration * dt;
 
         if (speed > speedLoss) {

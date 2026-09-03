@@ -55,12 +55,14 @@ class NetworkManager {
                         this.authenticate(window.currentUser);
                     }
 
+                    this.emit('connected', { playerId: this.playerId });
                     resolve(this.playerId);
                 });
 
                 this.socket.on('connect_error', (error) => {
                     console.error('Connection error:', error);
                     this.connected = false;
+                    this.emit('connect_error', { error });
                     reject(error);
                 });
 

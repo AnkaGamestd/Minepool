@@ -18,13 +18,6 @@ class MatchmakingQueue {
             diamond: [],     // 500 coins wager
             ruby: [],        // 1000 coins wager
             crown: [],       // 2500 coins wager
-            // TAIN tiers
-            starter: [],     // 10 TAIN
-            rookie: [],      // 50 TAIN
-            pro: [],         // 100 TAIN
-            elite: [],       // 250 TAIN
-            master: [],      // 500 TAIN
-            legend: []       // 1000 TAIN
         };
         this.playerQueues = new Map(); // playerId -> {queue, joinedAt}
 
@@ -66,22 +59,14 @@ class MatchmakingQueue {
             diamond: { stake: 500, currency: 'coins' },
             ruby: { stake: 1000, currency: 'coins' },
             crown: { stake: 2500, currency: 'coins' },
-            // TAIN tiers
-            starter: { stake: 10, currency: 'tainBalance' },
-            rookie: { stake: 50, currency: 'tainBalance' },
-            pro: { stake: 100, currency: 'tainBalance' },
-            elite: { stake: 250, currency: 'tainBalance' },
-            master: { stake: 500, currency: 'tainBalance' },
-            legend: { stake: 1000, currency: 'tainBalance' }
         };
 
         // Determine actual stake and currency from tier if not explicitly provided
         const tierConfig = tierStakes[tier] || tierStakes.casual;
         const actualStake = stake > 0 ? stake : tierConfig.stake;
-        const actualCurrency = currency || tierConfig.currency;
+        const actualCurrency = 'coins';
 
         console.log(`🎮 Queue entry: tier=${tier}, stake=${actualStake}, currency=${actualCurrency}`);
-        console.log(`   Player data: email=${player.email}, wallet=${player.walletAddress}, oderId=${player.oderId}`);
 
         const queueEntry = {
             id: player.id,
@@ -89,8 +74,6 @@ class MatchmakingQueue {
             username: player.username,
             elo: player.elo || 1200,
             coins: player.coins || 1000,
-            tainBalance: player.tainBalance || 0,
-            walletAddress: player.walletAddress,
             email: player.email,
             currency: actualCurrency,
             stake: actualStake,

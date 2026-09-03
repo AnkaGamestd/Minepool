@@ -41,8 +41,8 @@ class PoolGame {
         this.physics.setSoundManager(this.sound);
         console.log('SoundManager initialized');
 
-        // Load selected cue (from localStorage or window.selectedCue)
-        const savedCue = localStorage.getItem('selectedCue') || window.selectedCue || 'standard';
+        // Load the cue from the local mobile player profile.
+        const savedCue = window.MinePoolPlatform?.getPlayer()?.selectedCue || window.selectedCue || 'standard';
         // Valid cue IDs in the game
         const validCues = ['standard', 'premium', 'legendary', 'dragon', 'ice', 'viper', 'phoenix', 'shadow',
             'dragons_breath', 'neon_striker', 'frost_bite', 'shadow_master', 'classic_oak'];
@@ -190,14 +190,14 @@ class PoolGame {
         const playAgainBtn = document.getElementById('play-again');
         if (playAgainBtn) {
             playAgainBtn.addEventListener('click', () => {
-                window.location.href = 'index.html';
+                window.MinePoolApp?.rematch();
             });
         }
 
         const backToMenuBtn = document.getElementById('btn-back-to-menu');
         if (backToMenuBtn) {
             backToMenuBtn.addEventListener('click', () => {
-                window.location.href = 'index.html';
+                window.MinePoolApp?.showMenu();
             });
         }
 
@@ -363,6 +363,16 @@ class PoolGame {
             if (data.guest && window.playerInfoManager) {
                 window.playerInfoManager.updatePlayer2Info(data.guest);
             }
+            const hostName = data.host?.username || 'Player 1';
+            const guestName = data.guest?.username || 'Player 2';
+            const p1Name = document.getElementById('p1-name');
+            const p2Name = document.getElementById('p2-name');
+            const p1Avatar = document.querySelector('#p1-panel .avatar');
+            const p2Avatar = document.querySelector('#p2-panel .avatar');
+            if (p1Name) p1Name.textContent = hostName;
+            if (p2Name) p2Name.textContent = guestName;
+            if (p1Avatar) p1Avatar.textContent = hostName.charAt(0).toUpperCase();
+            if (p2Avatar) p2Avatar.textContent = guestName.charAt(0).toUpperCase();
 
             // Enable ball placement for break shot (only for player 1)
             if (this.myPlayerNumber === 1) {
@@ -372,8 +382,8 @@ class PoolGame {
             this.isBreakShot = true;
 
             this.updateTurnIndicator();
-            const currencyIcon = data.currency === 'tain' ? '💎' : '💰';
-            const currencyName = data.currency === 'tain' ? 'TAIN' : 'Coins';
+            const currencyIcon = 'coin';
+            const currencyName = 'Coins';
             this.showMessage('MULTIPLAYER GAME', `${this.isMyTurn ? 'YOUR TURN' : 'OPPONENT\'S TURN'} - Wager: ${data.wager || 50} ${currencyIcon}`);
             this.startShotTimer();
             this.animate();
@@ -495,6 +505,8 @@ class PoolGame {
     }
 
     animate() {
+        if (this.platformPaused) return;
+
         // Simple physics: one update per frame
         if (this.gameState === 'shooting') {
             const pocketed = this.physics.update(this.balls);
@@ -511,6 +523,27 @@ class PoolGame {
 
         // Continue loop
         this.animationId = requestAnimationFrame(() => this.animate());
+    }
+
+    pauseForPlatform() {
+        if (this.platformPaused) return;
+        this.platformPaused = true;
+        document.documentElement.classList.add('platform-paused');
+        if (this.animationId) cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+        this.stopShotTimer();
+        this.sound.audioContext?.suspend();
+    }
+
+    resumeFromPlatform() {
+        if (!this.platformPaused) return;
+        this.platformPaused = false;
+        document.documentElement.classList.remove('platform-paused');
+        if (window.MinePoolPlatform?.isAudioEnabled()) this.sound.audioContext?.resume();
+        if (this.gameState !== 'gameover' && this.gameState !== 'start') {
+            this.startShotTimer();
+            this.animate();
+        }
     }
 
     initializeBalls() {
@@ -982,7 +1015,9 @@ class PoolGame {
 
     updateTurnIndicator() {
         const turnText = document.querySelector('.turn-text');
-        let text = `PLAYER ${this.currentPlayer}'s TURN`;
+        let text = this.isMultiplayer
+            ? (this.currentPlayer === this.myPlayerNumber ? 'YOUR TURN' : "OPPONENT'S TURN")
+            : `PLAYER ${this.currentPlayer}'s TURN`;
 
         // Show Group
         const group = this.playerTypes[this.currentPlayer];
@@ -1321,7 +1356,7 @@ class PoolGame {
 
         // Update prize display
         if (wager > 0) {
-            const currencyIcon = currency === 'tain' ? '💎' : '💰';
+            const currencyIcon = 'coin';
             const amount = isWinner ? `+${wager * 2}` : `-${wager}`;
             const color = isWinner ? '#00ff88' : '#ff4444';
 
@@ -1782,19 +1817,19 @@ class PoolGame {
         if (this.isMultiplayer) {
             // Show personalized message for multiplayer
             if (player === this.myPlayerNumber) {
-                winnerText = '🎉 YOU WON! 🎉';
+                winnerText = 'YOU WON!';
                 isWin = true;
             } else {
-                winnerText = '😞 YOU LOSE 😞';
+                winnerText = 'YOU LOSE';
             }
         } else {
             // Single player/AI mode
             // Player 1 is always the human
             if (player === 1) {
-                winnerText = '🎉 YOU WIN! 🎉';
+                winnerText = 'YOU WIN!';
                 isWin = true;
             } else {
-                winnerText = '😞 YOU LOSE 😞';
+                winnerText = 'YOU LOSE';
             }
 
             // Report AI game result to server
@@ -1816,48 +1851,18 @@ class PoolGame {
         this.winnerScreen.classList.remove('hidden');
     }
 
-    // Report AI game result to server for stats and coin update
+    // Save the result through the mobile platform adapter.
     async reportAIGameResult(won) {
         try {
-            // Calculate game duration
-            const gameDuration = this.gameStartTime ? Math.floor((Date.now() - this.gameStartTime) / 1000) : 0;
-
-            const response = await fetch('/api/game/ai-result', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    won: won,
-                    wager: this.currentWager || 0,
-                    gameDuration: gameDuration
-                }),
-                credentials: 'include'
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                console.log(`🎮 AI game reported: ${won ? 'WIN' : 'LOSS'}, coins: ${data.coinsChange > 0 ? '+' : ''}${data.coinsChange}`);
-
-                // Update local storage with new balance
-                const storedUser = localStorage.getItem('user');
-                if (storedUser) {
-                    const user = JSON.parse(storedUser);
-                    user.coins = data.newBalance;
-                    user.gamesPlayed = data.gamesPlayed;
-                    user.gamesWon = data.gamesWon;
-                    user.winStreak = data.winStreak;
-                    localStorage.setItem('user', JSON.stringify(user));
-                }
-
-                // Show coin update notification
-                if (data.coinsChange > 0) {
-                    this.showMessage('COINS EARNED', `+${data.coinsChange} 💰`, 2000);
-                }
-            }
+            const pocketed = this.balls.filter((ball) => !ball.active && ball.id !== 0).length;
+            const result = await window.MinePoolPlatform.recordGame(won, pocketed);
+            window.currentUser = { ...result.player, username: window.MinePoolPlatform.getIdentity().displayName };
+            if (result.reward > 0) this.showMessage('MATCH REWARD', `+${result.reward} COINS`, 2000);
         } catch (error) {
-            console.error('Failed to report AI game result:', error);
+            console.error('Failed to save game result:', error);
+            window.ytgame?.health?.logError?.();
         }
     }
-
     resetGame() {
         this.stopShotTimer();
         this.winnerScreen.classList.add('hidden');
@@ -3035,18 +3040,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.chatManager = new ChatManager(window.gameInstance);
         console.log('Chat system initialized!');
 
-        // Check for auto-start from URL parameter (from index.html)
-        const urlParams = new URLSearchParams(window.location.search);
-        const mode = urlParams.get('mode');
-        if (mode === '2player') {
-            console.log('Auto-starting 2 player mode from index.html');
-            // Hide start screen and start game
-            if (window.gameInstance.startScreen) {
-                window.gameInstance.startScreen.style.display = 'none';
-                window.gameInstance.startScreen.classList.add('hidden');
-            }
-            window.gameInstance.startGame('2player');
-        }
+        window.requestedGameMode = new URLSearchParams(window.location.search).get('mode') || 'ai';
     } catch (error) {
         console.error('FATAL ERROR: Failed to initialize game:', error);
         console.error('Error stack:', error.stack);
@@ -3091,18 +3085,6 @@ class ChatManager {
             this.playerNames[2] = p2NameEl.textContent;
         }
 
-        // Check localStorage for user data
-        try {
-            const userData = localStorage.getItem('user');
-            if (userData) {
-                const user = JSON.parse(userData);
-                if (user && user.username) {
-                    this.playerNames[1] = user.username;
-                }
-            }
-        } catch (e) {
-            console.log('Could not load user from localStorage');
-        }
 
         console.log('Chat player names:', this.playerNames);
     }

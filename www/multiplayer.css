@@ -1,0 +1,35 @@
+.matchmaking-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:22px;background:rgba(1,6,9,.78);backdrop-filter:blur(14px)}
+.matchmaking-overlay.hidden{display:none}
+.matchmaking-card{width:min(620px,100%);max-height:min(760px,calc(100svh - 32px));overflow:auto;border:1px solid rgba(54,213,201,.46);border-radius:20px;background:radial-gradient(circle at 50% 0,rgba(23,135,131,.2),transparent 38%),linear-gradient(160deg,rgba(8,24,33,.99),rgba(3,11,17,.99));box-shadow:0 32px 90px rgba(0,0,0,.72),inset 0 1px rgba(255,255,255,.05)}
+.matchmaking-head{display:flex;align-items:center;justify-content:space-between;padding:24px 26px 19px;border-bottom:1px solid rgba(113,145,157,.23)}
+.matchmaking-kicker{color:var(--teal);font-size:12px;font-weight:900;letter-spacing:.18em}
+.matchmaking-head h2{margin:4px 0 0;color:var(--cream);font-size:clamp(28px,5vw,42px);line-height:1;letter-spacing:.035em}
+.matchmaking-close{width:44px;height:44px;border:1px solid rgba(128,153,163,.3);border-radius:50%;background:rgba(0,0,0,.25);color:#d7dcdb;cursor:pointer;font-size:28px;line-height:1}
+.matchmaking-status{display:flex;align-items:center;gap:9px;padding:12px 26px;color:#aeb9bb;background:rgba(0,0,0,.18);font-size:13px}
+.online-dot{width:9px;height:9px;border-radius:50%;background:#31d09c;box-shadow:0 0 10px rgba(49,208,156,.8)}
+.online-dot.offline{background:#d69a48;box-shadow:0 0 10px rgba(214,154,72,.55)}
+.matchmaking-setup,.matchmaking-searching,.matchmaking-room{padding:24px 26px 28px}
+.matchmaking-copy{margin:0 0 18px;color:#b7c0c1;line-height:1.45}
+.tier-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tier-choice{min-width:0;padding:16px 8px;border:1px solid rgba(151,117,54,.58);border-radius:11px;background:linear-gradient(180deg,rgba(16,31,39,.94),rgba(5,15,22,.96));color:#e9e6dc;cursor:pointer}
+.tier-choice strong,.tier-choice span{display:block}
+.tier-choice strong{font-size:16px;letter-spacing:.04em}.tier-choice span{margin-top:4px;color:var(--gold);font-size:12px;font-weight:800}
+.tier-choice.selected{border-color:var(--teal);background:linear-gradient(180deg,rgba(17,92,89,.8),rgba(5,35,36,.92));box-shadow:inset 0 0 0 1px rgba(32,208,198,.22),0 0 18px rgba(32,208,198,.1)}
+.matchmaking-primary{width:100%;min-height:68px;margin-top:18px;border:1px solid #d0a151;border-radius:11px;background:linear-gradient(180deg,#0c8f87,#075c58);color:white;cursor:pointer;font-size:22px;font-weight:950;letter-spacing:.045em;box-shadow:0 8px 22px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.15)}
+.search-mark{display:inline-block;width:16px;height:16px;margin-right:7px;border:3px solid currentColor;border-radius:50%;vertical-align:-1px}
+.private-room-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px}
+.private-room-actions button,.join-room-form button,.matchmaking-cancel{min-height:48px;border:1px solid rgba(155,117,54,.65);border-radius:9px;background:rgba(4,14,21,.9);color:#e7e6e1;cursor:pointer;font-weight:900;letter-spacing:.04em}
+.join-room-form{margin-top:16px;padding-top:16px;border-top:1px solid rgba(113,145,157,.2)}
+.join-room-form.hidden,.matchmaking-searching.hidden,.matchmaking-room.hidden{display:none}
+.join-room-form label{display:block;margin-bottom:7px;color:#aeb9bb;font-size:12px;font-weight:900;letter-spacing:.12em}
+.join-room-form>div{display:grid;grid-template-columns:1fr 92px;gap:8px}
+.join-room-form input{min-width:0;height:48px;padding:0 14px;border:1px solid rgba(91,128,140,.45);border-radius:9px;outline:none;background:rgba(0,0,0,.32);color:white;font:900 18px var(--condensed);letter-spacing:.14em;text-transform:uppercase}
+.matchmaking-searching,.matchmaking-room{text-align:center}.matchmaking-searching h3{margin:18px 0 5px;font-size:24px;letter-spacing:.04em}
+.matchmaking-searching p,.matchmaking-room p{color:#aeb9bb}.matchmaking-searching>strong{display:block;margin:15px 0;color:var(--teal);font-size:28px}
+.radar{position:relative;width:104px;height:104px;margin:3px auto;overflow:hidden;border:1px solid rgba(32,208,198,.72);border-radius:50%;background:repeating-radial-gradient(circle,transparent 0 18px,rgba(32,208,198,.12) 19px 20px);box-shadow:0 0 28px rgba(32,208,198,.13)}
+.radar:before{content:"";position:absolute;inset:50% 0 0 50%;transform-origin:0 0;background:linear-gradient(45deg,rgba(32,208,198,.42),transparent 70%);animation:radar-sweep 1.5s linear infinite}
+.radar span{position:absolute;left:67%;top:29%;width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 9px var(--gold)}
+@keyframes radar-sweep{to{transform:rotate(360deg)}}
+.matchmaking-room .room-label{color:#aeb9bb;font-size:13px;font-weight:900;letter-spacing:.14em}.matchmaking-room>strong{display:block;margin:12px 0;color:var(--gold);font-size:clamp(38px,10vw,62px);letter-spacing:.12em}
+@media(max-width:540px){.matchmaking-overlay{padding:10px}.matchmaking-card{max-height:calc(100svh - 20px);border-radius:16px}.matchmaking-head{padding:19px 18px 15px}.matchmaking-status{padding:10px 18px}.matchmaking-setup,.matchmaking-searching,.matchmaking-room{padding:18px}.tier-grid{gap:6px}.tier-choice{padding:13px 4px}.tier-choice strong{font-size:13px}.private-room-actions{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.radar:before{animation:none}}

@@ -1,10 +1,10 @@
 // ============================================
 // UNIFIED STAKE CONFIGURATION
-// All stake tiers used across the game - NOW IN TAIN
+// All stake tiers used across the game - USING IN-GAME COINS
 // ============================================
 const STAKE_CONFIG = {
     // Currency configuration
-    currency: 'TAIN',
+    currency: 'COINS',
     currencyIcon: '🪙',
     houseFeePercent: 10, // 10% house fee on winnings
 

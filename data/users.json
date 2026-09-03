@@ -1145,8 +1145,7 @@
   {
     "id": 53,
     "username": "Bleda",
-    "email": "wallet_0xdb6be62b413df944d5aba396f352b8c90b0d0cb8@minepool.game",
-    "walletAddress": "0xdb6be62b413df944d5aba396f352b8c90b0d0cb8",
+    "email": "player_53@minepool.local",
     "coins": 0,
     "qwinBalance": 0,
     "diamonds": 100,
@@ -1163,15 +1162,14 @@
     ],
     "avatar": "🐯",
     "profileComplete": true,
-    "referralCode": "BLEDJWOB"
+    "referralCode": "BLEDJWOB",
+    "provider": "guest"
   },
   {
     "id": 54,
     "username": "Turkmen",
-    "email": "wallet_0x9ee9a674fa394afa71dda09b26b289b390958377@minepool.game",
-    "walletAddress": "0x9ee9a674fa394afa71dda09b26b289b390958377",
+    "email": "player_54@minepool.local",
     "coins": 500,
-    "tainBalance": 0,
     "diamonds": 100,
     "elo": 1222,
     "gamesPlayed": 2,
@@ -1189,6 +1187,48 @@
     "referrals": [],
     "referralRewardsClaimed": 0,
     "avatar": "🐉",
-    "profileComplete": true
+    "profileComplete": true,
+    "provider": "guest"
+  },
+  {
+    "id": 55,
+    "username": "Player",
+    "email": "guest_accae64d-bd91-4682-b15c-dd2c1d2c89ad@minepool.local",
+    "provider": "guest",
+    "coins": 1000,
+    "diamonds": 100,
+    "elo": 1200,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "createdAt": "2026-07-28T09:38:12.282Z",
+    "achievements": [],
+    "matchHistory": [],
+    "nationality": null,
+    "profilePicture": null,
+    "profileComplete": true,
+    "cues": [
+      "standard"
+    ],
+    "referralCode": "PLAYRMRL"
+  },
+  {
+    "id": 56,
+    "username": "Player",
+    "email": "guest_c0606969-5858-44b4-b2f4-11280092cb69@minepool.local",
+    "provider": "guest",
+    "coins": 1000,
+    "diamonds": 100,
+    "elo": 1200,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "createdAt": "2026-07-28T10:29:55.172Z",
+    "achievements": [],
+    "matchHistory": [],
+    "nationality": null,
+    "profilePicture": null,
+    "profileComplete": true,
+    "cues": [
+      "standard"
+    ]
   }
 ]

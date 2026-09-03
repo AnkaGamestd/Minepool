@@ -16,7 +16,7 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const multer = require('multer');
 const fs = require('fs');
-const { ethers } = require('ethers');
+const { v4: uuidv4 } = require('uuid');
 
 // Multiplayer modules
 const { MultiplayerServer } = require('./multiplayer/WebSocketHandler');
@@ -25,7 +25,6 @@ const { TournamentManager16, ENTRY_FEE_TIERS, TournamentState } = require('./mul
 const { EloCalculator } = require('./multiplayer/MatchmakingQueue');
 
 // Anti-fraud system
-const antifraud = require('./antifraud');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -34,7 +33,7 @@ const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-in-production';
 const JWT_EXPIRY = '7d';
 
-// Note: Using wallet-only authentication - no OAuth required
+// Guest authentication requires no external provider.
 
 // Persistent user storage
 const DATA_DIR = path.join(__dirname, 'data');
@@ -195,257 +194,15 @@ const setAuthCookie = (res, token) => {
 
 // ============ AUTH ROUTES ============
 
-// [DEPRECATED - Wallet Only Auth] Register with email/password
-/* REMOVED: Email/password registration - wallet-only authentication now
-app.post('/api/auth/register', async (req, res) => {
-    try {
-        const { username, email, password } = req.body;
-
-        if (!username || !email || !password) {
-            return res.status(400).json({ success: false, error: 'All fields are required' });
-        }
-
-        if (password.length < 6) {
-            return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
-        }
-
-        if (username.length < 3 || username.length > 20) {
-            return res.status(400).json({ success: false, error: 'Username must be 3-20 characters' });
-        }
-
-        if (users.has(email.toLowerCase())) {
-            return res.status(400).json({ success: false, error: 'Email already registered' });
-        }
-
-        for (const user of users.values()) {
-            if (user.username.toLowerCase() === username.toLowerCase()) {
-                return res.status(400).json({ success: false, error: 'Username already taken' });
-            }
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = {
-            id: nextUserId++,
-            username,
-            email: email.toLowerCase(),
-            password: hashedPassword,
-            provider: 'email',
-            coins: 1000,
-            elo: 1200,
-            gamesPlayed: 0,
-            gamesWon: 0,
-            createdAt: new Date().toISOString(),
-            achievements: [],
-            matchHistory: [],
-            nationality: null,
-            profilePicture: null
-        };
-
-        users.set(email.toLowerCase(), user);
-        saveUsers(); // Persist new user
-
-        const token = generateToken(user);
-        setAuthCookie(res, token);
-
-        res.json({
-            success: true,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                coins: user.coins,
-                elo: user.elo,
-                rank: EloCalculator.getRankFromElo(user.elo)
-            }
-        });
-
-    } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ success: false, error: 'Registration failed' });
-    }
-});
-// END OF DEPRECATED REGISTRATION */
-
-// [DEPRECATED - Wallet Only Auth] Login with email/password
-/* REMOVED: Email/password login - wallet-only authentication now
-app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({ success: false, error: 'Email and password required' });
-        }
-
-        const user = users.get(email.toLowerCase());
-        if (!user) {
-            return res.status(401).json({ success: false, error: 'Invalid email or password' });
-        }
-
-        const validPassword = await bcrypt.compare(password, user.password);
-        if (!validPassword) {
-            return res.status(401).json({ success: false, error: 'Invalid email or password' });
-        }
-
-        const token = generateToken(user);
-        setAuthCookie(res, token);
-
-        res.json({
-            success: true,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                coins: user.coins,
-                elo: user.elo,
-                rank: EloCalculator.getRankFromElo(user.elo)
-            }
-        });
-
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ success: false, error: 'Login failed' });
-    }
-});
-// END OF DEPRECATED LOGIN */
-
-// Wallet login with signature verification (TAIN)
-app.post('/api/auth/wallet-login', async (req, res) => {
-    try {
-        const { walletAddress, message, signature, referralCode } = req.body;
-
-        if (!walletAddress || !message || !signature) {
-            return res.status(400).json({ success: false, error: 'Missing required fields' });
-        }
-
-        // Verify wallet signature to prevent impersonation
-        const normalizedAddress = walletAddress.toLowerCase();
-        try {
-            const recoveredAddress = ethers.verifyMessage(message, signature);
-            if (recoveredAddress.toLowerCase() !== normalizedAddress) {
-                console.log(`❌ Wallet auth failed: signature mismatch`);
-                return res.status(401).json({ success: false, error: 'Invalid signature' });
-            }
-        } catch (sigError) {
-            console.error('Signature verification error:', sigError.message);
-            return res.status(401).json({ success: false, error: 'Signature verification failed' });
-        }
-
-        // Find or create user by wallet address
-        let user = null;
-        let userEmail = `wallet_${normalizedAddress}@minepool.game`;
-        let isNewUser = false;
-
-        // Check if user exists with this wallet
-        for (const [email, u] of users) {
-            if (u.walletAddress === normalizedAddress) {
-                user = u;
-                userEmail = email;
-
-                // Migration: If user has a custom username (not default Player_0x format), mark as profileComplete
-                if (!user.profileComplete && user.username && !user.username.startsWith('Player_0x')) {
-                    user.profileComplete = true;
-                    users.set(email, user);
-                    saveUsers();
-                    console.log(`✅ Migrated ${user.username} to profileComplete=true`);
-                }
-                break;
-            }
-        }
-
-        if (!user) {
-            isNewUser = true;
-            // Create new user for this wallet
-            const shortAddress = normalizedAddress.slice(0, 6) + '...' + normalizedAddress.slice(-4);
-            user = {
-                id: nextUserId++,
-                username: `Player_${shortAddress}`,
-                email: userEmail,
-                walletAddress: normalizedAddress,
-                coins: 500, // Welcome bonus - 500 TAIN for new users
-                tainBalance: 0, // Off-chain TAIN balance
-                diamonds: 100,
-                elo: 1200,
-                gamesPlayed: 0,
-                gamesWon: 0,
-                createdAt: new Date().toISOString(),
-                achievements: [],
-                matchHistory: [],
-                nationality: null,
-                profilePicture: null,
-                cues: ['standard'],
-                referralCode: null, // Will be generated when needed
-                referredBy: null,
-                referrals: [], // Users this person has referred
-                referralRewardsClaimed: 0
-            };
-
-            // Process referral code if provided
-            if (referralCode) {
-                // Find the user who owns this referral code
-                for (const [email, inviter] of users) {
-                    if (inviter.referralCode === referralCode) {
-                        user.referredBy = inviter.id;
-
-                        // Add to inviter's referrals list
-                        if (!inviter.referrals) inviter.referrals = [];
-                        inviter.referrals.push({
-                            id: user.id,
-                            username: user.username,
-                            joinedAt: new Date().toISOString(),
-                            rewardClaimed: false
-                        });
-
-                        // Credit the inviter with 500 coins
-                        inviter.coins = (inviter.coins || 0) + 500;
-                        users.set(email, inviter);
-
-                        console.log(`🎁 Referral bonus: ${inviter.username} earned 500 coins for inviting a friend!`);
-                        break;
-                    }
-                }
-            }
-
-            users.set(userEmail, user);
-            saveUsers();
-            console.log(`🪙 New wallet user created: ${shortAddress}${referralCode ? ` (referred by code: ${referralCode})` : ''}`);
-        }
-
-        const token = generateToken(user);
-        setAuthCookie(res, token);
-
-        res.json({
-            success: true,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                walletAddress: user.walletAddress,
-                tainBalance: user.tainBalance || 0,
-                elo: user.elo,
-                rank: EloCalculator.getRankFromElo(user.elo),
-                profileComplete: user.profileComplete || false
-            }
-        });
-
-    } catch (error) {
-        console.error('Wallet login error:', error);
-        res.status(500).json({ success: false, error: 'Wallet login failed' });
-    }
-});
-
-// Anti-fraud: Track IP for all authenticated requests
-app.use('/api', (req, res, next) => {
-    if (req.user && req.user.email) {
-        const user = users.get(req.user.email);
-        if (user) {
-            const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
-            const ipCheck = antifraud.trackUserIP(user.id, ip);
-            if (ipCheck.flagged) {
-                console.log(`⚠️ Multi-account warning: ${user.username} from IP ${ip} - ${ipCheck.warning}`);
-            }
-        }
-    }
-    next();
+// Frictionless guest sessions for embedded play.
+app.post('/api/auth/guest-login', (req, res) => {
+    const safeName = String(req.body?.username || 'Player').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20) || 'Player';
+    const guestId = uuidv4();
+    const email = `guest_${guestId}@minepool.local`;
+    const user = { id: nextUserId++, username: safeName, email, provider: 'guest', coins: 1000, diamonds: 100, elo: 1200, gamesPlayed: 0, gamesWon: 0, createdAt: new Date().toISOString(), achievements: [], matchHistory: [], nationality: null, profilePicture: null, profileComplete: true, cues: ['standard'] };
+    users.set(email, user); saveUsers();
+    const token = generateToken(user); setAuthCookie(res, token);
+    res.json({ success: true, user: { ...user, rank: EloCalculator.getRankFromElo(user.elo) } });
 });
 
 // Get current user
@@ -473,8 +230,6 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
             nationality: user.nationality || null,
             profilePicture: user.profilePicture || null,
             profileComplete: user.profileComplete || false,
-            walletAddress: user.walletAddress || null,
-            tainBalance: user.tainBalance || 0,
             cues: user.cues || [],
             cash: user.cash || 0
         }
@@ -780,7 +535,7 @@ app.delete('/api/profile/avatar', authenticateToken, (req, res) => {
 });
 
 // ============ OAUTH REMOVED ============
-// Note: Using wallet-only authentication via /api/auth/wallet-login
+// Guest authentication requires no external provider.
 // Google and Facebook OAuth routes have been removed
 
 // ============ LEADERBOARD ============
@@ -905,344 +660,6 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
     }
 });
 
-// ============ WALLET API ============
-
-// TAIN Token Configuration for BSC Mainnet
-const TAIN_CONFIG = {
-    CONTRACT_ADDRESS: '0x3fe59e287f58e5a83443bcfd34dd72f045663e8b',
-    TREASURY_ADDRESS: '0x9ee9a674fA394aFA71DDA09b26b289b390958377',
-    DECIMALS: 18,
-    BSC_RPC: 'https://bsc-dataseed.binance.org/'
-};
-
-// ERC-20 Transfer event signature
-const TRANSFER_EVENT_SIGNATURE = ethers.id('Transfer(address,address,uint256)');
-
-// Create BSC provider for blockchain queries
-const bscProvider = new ethers.JsonRpcProvider(TAIN_CONFIG.BSC_RPC);
-
-// Track processed deposits to prevent double-crediting
-const processedDeposits = new Set();
-
-// Deposit TAIN tokens (verify blockchain transaction)
-app.post('/api/wallet/deposit', authenticateToken, async (req, res) => {
-    try {
-        const user = users.get(req.user.email);
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found' });
-        }
-
-        // Anti-fraud: Rate limiting
-        const depositCheck = antifraud.canDeposit(user.id);
-        if (!depositCheck.allowed) {
-            console.log(`🚫 Deposit rate limit: ${user.username} - ${depositCheck.reason}`);
-            return res.status(429).json({ success: false, error: depositCheck.reason });
-        }
-
-        const { txHash } = req.body;
-        if (!txHash) {
-            return res.status(400).json({ success: false, error: 'Transaction hash required' });
-        }
-
-        // Validate transaction hash format
-        if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
-            return res.status(400).json({ success: false, error: 'Invalid transaction hash format' });
-        }
-
-        // Check if this deposit was already processed
-        if (processedDeposits.has(txHash.toLowerCase())) {
-            return res.status(400).json({ success: false, error: 'This transaction has already been processed' });
-        }
-
-        console.log(`💰 Deposit verification started for ${user.username}, txHash: ${txHash}`);
-
-        // Fetch transaction receipt from BSC
-        const receipt = await bscProvider.getTransactionReceipt(txHash);
-
-        if (!receipt) {
-            return res.status(400).json({ success: false, error: 'Transaction not found. Please wait for confirmation.' });
-        }
-
-        if (receipt.status !== 1) {
-            return res.status(400).json({ success: false, error: 'Transaction failed on blockchain' });
-        }
-
-        // Find the Transfer event for TAIN token to treasury
-        let depositAmount = null;
-        let senderAddress = null;
-
-        for (const log of receipt.logs) {
-            // Check if this is from the TAIN contract
-            if (log.address.toLowerCase() !== TAIN_CONFIG.CONTRACT_ADDRESS.toLowerCase()) {
-                continue;
-            }
-
-            // Check if this is a Transfer event
-            if (log.topics[0] !== TRANSFER_EVENT_SIGNATURE) {
-                continue;
-            }
-
-            // Decode the Transfer event
-            // topics[1] = from address (padded), topics[2] = to address (padded)
-            const from = '0x' + log.topics[1].slice(26);
-            const to = '0x' + log.topics[2].slice(26);
-
-            // Check if the transfer is to the treasury
-            if (to.toLowerCase() === TAIN_CONFIG.TREASURY_ADDRESS.toLowerCase()) {
-                // Decode the amount from the data field
-                const amount = BigInt(log.data);
-                depositAmount = Number(amount) / (10 ** TAIN_CONFIG.DECIMALS);
-                senderAddress = from;
-                break;
-            }
-        }
-
-        if (depositAmount === null) {
-            return res.status(400).json({
-                success: false,
-                error: 'No TAIN transfer to treasury found in this transaction'
-            });
-        }
-
-        // Verify the sender matches the user's wallet (optional security check)
-        if (user.walletAddress && senderAddress.toLowerCase() !== user.walletAddress.toLowerCase()) {
-            console.log(`⚠️ Sender mismatch: tx sender ${senderAddress}, user wallet ${user.walletAddress}`);
-            // Allow it but log warning - user might have multiple wallets
-        }
-
-        // Mark this transaction as processed
-        processedDeposits.add(txHash.toLowerCase());
-
-        // Credit the user's account
-        user.coins = (user.coins || 0) + depositAmount;
-        saveUsers();
-
-        console.log(`✅ Deposit verified: ${user.username} +${depositAmount} TAIN from ${senderAddress} (balance: ${user.coins})`);
-
-        // Anti-fraud: Log transaction for audit
-        antifraud.logTransaction('DEPOSIT', user.id, user.username, depositAmount, { txHash, senderAddress });
-
-        res.json({
-            success: true,
-            amount: depositAmount,
-            balance: user.coins,
-            txHash: txHash,
-            message: `Successfully deposited ${depositAmount} TAIN`
-        });
-
-    } catch (error) {
-        console.error('Deposit verification error:', error);
-
-        // Handle specific errors
-        if (error.code === 'NETWORK_ERROR') {
-            return res.status(503).json({ success: false, error: 'BSC network unavailable. Please try again.' });
-        }
-
-        res.status(500).json({ success: false, error: 'Deposit verification failed: ' + error.message });
-    }
-});
-// ERC-20 ABI for transfer function
-const TAIN_ABI = [
-    'function transfer(address to, uint256 amount) returns (bool)',
-    'function balanceOf(address owner) view returns (uint256)'
-];
-
-// Pending withdrawals tracker (in production, use a database)
-const pendingWithdrawals = new Map();
-
-// Withdraw TAIN tokens (server-side payout)
-app.post('/api/wallet/withdraw', authenticateToken, async (req, res) => {
-    try {
-        const user = users.get(req.user.email);
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found' });
-        }
-
-        const { amount } = req.body;
-        if (!amount || amount < 50) {
-            return res.status(400).json({ success: false, error: 'Minimum withdrawal is 50 TAIN' });
-        }
-
-        if ((user.coins || 0) < amount) {
-            return res.status(400).json({ success: false, error: 'Insufficient balance' });
-        }
-
-        if (!user.walletAddress) {
-            return res.status(400).json({ success: false, error: 'No wallet address linked to account' });
-        }
-
-        // Validate wallet address format
-        if (!/^0x[a-fA-F0-9]{40}$/.test(user.walletAddress)) {
-            return res.status(400).json({ success: false, error: 'Invalid wallet address format' });
-        }
-
-        // Anti-fraud: Account verification
-        const accountCheck = antifraud.verifyAccountForWithdrawal(user);
-        if (!accountCheck.verified) {
-            console.log(`🚫 Withdrawal denied (account): ${user.username} - ${accountCheck.reason}`);
-            return res.status(403).json({ success: false, error: accountCheck.reason });
-        }
-
-        // Anti-fraud: Rate limiting and withdrawal limits
-        const withdrawCheck = antifraud.canWithdraw(user.id, amount);
-        if (!withdrawCheck.allowed) {
-            console.log(`🚫 Withdrawal denied (limit): ${user.username} - ${withdrawCheck.reason}`);
-            if (withdrawCheck.requiresReview) {
-                return res.status(403).json({ success: false, error: withdrawCheck.reason, requiresReview: true });
-            }
-            return res.status(429).json({ success: false, error: withdrawCheck.reason });
-        }
-
-        // Anti-fraud: Check win rate anomaly
-        const winRateCheck = antifraud.checkWinRateAnomaly(user);
-        if (winRateCheck.suspicious) {
-            console.log(`🚨 Suspicious win rate: ${user.username} - ${winRateCheck.winRate}`);
-            antifraud.flagUser(user.id, winRateCheck.reason);
-            return res.status(403).json({ success: false, error: 'Account under review due to unusual activity. Please contact support.' });
-        }
-
-        // Check if server wallet private key is configured
-        const TREASURY_PRIVATE_KEY = process.env.TREASURY_PRIVATE_KEY;
-        if (!TREASURY_PRIVATE_KEY) {
-            console.error('❌ TREASURY_PRIVATE_KEY not configured in environment');
-            // Deduct balance and queue for manual processing
-            user.coins = user.coins - amount;
-            saveUsers();
-
-            const withdrawalId = 'manual_' + Date.now();
-            pendingWithdrawals.set(withdrawalId, {
-                userId: user.id,
-                username: user.username,
-                walletAddress: user.walletAddress,
-                amount: amount,
-                status: 'pending_manual',
-                createdAt: new Date().toISOString()
-            });
-
-            console.log(`💸 Manual withdrawal queued: ${user.username} - ${amount} TAIN to ${user.walletAddress}`);
-
-            return res.json({
-                success: true,
-                amount: amount,
-                balance: user.coins,
-                txHash: withdrawalId,
-                status: 'pending',
-                message: `Withdrawal of ${amount} TAIN queued for manual processing.`
-            });
-        }
-
-        console.log(`💸 Withdrawal request: ${user.username} - ${amount} TAIN to ${user.walletAddress}`);
-
-        // Create wallet signer from private key
-        const treasuryWallet = new ethers.Wallet(TREASURY_PRIVATE_KEY, bscProvider);
-
-        // Create TAIN contract instance
-        const tainContract = new ethers.Contract(TAIN_CONFIG.CONTRACT_ADDRESS, TAIN_ABI, treasuryWallet);
-
-        // Check treasury TAIN balance
-        const treasuryBalance = await tainContract.balanceOf(treasuryWallet.address);
-        const treasuryBalanceFormatted = Number(treasuryBalance) / (10 ** TAIN_CONFIG.DECIMALS);
-
-        if (treasuryBalanceFormatted < amount) {
-            console.error(`❌ Insufficient treasury balance: ${treasuryBalanceFormatted} TAIN, need ${amount} TAIN`);
-            return res.status(503).json({
-                success: false,
-                error: 'Withdrawal temporarily unavailable. Please try again later.'
-            });
-        }
-
-        // Deduct from user balance FIRST (before blockchain tx)
-        const previousBalance = user.coins;
-        user.coins = user.coins - amount;
-        saveUsers();
-
-        try {
-            // Convert amount to wei
-            const amountWei = ethers.parseUnits(amount.toString(), TAIN_CONFIG.DECIMALS);
-
-            // Send the transaction
-            console.log(`📤 Sending ${amount} TAIN to ${user.walletAddress}...`);
-            const tx = await tainContract.transfer(user.walletAddress, amountWei);
-
-            console.log(`⏳ Transaction sent: ${tx.hash}, waiting for confirmation...`);
-
-            // Wait for confirmation (1 block)
-            const receipt = await tx.wait(1);
-
-            if (receipt.status === 1) {
-                console.log(`✅ Withdrawal successful: ${user.username} - ${amount} TAIN, tx: ${tx.hash}`);
-
-                // Anti-fraud: Record withdrawal and log for audit
-                antifraud.recordWithdrawal(user.id, amount);
-                antifraud.logTransaction('WITHDRAWAL', user.id, user.username, amount, {
-                    txHash: tx.hash,
-                    walletAddress: user.walletAddress
-                });
-
-                return res.json({
-                    success: true,
-                    amount: amount,
-                    balance: user.coins,
-                    txHash: tx.hash,
-                    status: 'completed',
-                    message: `Successfully withdrew ${amount} TAIN`
-                });
-            } else {
-                // Transaction failed on-chain, refund user
-                console.error(`❌ Transaction failed on-chain: ${tx.hash}`);
-                user.coins = previousBalance;
-                saveUsers();
-
-                return res.status(500).json({
-                    success: false,
-                    error: 'Transaction failed on blockchain. Your balance has been restored.'
-                });
-            }
-        } catch (txError) {
-            // Transaction failed, refund user
-            console.error(`❌ Withdrawal transaction error:`, txError);
-            user.coins = previousBalance;
-            saveUsers();
-
-            // Check for specific error types
-            if (txError.code === 'INSUFFICIENT_FUNDS') {
-                return res.status(503).json({
-                    success: false,
-                    error: 'Treasury needs BNB for gas. Please try again later.'
-                });
-            }
-
-            return res.status(500).json({
-                success: false,
-                error: 'Withdrawal failed. Your balance has been restored.'
-            });
-        }
-
-    } catch (error) {
-        console.error('Withdrawal error:', error);
-        res.status(500).json({ success: false, error: 'Withdrawal failed: ' + error.message });
-    }
-});
-
-// Get wallet balance
-app.get('/api/wallet/balance', authenticateToken, (req, res) => {
-    try {
-        const user = users.get(req.user.email);
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found' });
-        }
-
-        res.json({
-            success: true,
-            balance: user.coins || 0,
-            walletAddress: user.walletAddress || null
-        });
-    } catch (error) {
-        console.error('Balance check error:', error);
-        res.status(500).json({ success: false, error: 'Failed to get balance' });
-    }
-});
-
 // ============ AI GAME RESULTS ============
 
 // Report AI game result (for updating user stats after playing against AI)
@@ -1259,15 +676,7 @@ app.post('/api/game/ai-result', authenticateToken, async (req, res) => {
         if (typeof won !== 'boolean') {
             return res.status(400).json({ success: false, error: 'Invalid game result' });
         }
-
-        // Anti-fraud: Check game duration (games < 30s are suspicious)
-        const gameCheck = antifraud.validateGameResult(user.id, 'AI', gameDuration, wager);
-        if (!gameCheck.valid) {
-            console.log(`🚨 Suspicious AI game: ${user.username} - ${gameCheck.flags.join(', ')}`);
-            // Don't block, but log suspicion
-        }
-
-        // Anti-fraud: Rate limit AI games (prevent farming) - max 20 games per hour
+        // Rate limit AI games (prevent farming) - max 20 games per hour
         const now = Date.now();
         const aiGameKey = `ai_${user.id}`;
         if (!user.aiGameHistory) user.aiGameHistory = [];
@@ -1318,13 +727,6 @@ app.post('/api/game/ai-result', authenticateToken, async (req, res) => {
         }
 
         saveUsers();
-
-        // Log for audit
-        antifraud.logTransaction('AI_GAME', user.id, user.username, coinsChange, {
-            won,
-            wager,
-            gameDuration
-        });
 
         res.json({
             success: true,
@@ -2199,106 +1601,6 @@ app.post('/api/tournaments16/:id/match/:matchId/walkover', authenticateToken, (r
     }
 });
 
-// ============ ANTI-FRAUD ADMIN API ============
-
-// Admin secret for accessing anti-fraud data (should be in environment)
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'tain-admin-secret-change-me';
-
-// Get anti-fraud audit log
-app.get('/api/admin/antifraud/transactions', (req, res) => {
-    const secret = req.headers['x-admin-secret'];
-    if (secret !== ADMIN_SECRET) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
-    const limit = parseInt(req.query.limit) || 100;
-    const transactions = antifraud.getRecentTransactions(limit);
-
-    res.json({
-        success: true,
-        count: transactions.length,
-        transactions
-    });
-});
-
-// Get suspicious users
-app.get('/api/admin/antifraud/suspicious', (req, res) => {
-    const secret = req.headers['x-admin-secret'];
-    if (secret !== ADMIN_SECRET) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
-    const suspiciousUserIds = antifraud.getSuspiciousUsers();
-    const suspiciousUsers = [];
-
-    for (const [email, user] of users) {
-        if (suspiciousUserIds.includes(user.id)) {
-            suspiciousUsers.push({
-                id: user.id,
-                username: user.username,
-                walletAddress: user.walletAddress,
-                coins: user.coins,
-                gamesPlayed: user.gamesPlayed,
-                gamesWon: user.gamesWon,
-                winRate: user.gamesPlayed > 0 ? ((user.gamesWon / user.gamesPlayed) * 100).toFixed(1) + '%' : 'N/A',
-                createdAt: user.createdAt
-            });
-        }
-    }
-
-    res.json({
-        success: true,
-        count: suspiciousUsers.length,
-        users: suspiciousUsers
-    });
-});
-
-// Unflag a user
-app.post('/api/admin/antifraud/unflag/:userId', (req, res) => {
-    const secret = req.headers['x-admin-secret'];
-    if (secret !== ADMIN_SECRET) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
-    const userId = parseInt(req.params.userId);
-    antifraud.unflagUser(userId);
-
-    res.json({
-        success: true,
-        message: `User ${userId} has been unflagged`
-    });
-});
-
-// Flag a user manually
-app.post('/api/admin/antifraud/flag/:userId', (req, res) => {
-    const secret = req.headers['x-admin-secret'];
-    if (secret !== ADMIN_SECRET) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
-    const userId = parseInt(req.params.userId);
-    const { reason } = req.body;
-    antifraud.flagUser(userId, reason || 'Manually flagged by admin');
-
-    res.json({
-        success: true,
-        message: `User ${userId} has been flagged`
-    });
-});
-
-// Get anti-fraud configuration
-app.get('/api/admin/antifraud/config', (req, res) => {
-    const secret = req.headers['x-admin-secret'];
-    if (secret !== ADMIN_SECRET) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
-    res.json({
-        success: true,
-        config: antifraud.ANTIFRAUD_CONFIG
-    });
-});
-
 // ============ SERVER STATS ============
 
 app.get('/api/stats', (req, res) => {
@@ -2680,7 +1982,7 @@ app.use('/admin', express.static(path.join(__dirname, 'admin', 'client')));
 // ============ STATIC FILE SERVING ============
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'www', 'login.html'));
+    res.sendFile(path.join(__dirname, 'www', 'index.html'));
 });
 
 app.get('/game.html', (req, res) => {

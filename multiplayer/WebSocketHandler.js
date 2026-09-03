@@ -77,18 +77,53 @@ class MultiplayerServer {
             return;
         }
 
+        const shouldPersist = user.provider !== 'local-test' && Boolean(user.email);
+        let storedUser = shouldPersist ? this.users.get(user.email) : null;
+        if (shouldPersist && !storedUser) {
+            storedUser = {
+                id: user.id || user.email,
+                username: user.username || 'Mobile Player',
+                email: user.email,
+                provider: user.provider || 'mobile-local',
+                coins: Math.max(0, Number(user.coins) || 1000),
+                elo: Math.max(100, Number(user.elo) || 1200),
+                gamesPlayed: Math.max(0, Number(user.gamesPlayed) || 0),
+                gamesWon: Math.max(0, Number(user.gamesWon) || 0),
+                winStreak: Math.max(0, Number(user.winStreak) || 0),
+                profilePicture: user.profilePicture || null,
+                nationality: user.nationality || null,
+                createdAt: new Date().toISOString()
+            };
+            this.users.set(storedUser.email, storedUser);
+            this.matchmaking.setUsersData(Array.from(this.users.values()));
+            if (this.saveUsersCallback) this.saveUsersCallback();
+        } else if (storedUser) {
+            storedUser.username = user.username || storedUser.username;
+            storedUser.profilePicture = user.profilePicture || storedUser.profilePicture || null;
+            storedUser.nationality = user.nationality || storedUser.nationality || null;
+        }
+
+        const authoritativeUser = storedUser || user;
+
         // Store player data (include profile info for opponent display)
         const playerData = {
             id: socket.id,
             oderId: user.id,
             username: user.username,
             email: user.email,
-            walletAddress: user.walletAddress,  // CRITICAL for balance updates!
-            elo: user.elo || 1200,
-            coins: user.coins || 1000,
-            tainBalance: user.tainBalance || 0,
-            profilePicture: user.profilePicture || null,
-            nationality: user.nationality || null
+            elo: authoritativeUser.elo || 1200,
+            coins: authoritativeUser.coins || 1000,
+            profilePicture: authoritativeUser.profilePicture || null,
+            nationality: authoritativeUser.nationality || null
+        };
+        const publicPlayer = {
+            id: user.id,
+            email: user.email,
+            coins: playerData.coins,
+            elo: playerData.elo,
+            gamesPlayed: authoritativeUser.gamesPlayed || 0,
+            gamesWon: authoritativeUser.gamesWon || 0,
+            winStreak: authoritativeUser.winStreak || 0
         };
 
         this.connectedPlayers.set(socket.id, playerData);
@@ -139,6 +174,7 @@ class MultiplayerServer {
                 socket.emit('authenticated', {
                     success: true,
                     playerId: socket.id,
+                    player: publicPlayer,
                     reconnected: true,
                     roomId: room.id,
                     stats: this.roomManager.getStats(),
@@ -153,6 +189,7 @@ class MultiplayerServer {
         socket.emit('authenticated', {
             success: true,
             playerId: socket.id,
+            player: publicPlayer,
             stats: this.roomManager.getStats(),
             queueStats: this.matchmaking.getQueueStats()
         });
@@ -169,16 +206,17 @@ class MultiplayerServer {
         }
 
         const wager = data?.wager || 50;
-        const currency = data?.currency || 'coins';
+        const currency = 'coins';
 
         // Check if player has enough balance
-        const balance = currency === 'coins' ? player.coins : player.tainBalance;
+        const balance = player.coins;
         if (balance < wager) {
             socket.emit('room_error', { error: `Insufficient ${currency}` });
             return;
         }
 
         const room = this.roomManager.createRoom(player, wager, currency);
+        socket.join(room.id);
         socket.emit('room_created', {
             roomId: room.id,
             room: room.toJSON()
@@ -220,9 +258,9 @@ class MultiplayerServer {
             return;
         }
 
-        // Check if player has enough coins/tain (only for new joins)
+        // Check if player has enough coins (only for new joins)
         if (!result.rejoin) {
-            const balance = room.currency === 'coins' ? player.coins : player.tainBalance;
+            const balance = player.coins;
             if (balance < room.wager) {
                 this.roomManager.leaveRoom(player.id);
                 socket.emit('room_error', { error: `Insufficient ${room.currency}` });
@@ -306,7 +344,7 @@ class MultiplayerServer {
         }
 
         const tier = data?.tier || 'casual';
-        const currency = data?.currency || 'coins';
+        const currency = 'coins';
         const stake = data?.stake || 0;
 
         // Update player data with latest request info
@@ -584,17 +622,11 @@ class MultiplayerServer {
             loser.elo || 1200
         );
 
-        // Update player ELO and coins/tain in memory
+        // Update player ELO and coins in memory
         winner.elo = eloResult.winner.newElo;
         loser.elo = eloResult.loser.newElo;
-
-        if (room.currency === 'coins') {
-            winner.coins = (winner.coins || 1000) + room.wager;
-            loser.coins = Math.max(0, (loser.coins || 1000) - room.wager);
-        } else {
-            winner.tainBalance = (winner.tainBalance || 0) + room.wager;
-            loser.tainBalance = Math.max(0, (loser.tainBalance || 0) - room.wager);
-        }
+        winner.coins = (winner.coins || 1000) + room.wager;
+        loser.coins = Math.max(0, (loser.coins || 1000) - room.wager);
 
         // Update in user database
         this.updateUserStats(winner, loser, room.wager, eloResult, room.currency);
@@ -629,7 +661,19 @@ class MultiplayerServer {
             achievements: {
                 winner: winnerAchievements,
                 loser: loserAchievements
-            }
+            },
+            players: [winner, loser].map((entry) => {
+                const stored = entry.email ? this.users.get(entry.email) : null;
+                return {
+                    id: entry.oderId,
+                    email: entry.email,
+                    coins: stored?.coins ?? entry.coins,
+                    elo: stored?.elo ?? entry.elo,
+                    gamesPlayed: stored?.gamesPlayed || 0,
+                    gamesWon: stored?.gamesWon || 0,
+                    winStreak: stored?.winStreak || 0
+                };
+            })
         });
 
         console.log(`🏆 Game over in room ${room.id}: ${winner.username} wins!`);
@@ -640,7 +684,6 @@ class MultiplayerServer {
         console.log(`   Wager: ${wager} ${currency}`);
         console.log(`   Winner: ${winner?.username}`);
         console.log(`   Winner email: ${winner?.email}`);
-        console.log(`   Winner wallet: ${winner?.walletAddress}`);
         console.log(`   Winner oderId: ${winner?.oderId}`);
         console.log(`   Winner isBot: ${winner?.isBot}`);
         console.log(`   Loser: ${loser?.username}`);
@@ -671,18 +714,7 @@ class MultiplayerServer {
                 console.log(`   findUser: ✓ Found by email: ${player.email}`);
                 return this.users.get(player.email);
             }
-
-            // Method 2: Wallet address search
-            if (player.walletAddress) {
-                for (const [email, user] of this.users) {
-                    if (user.walletAddress === player.walletAddress) {
-                        console.log(`   findUser: ✓ Found by wallet: ${player.walletAddress}`);
-                        return user;
-                    }
-                }
-            }
-
-            // Method 3: User ID search
+            // Method 2: User ID search
             if (player.oderId) {
                 for (const [email, user] of this.users) {
                     if (user.id === player.oderId) {
@@ -703,7 +735,7 @@ class MultiplayerServer {
             }
 
             console.log(`   findUser: ✗ NOT FOUND for ${player.username}`);
-            console.log(`   Searched with: email=${player.email}, wallet=${player.walletAddress}, oderId=${player.oderId}`);
+            console.log(`   Searched with: email=${player.email}, oderId=${player.oderId}`);
             return null;
         };
 
@@ -711,15 +743,10 @@ class MultiplayerServer {
         if (!isAiWinner) {
             const user = findUser(winner);
             if (user) {
-                const oldBalance = currency === 'coins' ? (user.coins || 0) : (user.tainBalance || 0);
+                const oldBalance = user.coins || 0;
                 user.elo = eloResult.winner.newElo;
-                if (currency === 'coins') {
-                    user.coins = (user.coins || 0) + wager;
-                    console.log(`   ✅ WINNER ${winner.username}: coins ${oldBalance} → ${user.coins} (+${wager})`);
-                } else {
-                    user.tainBalance = (user.tainBalance || 0) + wager;
-                    console.log(`   ✅ WINNER ${winner.username}: TAIN ${oldBalance} → ${user.tainBalance} (+${wager})`);
-                }
+                user.coins = (user.coins || 0) + wager;
+                console.log(`   WINNER ${winner.username}: coins ${oldBalance} -> ${user.coins} (+${wager})`);
                 user.gamesPlayed = (user.gamesPlayed || 0) + 1;
                 user.gamesWon = (user.gamesWon || 0) + 1;
             } else {
@@ -733,15 +760,10 @@ class MultiplayerServer {
         if (!isAiLoser) {
             const user = findUser(loser);
             if (user) {
-                const oldBalance = currency === 'coins' ? (user.coins || 0) : (user.tainBalance || 0);
+                const oldBalance = user.coins || 0;
                 user.elo = eloResult.loser.newElo;
-                if (currency === 'coins') {
-                    user.coins = Math.max(0, (user.coins || 0) - wager);
-                    console.log(`   ❌ LOSER ${loser.username}: coins ${oldBalance} → ${user.coins} (-${wager})`);
-                } else {
-                    user.tainBalance = Math.max(0, (user.tainBalance || 0) - wager);
-                    console.log(`   ❌ LOSER ${loser.username}: TAIN ${oldBalance} → ${user.tainBalance} (-${wager})`);
-                }
+                user.coins = Math.max(0, (user.coins || 0) - wager);
+                console.log(`   LOSER ${loser.username}: coins ${oldBalance} -> ${user.coins} (-${wager})`);
                 user.gamesPlayed = (user.gamesPlayed || 0) + 1;
             } else {
                 console.log(`   ❌ FAILED: Loser ${loser?.username} NOT FOUND in database!`);

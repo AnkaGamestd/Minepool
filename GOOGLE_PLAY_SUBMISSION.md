@@ -10,7 +10,7 @@
 
 ### Short Description (80 chars max)
 ```
-Play 8-Ball Pool online, win matches, earn TAIN tokens. Join global players!
+Play 8-Ball Pool online, win matches, earn in-game coins. Join global players!
 ```
 
 ### Full Description (4000 chars max)
@@ -32,7 +32,7 @@ Play real-time 8-ball pool matches against players worldwide. Win matches, earn 
 • Strategic spin control
 
 💰 PLAY & EARN
-• Win matches to earn TAIN tokens
+• Win matches to earn in-game coins
 • Stake your coins for higher rewards
 • Daily rewards and tasks
 
@@ -50,7 +50,7 @@ Play real-time 8-ball pool matches against players worldwide. Win matches, earn 
 • Works offline with AI opponents
 • Multiple difficulty levels
 • Cross-platform play
-• Secure wallet integration
+• Instant guest play
 
 Download now and become the ultimate pool champion!
 
@@ -68,7 +68,7 @@ Connect with us:
 
 ### Tags/Keywords
 ```
-pool, 8ball, billiards, multiplayer, online game, sports, cue sports, crypto game, play to earn, snooker
+pool, 8ball, billiards, multiplayer, online game, sports, cue sports, arcade game, snooker
 ```
 
 ---
@@ -109,17 +109,17 @@ Recommended screenshots:
 ### Privacy Policy URL
 You MUST have a privacy policy. Create one at:
 - Option 1: Use a generator like https://app-privacy-policy-generator.nisrulz.com/
-- Option 2: Host on your website: https://taingames.com/privacy-policy
+- Option 2: Host on your website: your published privacy policy URL
 
 Example privacy policy areas to cover:
-- Data collected (wallet address, username, game stats)
+- Data collected (username and game stats)
 - How data is used
-- Third-party services (WalletConnect)
+- Third-party services used by the game
 - Data retention
 - Contact information
 
 ### Terms of Service URL (Recommended)
-- https://taingames.com/terms-of-service
+- your published terms of service URL
 
 ---
 
@@ -192,7 +192,7 @@ Output: `android/app/build/outputs/bundle/release/app-release.aab`
 - [ ] At least 4 screenshots ready
 - [ ] App icon looks good at small sizes
 - [ ] Test on multiple devices
-- [ ] Test wallet connection on mobile
+- [ ] Test guest launch on mobile
 - [ ] Test game against AI
 - [ ] Test multiplayer match
 - [ ] Server is stable (Railway)
