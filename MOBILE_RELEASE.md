@@ -36,7 +36,7 @@ In Xcode, select the App target, choose the development team, verify the bundle 
 
 ## Release checklist
 
-- Confirm `https://api.taingames.com/health` is healthy.
+- Confirm `https://api.taingames.com/api/health` is healthy.
 - Test matchmaking between two physical devices on different networks.
 - Test background/resume, airplane mode, reconnection, audio interruption, and screen rotation lock.
 - Verify safe areas on notched devices and tablets.
