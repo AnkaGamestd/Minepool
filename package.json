@@ -10,7 +10,8 @@
         "mobile:sync": "cap sync",
         "mobile:doctor": "cap doctor",
         "mobile:android": "cap open android",
-        "mobile:ios": "cap open ios"
+        "mobile:ios": "cap open ios",
+        "test:auth": "node scripts/test-auth-integration.cjs"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",
@@ -18,11 +19,11 @@
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
         "express": "^4.18.2",
+        "google-auth-library": "^10.3.0",
         "jsonwebtoken": "^9.0.2",
         "multer": "^2.0.2",
-        "socket.io-client": "^4.7.2",
         "socket.io": "^4.7.2",
-        "uuid": "^9.0.0"
+        "socket.io-client": "^4.7.2"
     },
     "devDependencies": {
         "@capacitor/android": "^6.0.0",

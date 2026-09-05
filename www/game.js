@@ -61,6 +61,9 @@ class PoolGame {
         this.isBreakShot = true;
         this.foulReason = null;
         this.winner = null;
+        this.aiDifficulty = 'medium';
+        this.aiPlayer = null;
+        this.aiTurnTimeout = null;
 
         // MINICLIP FEATURES
         this.shotTimer = null;
@@ -299,12 +302,24 @@ class PoolGame {
     startGame(mode) {
         try {
             this.gameMode = mode;
+            this.isMultiplayer = mode === 'multiplayer';
+            if (this.aiTurnTimeout) clearTimeout(this.aiTurnTimeout);
+            this.aiTurnTimeout = null;
+            if ((mode === 'ai' || mode === 'tournament') && typeof AIPlayer !== 'undefined') {
+                this.aiPlayer = new AIPlayer(this.aiDifficulty || 'medium');
+            } else {
+                this.aiPlayer = null;
+            }
             // Hide start screen if it exists (may not exist on game.html)
             if (this.startScreen) {
                 this.startScreen.style.display = 'none';
             }
             document.body.classList.add('game-active'); // Enable rotate overlay for mobile portrait
             this.initializeBalls();
+            this.playerTypes = { 1: null, 2: null };
+            this.tableState = 'open';
+            this.calledPocket = null;
+            this.needsCallPocket = false;
             this.gameState = 'aiming';
             this.currentPlayer = 1;
             this.gameStartTime = Date.now(); // Track game start for duration calculation
@@ -504,11 +519,20 @@ class PoolGame {
         }
     }
 
-    animate() {
+    animate(timestamp) {
         if (this.platformPaused) return;
 
-        // Simple physics: one update per frame
-        if (this.gameState === 'shooting') {
+        // Run at 60 simulation steps per second on every refresh rate.
+        if (timestamp === undefined) {
+            this.lastPhysicsTime = performance.now();
+            this.physicsAccumulator = 0;
+            timestamp = this.lastPhysicsTime;
+        }
+        const elapsed = Math.min(0.1, Math.max(0, (timestamp - this.lastPhysicsTime) / 1000));
+        this.lastPhysicsTime = timestamp;
+        this.physicsAccumulator = this.gameState === 'shooting' ? this.physicsAccumulator + elapsed : 0;
+        while (this.gameState === 'shooting' && this.physicsAccumulator + 1e-9 >= this.physics.dt) {
+            this.physicsAccumulator -= this.physics.dt;
             const pocketed = this.physics.update(this.balls);
 
             // Handle pocketed balls
@@ -522,7 +546,7 @@ class PoolGame {
         this.render();
 
         // Continue loop
-        this.animationId = requestAnimationFrame(() => this.animate());
+        this.animationId = requestAnimationFrame((time) => this.animate(time));
     }
 
     pauseForPlatform() {
@@ -1101,6 +1125,21 @@ class PoolGame {
         // Check if player needs to call pocket (all their balls are cleared, only 8-ball left)
         const myGroup = this.playerTypes[this.currentPlayer];
         if (myGroup && this.isGroupCleared(myGroup)) {
+            if (this.isLocalAITurn()) {
+                const eightBall = this.balls.find((ball) => ball.id === 8);
+                let bestPocket = 0;
+                let bestDistance = Infinity;
+                this.physics.pockets.forEach((pocket, index) => {
+                    const distance = Math.hypot(pocket.x - eightBall.x, pocket.y - eightBall.y);
+                    if (distance < bestDistance) { bestDistance = distance; bestPocket = index; }
+                });
+                this.calledPocket = bestPocket;
+                this.needsCallPocket = false;
+                this.gameState = 'waiting';
+                this.showMessage('OPPONENT CALLS POCKET', `Pocket ${bestPocket + 1}`, 1200);
+                this.scheduleAITurn();
+                return;
+            }
             // Player is on the 8-ball, must call pocket
             this.needsCallPocket = true;
             this.gameState = 'calling-pocket';
@@ -1115,9 +1154,52 @@ class PoolGame {
                 this.showMessage('CALL POCKET', 'Click on a pocket to call your 8-ball shot', 5000);
             }
         } else {
-            // Normal shot, start timer
-            this.startShotTimer();
+            if (this.isLocalAITurn()) this.scheduleAITurn();
+            else this.startShotTimer();
         }
+    }
+
+    isLocalAITurn() {
+        return !this.isMultiplayer && (this.gameMode === 'ai' || this.gameMode === 'tournament') && this.currentPlayer === 2;
+    }
+
+    scheduleAITurn() {
+        if (!this.isLocalAITurn() || this.gameState === 'gameover') return;
+        if (this.aiTurnTimeout) clearTimeout(this.aiTurnTimeout);
+        this.stopShotTimer();
+        this.gameState = 'waiting';
+        this.canvas.style.cursor = 'default';
+        const delay = Math.min(1800, Math.max(650, this.aiPlayer?.getThinkingTime?.() || 900));
+        this.aiTurnTimeout = setTimeout(() => this.executeLocalAITurn(), delay);
+    }
+
+    executeLocalAITurn() {
+        this.aiTurnTimeout = null;
+        if (!this.isLocalAITurn() || this.gameState === 'gameover') return;
+        const cueBall = this.balls.find((ball) => ball.id === 0);
+        if (!cueBall) return;
+
+        if (this.ballInHand || !cueBall.active) {
+            cueBall.active = true;
+            const candidates = [{ x: 250, y: 250 }, { x: 330, y: 180 }, { x: 330, y: 320 }, { x: 430, y: 250 }];
+            const spot = candidates.find((point) => this.balls.every((ball) => ball === cueBall || !ball.active || Math.hypot(point.x - ball.x, point.y - ball.y) > 34)) || candidates[0];
+            cueBall.x = spot.x; cueBall.y = spot.y; cueBall.vx = 0; cueBall.vy = 0;
+            this.ballInHand = false; this.ballInHandKitchen = false;
+        }
+
+        let targetType = this.playerTypes[2];
+        if (targetType === 'solid') targetType = 'solids';
+        if (targetType === 'stripe') targetType = 'stripes';
+        const shot = this.aiPlayer?.calculateShot(this.gameState, this.balls, cueBall, this.physics.pockets, targetType) || {
+            angle: Math.atan2(this.balls.find((ball) => ball.active && ball.id !== 0)?.y - cueBall.y || 0, this.balls.find((ball) => ball.active && ball.id !== 0)?.x - cueBall.x || 1),
+            power: 0.55, spinX: 0, spinY: 0
+        };
+        this.aimAngle = shot.angle;
+        this.power = Math.max(28, Math.min(92, shot.power * 100));
+        this.spinX = shot.spinX || 0;
+        this.spinY = shot.spinY || 0;
+        this.gameState = 'aiming';
+        this.shoot();
     }
 
     shoot() {
@@ -1782,9 +1864,9 @@ class PoolGame {
                 this.isDragging = false;
             }
         } else {
-            // Single player mode - always set to aiming
-            this.gameState = 'aiming';
-            this.canvas.style.cursor = 'crosshair';
+            const aiTurn = this.isLocalAITurn();
+            this.gameState = aiTurn ? 'waiting' : 'aiming';
+            this.canvas.style.cursor = aiTurn ? 'default' : 'crosshair';
         }
 
         this.updateTurnIndicator();
@@ -1855,6 +1937,10 @@ class PoolGame {
     async reportAIGameResult(won) {
         try {
             const pocketed = this.balls.filter((ball) => !ball.active && ball.id !== 0).length;
+            if (this.gameMode === 'tournament' && window.MinePoolApp?.recordTournamentResult) {
+                await window.MinePoolApp.recordTournamentResult(won, pocketed);
+                return;
+            }
             const result = await window.MinePoolPlatform.recordGame(won, pocketed);
             window.currentUser = { ...result.player, username: window.MinePoolPlatform.getIdentity().displayName };
             if (result.reward > 0) this.showMessage('MATCH REWARD', `+${result.reward} COINS`, 2000);
@@ -2492,15 +2578,17 @@ class PoolGame {
             ctx.fill();
             ctx.restore();
 
+            // Ivory caps distinguish striped balls even at mobile sizes.
+            const surfaceColor = ball.id > 8 ? '#f4f3eb' : color;
             // Main sphere gradient
             const mainGrad = ctx.createRadialGradient(lightOffsetX, lightOffsetY, r * 0.05, 0, 0, r * 1.05);
-            mainGrad.addColorStop(0, this.lightenColor(color, 90));
-            mainGrad.addColorStop(0.15, this.lightenColor(color, 60));
-            mainGrad.addColorStop(0.35, this.lightenColor(color, 30));
-            mainGrad.addColorStop(0.55, color);
-            mainGrad.addColorStop(0.75, this.darkenColor(color, 30));
-            mainGrad.addColorStop(0.9, this.darkenColor(color, 55));
-            mainGrad.addColorStop(1, this.darkenColor(color, 70));
+            mainGrad.addColorStop(0, this.lightenColor(surfaceColor, 65));
+            mainGrad.addColorStop(0.15, this.lightenColor(surfaceColor, 40));
+            mainGrad.addColorStop(0.35, this.lightenColor(surfaceColor, 15));
+            mainGrad.addColorStop(0.55, surfaceColor);
+            mainGrad.addColorStop(0.75, this.darkenColor(surfaceColor, 18));
+            mainGrad.addColorStop(0.9, this.darkenColor(surfaceColor, 35));
+            mainGrad.addColorStop(1, this.darkenColor(surfaceColor, 48));
 
             ctx.fillStyle = mainGrad;
             ctx.beginPath();
@@ -2514,22 +2602,27 @@ class PoolGame {
 
                 // White stripe
                 const stripeGrad = ctx.createRadialGradient(lightOffsetX, lightOffsetY, r * 0.05, 0, 0, r);
-                stripeGrad.addColorStop(0, '#ffffff');
-                stripeGrad.addColorStop(0.3, '#f8f8f8');
-                stripeGrad.addColorStop(0.7, '#e8e8e8');
-                stripeGrad.addColorStop(1, '#c8c8c8');
+                stripeGrad.addColorStop(0, this.lightenColor(color, 45));
+                stripeGrad.addColorStop(0.3, this.lightenColor(color, 20));
+                stripeGrad.addColorStop(0.7, color);
+                stripeGrad.addColorStop(1, this.darkenColor(color, 35));
 
                 ctx.fillStyle = stripeGrad;
                 ctx.beginPath();
-                ctx.arc(0, 0, r * 0.85, -0.55, 0.55, false);
-                ctx.arc(0, 0, r * 0.85, Math.PI - 0.55, Math.PI + 0.55, false);
-                ctx.closePath();
-                ctx.fill();
+                ctx.arc(0, 0, r - 0.4, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.fillRect(-r, -r * 0.58, r * 2, r * 1.16);
 
                 ctx.restore();
             }
 
             // Number circle for non-cue balls
+            // A fine rim separates dark balls from the felt without changing collisions.
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+            ctx.lineWidth = 0.9;
+            ctx.beginPath();
+            ctx.arc(0, 0, r - 0.45, 0, Math.PI * 2);
+            ctx.stroke();
             if (ball.id !== 0) {
                 // Shadow
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -2545,12 +2638,12 @@ class PoolGame {
 
                 ctx.fillStyle = circleGrad;
                 ctx.beginPath();
-                ctx.arc(0, 0, r * 0.36, 0, Math.PI * 2);
+                ctx.arc(0, 0, r * 0.47, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Number
                 ctx.fillStyle = '#1a1a1a';
-                ctx.font = 'bold 9px Arial, sans-serif';
+                ctx.font = 'bold 11px Arial, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(ball.id.toString(), 0, 0.5);

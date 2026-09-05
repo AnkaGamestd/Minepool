@@ -322,7 +322,8 @@ class NetworkManager {
 
     // === Authentication ===
     authenticate(user) {
-        this.socket.emit('authenticate', { user });
+        const token = window.MinePoolPlatform?.getAuthToken?.() || null;
+        this.socket.emit('authenticate', { token, user });
     }
 
     // === Room Operations ===

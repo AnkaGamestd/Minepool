@@ -3,7 +3,7 @@
  * Features: Group A/B Bracket, Entry Tiers, Automated Prize Distribution
  */
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('crypto');
 
 // Tournament State Machine
 const TournamentState = {

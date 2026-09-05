@@ -1,0 +1,36 @@
+/* Compact landscape HUD keeps every control outside the playing surface. */
+@media (orientation: landscape) {
+  .game-shell {
+    padding: max(4px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    grid-template-rows: clamp(38px, 9vh, 60px) minmax(0, 1fr) 14px;
+    gap: 3px;
+  }
+  .game-shell .match-hud { width: min(100%, 1040px); height: 100%; grid-template-columns: 32px minmax(0, 1fr) 140px minmax(0, 1fr); gap: 6px; }
+  .game-shell .game-back-button { width: 32px; height: 32px; }
+  .game-shell .game-back-button svg { width: 18px; height: 18px; }
+  .game-shell .player-panel, .game-shell .turn-core { height: 100%; min-height: 0; border-radius: 10px; }
+  .game-shell .player-panel { padding: 3px 8px; gap: 7px; }
+  .game-shell .avatar { width: 28px; height: 28px; flex-basis: 28px; font-size: 12px; }
+  .game-shell .player-copy { min-width: 0; }
+  .game-shell .player-name { font-size: 12px; }
+  .game-shell .ball-group { display: block; font-size: 7px; letter-spacing: .06em; }
+  .game-shell .ball-rack { display: flex; gap: 2px; }
+  .game-shell .rack-ball { width: clamp(7px, 1.2vw, 12px); height: clamp(7px, 1.2vw, 12px); flex-shrink: 0; }
+  .game-shell .turn-core { min-width: 0; padding: 2px 4px; }
+  .game-shell .turn-label { max-width: 100%; font-size: 7px; line-height: 1.15; letter-spacing: 0; white-space: normal; text-align: center; }
+  .game-shell .turn-label:after { content: none; }
+  .game-shell .timer { font-size: 14px; margin: 0; }
+  .game-shell .table-stage { container-type: size; margin: 0 58px; }
+  .game-shell .table-frame { width: min(100cqw, 200cqh); padding: 4px; border-radius: 18px; }
+  .game-shell .table-frame:before { inset: 2px; border-radius: 16px; }
+  .game-shell #pool-table { border-radius: 14px; }
+  .game-shell .spin-console, .game-shell .power-console { width: 52px; padding: 6px 3px; gap: 5px; border-radius: 12px; }
+  .game-shell .spin-console { left: -58px; }
+  .game-shell .power-console { right: -58px; }
+  .game-shell .spin-ball { width: 42px; height: 42px; }
+  .game-shell .control-label { font-size: 8px; letter-spacing: .06em; }
+  .game-shell #power-gauge { height: clamp(70px, 40cqh, 176px); width: 20px; }
+  .game-shell #reset-spin { min-height: 28px; padding: 4px; }
+  .game-shell .game-footer { font-size: 7px; gap: 14px; letter-spacing: .04em; }
+  .game-shell .game-footer span:nth-child(2) { display: inline; }
+}

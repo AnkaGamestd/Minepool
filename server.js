@@ -16,7 +16,8 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const multer = require('multer');
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 
 // Multiplayer modules
 const { MultiplayerServer } = require('./multiplayer/WebSocketHandler');
@@ -32,12 +33,16 @@ const PORT = process.env.PORT || 8000;
 // Environment config
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-in-production';
 const JWT_EXPIRY = '7d';
+const GOOGLE_WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID || '';
+const googleOAuthClient = new OAuth2Client(GOOGLE_WEB_CLIENT_ID || undefined);
+const authAttempts = new Map();
 
 // Guest authentication requires no external provider.
 
 // Persistent user storage
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.MINEPOOL_DATA_DIR ? path.resolve(process.env.MINEPOOL_DATA_DIR) : path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const DELETION_REQUESTS_FILE = path.join(DATA_DIR, 'deletion-requests.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -74,8 +79,22 @@ function saveUsers() {
     }
 }
 
+function loadDeletionRequests() {
+    try {
+        if (fs.existsSync(DELETION_REQUESTS_FILE)) return JSON.parse(fs.readFileSync(DELETION_REQUESTS_FILE, 'utf8'));
+    } catch (error) {
+        console.error('Error loading deletion requests:', error);
+    }
+    return [];
+}
+
+function saveDeletionRequests() {
+    fs.writeFileSync(DELETION_REQUESTS_FILE, JSON.stringify(deletionRequests, null, 2));
+}
+
 // Initialize users from persistent storage or create defaults
 let users = loadUsers();
+let deletionRequests = loadDeletionRequests();
 let nextUserId = 1;
 
 if (!users || users.size === 0) {
@@ -133,6 +152,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 
 // Create HTTP server and Socket.IO
 const server = http.createServer(app);
@@ -147,7 +167,7 @@ const io = new Server(server, {
 });
 
 // Initialize multiplayer server with saveUsers callback
-const multiplayer = new MultiplayerServer(io, users, saveUsers);
+const multiplayer = new MultiplayerServer(io, users, saveUsers, JWT_SECRET);
 const tournamentManager = new TournamentManager();
 const tournament16Manager = new TournamentManager16();
 
@@ -192,7 +212,127 @@ const setAuthCookie = (res, token) => {
     });
 };
 
+const publicUser = (user) => ({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    provider: user.provider,
+    profilePicture: user.profilePicture || null,
+    coins: user.coins,
+    diamonds: user.diamonds || 0,
+    elo: user.elo,
+    gamesPlayed: user.gamesPlayed,
+    gamesWon: user.gamesWon,
+    rank: EloCalculator.getRankFromElo(user.elo),
+    profileComplete: user.profileComplete !== false,
+    cues: user.cues || ['standard']
+});
+
+const issueSession = (res, user) => {
+    const token = generateToken(user);
+    setAuthCookie(res, token);
+    return res.json({ success: true, token, user: publicUser(user) });
+};
+
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const cleanUsername = (value) => String(value || '').trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20);
+const verifyGoogleIdToken = async (idToken) => {
+    if (!GOOGLE_WEB_CLIENT_ID) throw new Error('Google sign-in is not configured');
+    const ticket = await googleOAuthClient.verifyIdToken({ idToken: String(idToken || ''), audience: GOOGLE_WEB_CLIENT_ID });
+    const payload = ticket.getPayload();
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) throw new Error('Google account could not be verified');
+    return payload;
+};
+const authRateLimit = (req, res, next) => {
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000;
+    const key = String(req.ip || req.socket.remoteAddress || 'unknown');
+    const recent = (authAttempts.get(key) || []).filter((timestamp) => now - timestamp < windowMs);
+    if (recent.length >= 20) return res.status(429).json({ success: false, error: 'Too many sign-in attempts. Try again later.' });
+    recent.push(now);
+    authAttempts.set(key, recent);
+    next();
+};
+
 // ============ AUTH ROUTES ============
+
+app.post('/api/auth/register', authRateLimit, async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body?.email);
+        const username = cleanUsername(req.body?.username);
+        const password = String(req.body?.password || '');
+        if (!validEmail(email)) return res.status(400).json({ success: false, error: 'Enter a valid email address' });
+        if (username.length < 3) return res.status(400).json({ success: false, error: 'Username must be 3-20 letters or numbers' });
+        if (password.length < 8 || password.length > 128) return res.status(400).json({ success: false, error: 'Password must be 8-128 characters' });
+        if (users.has(email)) return res.status(409).json({ success: false, error: 'An account already exists for this email' });
+        for (const existing of users.values()) {
+            if (String(existing.username).toLowerCase() === username.toLowerCase()) return res.status(409).json({ success: false, error: 'Username is already taken' });
+        }
+        const user = {
+            id: nextUserId++, username, email, password: await bcrypt.hash(password, 12), provider: 'email',
+            coins: 1000, diamonds: 0, elo: 1200, gamesPlayed: 0, gamesWon: 0,
+            createdAt: new Date().toISOString(), achievements: [], matchHistory: [], nationality: null,
+            profilePicture: null, profileComplete: true, cues: ['standard']
+        };
+        users.set(email, user);
+        saveUsers();
+        return issueSession(res, user);
+    } catch (error) {
+        console.error('Registration error:', error);
+        return res.status(500).json({ success: false, error: 'Account could not be created' });
+    }
+});
+
+app.post('/api/auth/login', authRateLimit, async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body?.email);
+        const password = String(req.body?.password || '');
+        const user = users.get(email);
+        const accepted = Boolean(user?.password) && await bcrypt.compare(password, user.password);
+        if (!accepted) return res.status(401).json({ success: false, error: 'Email or password is incorrect' });
+        return issueSession(res, user);
+    } catch (error) {
+        console.error('Login error:', error);
+        return res.status(500).json({ success: false, error: 'Sign-in failed' });
+    }
+});
+
+app.post('/api/auth/google', authRateLimit, async (req, res) => {
+    if (!GOOGLE_WEB_CLIENT_ID) return res.status(503).json({ success: false, error: 'Google sign-in is not configured on the server' });
+    try {
+        const idToken = String(req.body?.idToken || '');
+        if (!idToken) return res.status(400).json({ success: false, error: 'Google ID token is required' });
+        const payload = await verifyGoogleIdToken(idToken);
+        const email = normalizeEmail(payload.email);
+        let user = Array.from(users.values()).find((candidate) => candidate.googleSubject === payload.sub) || users.get(email);
+        if (!user) {
+            let username = cleanUsername(payload.name || email.split('@')[0]) || `Player${nextUserId}`;
+            const base = username;
+            let suffix = 1;
+            while (Array.from(users.values()).some((candidate) => String(candidate.username).toLowerCase() === username.toLowerCase())) username = `${base.slice(0, 16)}${suffix++}`;
+            user = {
+                id: nextUserId++, username, email, provider: 'google', googleSubject: payload.sub,
+                coins: 1000, diamonds: 0, elo: 1200, gamesPlayed: 0, gamesWon: 0,
+                createdAt: new Date().toISOString(), achievements: [], matchHistory: [], nationality: null,
+                profilePicture: payload.picture || null, profileComplete: true, cues: ['standard']
+            };
+        } else {
+            const previousKey = Array.from(users.entries()).find(([, candidate]) => candidate === user)?.[0];
+            if (previousKey && previousKey !== email) users.delete(previousKey);
+            user.email = email;
+            user.googleSubject = payload.sub;
+            user.provider = user.provider === 'email' ? 'email+google' : 'google';
+            user.profilePicture = payload.picture || user.profilePicture || null;
+        }
+        users.set(email, user);
+        saveUsers();
+        return issueSession(res, user);
+    } catch (error) {
+        console.warn('Rejected Google sign-in:', error.message);
+        return res.status(401).json({ success: false, error: 'Google sign-in could not be verified' });
+    }
+});
 
 // Frictionless guest sessions for embedded play.
 app.post('/api/auth/guest-login', (req, res) => {
@@ -202,7 +342,7 @@ app.post('/api/auth/guest-login', (req, res) => {
     const user = { id: nextUserId++, username: safeName, email, provider: 'guest', coins: 1000, diamonds: 100, elo: 1200, gamesPlayed: 0, gamesWon: 0, createdAt: new Date().toISOString(), achievements: [], matchHistory: [], nationality: null, profilePicture: null, profileComplete: true, cues: ['standard'] };
     users.set(email, user); saveUsers();
     const token = generateToken(user); setAuthCookie(res, token);
-    res.json({ success: true, user: { ...user, rank: EloCalculator.getRankFromElo(user.elo) } });
+    res.json({ success: true, token, user: publicUser(user) });
 });
 
 // Get current user
@@ -1983,6 +2123,58 @@ app.use('/admin', express.static(path.join(__dirname, 'admin', 'client')));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'www', 'index.html'));
+});
+
+app.delete('/api/auth/account', authRateLimit, authenticateToken, async (req, res) => {
+    try {
+        if (String(req.body?.confirmation || '') !== 'DELETE') {
+            return res.status(400).json({ success: false, error: 'Type DELETE to confirm permanent account deletion' });
+        }
+        const user = users.get(req.user.email);
+        if (!user) return res.status(404).json({ success: false, error: 'Account not found' });
+
+        let verified = false;
+        if (user.password && req.body?.password) verified = await bcrypt.compare(String(req.body.password), user.password);
+        if (!verified && user.googleSubject && req.body?.idToken) {
+            const payload = await verifyGoogleIdToken(req.body.idToken);
+            verified = payload.sub === user.googleSubject;
+        }
+        if (!verified) return res.status(401).json({ success: false, error: 'Re-authentication is required to delete this account' });
+
+        if (user.profilePicture && user.profilePicture.startsWith('/uploads/avatars/')) {
+            const avatarPath = path.join(uploadsDir, path.basename(user.profilePicture));
+            if (fs.existsSync(avatarPath)) fs.unlinkSync(avatarPath);
+        }
+        users.delete(req.user.email);
+        deletionRequests = deletionRequests.filter((request) => request.email !== req.user.email);
+        saveUsers();
+        saveDeletionRequests();
+        multiplayer.matchmaking.setUsersData(Array.from(users.values()));
+        res.clearCookie('token');
+        return res.json({ success: true, message: 'Account and associated player data were permanently deleted' });
+    } catch (error) {
+        console.warn('Account deletion rejected:', error.message);
+        return res.status(401).json({ success: false, error: 'Account deletion could not be verified' });
+    }
+});
+
+app.post('/api/account-deletion-requests', authRateLimit, (req, res) => {
+    const email = normalizeEmail(req.body?.email);
+    const username = cleanUsername(req.body?.username);
+    if (!validEmail(email) || username.length < 3) {
+        return res.status(400).json({ success: false, error: 'Enter the account email and player name' });
+    }
+    const existing = deletionRequests.find((request) => request.email === email && request.status === 'pending');
+    if (!existing) {
+        deletionRequests.push({
+            id: uuidv4(), email, username, status: 'pending', requestedAt: new Date().toISOString()
+        });
+        saveDeletionRequests();
+    }
+    return res.json({
+        success: true,
+        message: 'If the account details match, the deletion request will be processed after ownership verification.'
+    });
 });
 
 app.get('/game.html', (req, res) => {

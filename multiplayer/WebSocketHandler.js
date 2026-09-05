@@ -7,12 +7,14 @@ const { RoomManager } = require('./RoomManager');
 const { MatchmakingQueue, EloCalculator } = require('./MatchmakingQueue');
 const { MatchHistory } = require('./MatchHistory');
 const { AchievementManager } = require('./Achievements');
+const jwt = require('jsonwebtoken');
 
 class MultiplayerServer {
-    constructor(io, users, saveUsersCallback = null) {
+    constructor(io, users, saveUsersCallback = null, jwtSecret = '') {
         this.io = io;
         this.users = users; // Reference to user database
         this.saveUsersCallback = saveUsersCallback; // Callback to persist user data
+        this.jwtSecret = jwtSecret;
         this.roomManager = new RoomManager();
         this.matchmaking = new MatchmakingQueue(this.roomManager);
         this.matchmaking.setUsersData(Array.from(this.users.values()));
@@ -71,10 +73,25 @@ class MultiplayerServer {
 
     // === Authentication ===
     handleAuthenticate(socket, data) {
-        const { token, user } = data;
+        const { token } = data || {};
+        let { user } = data || {};
         if (!user) {
             socket.emit('auth_error', { error: 'Invalid authentication' });
             return;
+        }
+
+        const accountProvider = ['email', 'google', 'email+google'].includes(user.provider);
+        if (accountProvider) {
+            try {
+                if (!token || !this.jwtSecret) throw new Error('Missing account token');
+                const session = jwt.verify(token, this.jwtSecret);
+                const account = this.users.get(session.email);
+                if (!account || String(account.id) !== String(session.id)) throw new Error('Account session mismatch');
+                user = { ...user, ...account, id: account.id, email: account.email, username: account.username, provider: account.provider };
+            } catch (error) {
+                socket.emit('auth_error', { error: 'Account session is invalid or expired' });
+                return;
+            }
         }
 
         const shouldPersist = user.provider !== 'local-test' && Boolean(user.email);

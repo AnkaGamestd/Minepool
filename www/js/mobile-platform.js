@@ -2,6 +2,8 @@
     'use strict';
 
     const STORAGE_KEY = 'minepool.mobile.player.v1';
+    const AUTH_TOKEN_KEY = 'minepool.auth.token.v1';
+    const AUTO_GOOGLE_DISABLED_KEY = 'minepool.auth.google-auto-disabled.v1';
     const DEFAULT_PLAYER = Object.freeze({
         id: '',
         displayName: '',
@@ -18,6 +20,7 @@
 
     let player = null;
     let audioEnabled = true;
+    let authToken = '';
 
     const clone = (value) => JSON.parse(JSON.stringify(value));
     const isLocalPreview = () => {
@@ -61,9 +64,64 @@
         catch (error) { console.warn('Mobile profile could not be saved.', error); }
     }
 
+    function getNativeGoogle() {
+        return globalThis.Capacitor?.Plugins?.GoogleAuth || null;
+    }
+
+    function apiUrl(path) {
+        return `${String(globalThis.MINEPOOL_API_URL || '').replace(/\/$/, '')}${path}`;
+    }
+
+    async function request(path, options = {}) {
+        const response = await fetch(apiUrl(path), {
+            method: options.method || 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+            },
+            body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'The server could not complete this request.');
+        return data;
+    }
+
+    function applyAccount(data) {
+        if (!data?.user) throw new Error('The server returned an invalid account.');
+        authToken = String(data.token || authToken || '');
+        if (authToken) localStorage.setItem(AUTH_TOKEN_KEY, authToken);
+        const user = data.user;
+        player = normalize({
+            ...player,
+            id: `account-${user.id}`,
+            accountId: user.id,
+            email: user.email,
+            displayName: user.username,
+            provider: user.provider || 'email',
+            avatarUrl: user.profilePicture || null
+        });
+        persist();
+        document.dispatchEvent(new CustomEvent('minepool:player-updated', { detail: { player: clone(player) } }));
+        document.dispatchEvent(new CustomEvent('minepool:account-changed', { detail: { player: clone(player) } }));
+        return clone(player);
+    }
+
     async function init() {
         player = normalize(read());
+        authToken = localStorage.getItem(AUTH_TOKEN_KEY) || '';
+        if (authToken) {
+            try { applyAccount(await request('/auth/me')); }
+            catch (error) { authToken = ''; localStorage.removeItem(AUTH_TOKEN_KEY); }
+        }
         persist();
+        if (!authToken && getNativeGoogle() && localStorage.getItem(AUTO_GOOGLE_DISABLED_KEY) !== '1') {
+            try {
+                const google = await getNativeGoogle().autoSignIn();
+                if (google?.authenticated && google.idToken) applyAccount(await request('/auth/google', { method: 'POST', body: { idToken: google.idToken } }));
+            } catch (error) {
+                console.info('Automatic Google sign-in is not available.', error?.message || error);
+            }
+        }
         return clone(player);
     }
 
@@ -74,7 +132,9 @@
             id: player.id,
             displayName: player.displayName,
             avatarText: player.displayName.charAt(0).toUpperCase(),
-            provider: previewId ? 'local-test' : 'mobile-local'
+            provider: previewId ? 'local-test' : (player.provider || 'mobile-local'),
+            email: player.email || null,
+            authenticated: Boolean(authToken)
         });
     }
 
@@ -109,6 +169,57 @@
         return { player: updated, reward };
     }
 
+    async function register(credentials) {
+        return applyAccount(await request('/auth/register', { method: 'POST', body: credentials }));
+    }
+
+    async function login(credentials) {
+        return applyAccount(await request('/auth/login', { method: 'POST', body: credentials }));
+    }
+
+    async function signInWithGoogle() {
+        const nativeGoogle = getNativeGoogle();
+        if (!nativeGoogle) throw new Error('Google sign-in is available in the Android app.');
+        const google = await nativeGoogle.signIn();
+        if (!google?.idToken) throw new Error('Google did not return an identity token.');
+        localStorage.removeItem(AUTO_GOOGLE_DISABLED_KEY);
+        return applyAccount(await request('/auth/google', { method: 'POST', body: { idToken: google.idToken } }));
+    }
+
+    async function logout() {
+        try { if (authToken) await request('/auth/logout', { method: 'POST' }); } catch (error) { /* Local logout must still work offline. */ }
+        return clearAccountState();
+    }
+
+    async function clearAccountState() {
+        try { await getNativeGoogle()?.signOut(); } catch (error) { console.info('Google credential state was not cleared.', error); }
+        authToken = '';
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.setItem(AUTO_GOOGLE_DISABLED_KEY, '1');
+        player = normalize({ ...player, id: makeId(), accountId: null, email: null, provider: 'mobile-local', avatarUrl: null });
+        persist();
+        document.dispatchEvent(new CustomEvent('minepool:player-updated', { detail: { player: clone(player) } }));
+        document.dispatchEvent(new CustomEvent('minepool:account-changed', { detail: { player: clone(player) } }));
+        return clone(player);
+    }
+
+    async function deleteAccount({ password = '', confirmation = '' } = {}) {
+        if (!authToken) throw new Error('Sign in before deleting an account.');
+        const identity = getIdentity();
+        let idToken = '';
+        if (identity.provider.includes('google')) {
+            const nativeGoogle = getNativeGoogle();
+            if (!nativeGoogle) throw new Error('Open the Android app to verify your Google account.');
+            const google = await nativeGoogle.signIn();
+            idToken = google?.idToken || '';
+        }
+        await request('/auth/account', {
+            method: 'DELETE',
+            body: { password, confirmation, idToken }
+        });
+        return clearAccountState();
+    }
+
     document.addEventListener('visibilitychange', () => {
         document.dispatchEvent(new CustomEvent(document.hidden ? 'minepool:pause' : 'minepool:resume'));
     });
@@ -127,6 +238,13 @@
         },
         updatePlayer,
         recordGame,
+        register,
+        login,
+        signInWithGoogle,
+        logout,
+        deleteAccount,
+        isAuthenticated: () => Boolean(authToken),
+        getAuthToken: () => authToken || null,
         flush: () => Promise.resolve()
     });
 })();

@@ -3,7 +3,7 @@
  * Manages tournament creation, brackets, and progression
  */
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('crypto');
 
 class Tournament {
     constructor(id, config) {

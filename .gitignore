@@ -6,3 +6,6 @@ dist/
 build/
 *.log
 uploads/
+*.jks
+*.keystore
+keystore.properties

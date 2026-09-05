@@ -85,7 +85,7 @@ class AIPlayer {
         const potentialShots = [];
 
         // Determine which balls to target
-        let targetBalls = balls.filter(b => b.active !== false && !b.pocketed && b.id !== 0);
+        let targetBalls = balls.filter(b => b.active !== false && !b.pocketed && b.id !== 0 && b.id !== 8);
 
         if (targetType === 'solids') {
             targetBalls = targetBalls.filter(b => b.id >= 1 && b.id <= 7);

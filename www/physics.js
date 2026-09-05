@@ -15,12 +15,12 @@ class PhysicsEngine {
             (navigator.maxTouchPoints > 0) ||
             (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
-        // Preserve the original mobile feel at lower frame rates.
-        this.mobileFrictionMultiplier = this.isMobile ? 1.9 : 1.0;
+        // Cloth resistance is independent of input device and screen refresh rate.
+        this.mobileFrictionMultiplier = 1.0;
 
         // Original arcade friction profile
         this.GRAVITY = 980;
-        this.MU_ROLL = 0.018 * this.mobileFrictionMultiplier;
+        this.MU_ROLL = 0.024 * this.mobileFrictionMultiplier;
         this.MU_SLIDE = 0.10 * this.mobileFrictionMultiplier;
         this.MU_SPIN = 0.12 * this.mobileFrictionMultiplier;
 
@@ -120,10 +120,10 @@ class PhysicsEngine {
         // Sidespin does NOT curve mid-table in Miniclip physics
         // It ONLY affects cushion rebounds (handled in handleCushionCollisions)
 
-        // === SPIN PERSISTENCE (ARCADE STYLE) ===
-        // In Miniclip physics, spin does NOT decay gradually
-        // It remains fully active until collision with ball or cushion
-        // (No spin decay here - handled on collision instead)
+        // === SPIN DECAY ===
+        // Residual spin dissipates on the cloth between impacts.
+        ball.topspin *= Math.exp(-0.45 * dt);
+        ball.sidespin *= Math.exp(-0.3 * dt);
 
         // === MOVEMENT ===
         ball.x += ball.vx * dt;
@@ -149,8 +149,8 @@ class PhysicsEngine {
 
                 if (distSq < minDist * minDist) {
                     const dist = Math.sqrt(distSq);
-                    const nx = dx / dist;
-                    const ny = dy / dist;
+                    const nx = dist > 0 ? dx / dist : 1;
+                    const ny = dist > 0 ? dy / dist : 0;
 
                     // === RULE TRACKING: First Contact ===
                     if (this.shotFirstContact === null) {
@@ -172,7 +172,7 @@ class PhysicsEngine {
 
                     if (vn > 0) {
                         // Elastic collision
-                        const impulse = vn * this.E_BALL;
+                        const impulse = vn * (1 + this.E_BALL) / 2;
 
                         b1.vx -= impulse * nx;
                         b1.vy -= impulse * ny;
@@ -187,14 +187,14 @@ class PhysicsEngine {
 
                             // BACKSPIN (positive): Cue ball DRAWS BACK
                             if (b1.topspin > 0.15) {
-                                const drawForce = b1.topspin * 150;  // Balanced force
+                                const drawForce = b1.topspin * Math.min(90, vn * 0.3);
                                 // Subtract velocity (go backwards)
                                 b1.vx -= nx * drawForce;
                                 b1.vy -= ny * drawForce;
                             }
                             // TOPSPIN (negative): Cue ball FOLLOWS through
                             else if (b1.topspin < -0.15) {
-                                const followForce = Math.abs(b1.topspin) * 150;  // Balanced force
+                                const followForce = Math.abs(b1.topspin) * Math.min(90, vn * 0.3);
                                 // Add velocity in the direction of the collision
                                 b1.vx += nx * followForce;
                                 b1.vy += ny * followForce;

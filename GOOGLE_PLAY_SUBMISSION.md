@@ -1,210 +1,95 @@
-# Google Play Store Submission Guide - Mine Pool
+# Google Play submission guide — Mine Pool
 
-## App Information
+## App identity
 
-### Basic Details
-- **App Name:** Mine Pool
-- **Package Name:** com.minepool.game
-- **Version:** 1.0.0
-- **Version Code:** 1
+- App name: Mine Pool
+- Package: `com.minepool.game`
+- Category: Game → Sports
+- Current version: `1.0.0` (`versionCode 1`)
 
-### Short Description (80 chars max)
-```
-Play 8-Ball Pool online, win matches, earn in-game coins. Join global players!
-```
+Short description (80 characters maximum):
 
-### Full Description (4000 chars max)
-```
-🎱 MINE POOL - The Ultimate 8-Ball Pool Experience!
+> Play realistic 8-ball pool online, in tournaments, or against AI.
 
-Play real-time 8-ball pool matches against players worldwide. Win matches, earn rewards, and climb the global leaderboard!
+Suggested full description:
 
-🌟 KEY FEATURES:
+> MINE POOL brings competitive 8-ball pool to mobile with precise controls, polished visuals and realistic ball physics.
+>
+> REAL-TIME MULTIPLAYER
+> • Match with online players
+> • Skill-based rating and matchmaking
+> • Secure account-based progress
+>
+> TOURNAMENTS AND SOLO PLAY
+> • Compete through tournament brackets
+> • Practice against adjustable AI opponents
+> • Play locally as a guest
+>
+> BUILD YOUR POOL CAREER
+> • Earn virtual coins through play
+> • Unlock and select detailed cues
+> • Track match history, wins and rating
+>
+> Virtual coins are gameplay items only and have no monetary value. Mine Pool does not use cryptocurrency or wallets.
 
-⚡ REAL-TIME MULTIPLAYER
-• Play against real players from around the world
-• Fair matchmaking based on skill level
-• Smooth, lag-free gameplay
+Do not advertise cash prizes, “play to earn,” crypto, token trading, or monetary value. The current app does not include Google Play Billing, so declare it as free without in-app purchases unless billing is deliberately added later.
 
-🎯 REALISTIC PHYSICS
-• True-to-life ball physics
-• Precision aiming system
-• Strategic spin control
+## Public policy URLs
 
-💰 PLAY & EARN
-• Win matches to earn in-game coins
-• Stake your coins for higher rewards
-• Daily rewards and tasks
+- Privacy policy: `https://api.taingames.com/privacy.html`
+- Account deletion: `https://api.taingames.com/delete-account.html`
+- Support email: `support@minepool.com` — verify that this inbox is active before submission.
 
-🏆 COMPETE & CLIMB
-• Global leaderboards
-• ELO ranking system
-• Tournaments with big prizes
+These pages are included in `www` and become public after the server is redeployed. The deletion page accepts off-device requests; the in-app Player Account screen supports authenticated immediate deletion.
 
-🎨 CUSTOMIZE
-• Unlock premium cues
-• Choose your avatar
-• Show your nationality flag
+## Store assets
 
-📱 FEATURES:
-• Works offline with AI opponents
-• Multiple difficulty levels
-• Cross-platform play
-• Instant guest play
+- Launcher icons: `android/app/src/main/res/mipmap-*`
+- Feature graphic: 1024 × 500
+- Phone screenshots: at least 2, preferably 4–8 current gameplay images
+- Recommended captures: home screen, aiming shot, matchmaking, tournament bracket, win screen, cue selection
 
-Download now and become the ultimate pool champion!
+Do not submit old screenshots containing wallet, token, Play & Earn, or outdated UI elements.
 
-Connect with us:
-• Twitter: @TAINGames
-• Telegram: t.me/TAINGames
-• Website: taingames.com
-```
+## Signed Android App Bundle
 
-### Category
-**Game** → **Sports**
+Create and securely back up a Play upload key once:
 
-### Content Rating
-**Everyone** (No violence, gambling for real money is virtual tokens)
-
-### Tags/Keywords
-```
-pool, 8ball, billiards, multiplayer, online game, sports, cue sports, arcade game, snooker
+```powershell
+keytool -genkeypair -v -keystore C:\secure\minepool-upload.jks -alias minepool -keyalg RSA -keysize 2048 -validity 10000
 ```
 
----
+Set the four signing values documented in `MOBILE_RELEASE.md`, then build:
 
-## Required Assets
-
-### App Icon
-- ✅ Already created at: `android/app/src/main/res/mipmap-*/ic_launcher.png`
-- Sizes: 48x48 to 512x512
-
-### Feature Graphic (1024x500)
-- Required for Play Store listing
-- Should show game branding
-
-### Screenshots (Required)
-You need at least 2 screenshots for each:
-- **Phone:** 1080x1920 or 1920x1080 (min 2, max 8)
-- **Tablet (7"):** 1200x1920 (optional but recommended)
-- **Tablet (10"):** 1600x2560 (optional)
-
-Recommended screenshots:
-1. Main menu with profile
-2. Gameplay - aiming shot
-3. Matchmaking screen
-4. Winning screen
-5. Shop/Cues screen
-6. Leaderboard
-
-### Promo Video (Optional)
-- YouTube link
-- 30 seconds to 2 minutes
-- Shows gameplay
-
----
-
-## Required Policies
-
-### Privacy Policy URL
-You MUST have a privacy policy. Create one at:
-- Option 1: Use a generator like https://app-privacy-policy-generator.nisrulz.com/
-- Option 2: Host on your website: your published privacy policy URL
-
-Example privacy policy areas to cover:
-- Data collected (username and game stats)
-- How data is used
-- Third-party services used by the game
-- Data retention
-- Contact information
-
-### Terms of Service URL (Recommended)
-- your published terms of service URL
-
----
-
-## Build Signed APK/AAB
-
-### Step 1: Create Keystore (One-time)
-```bash
-keytool -genkey -v -keystore minepool-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias minepool
-```
-
-### Step 2: Configure Signing in build.gradle
-Add to `android/app/build.gradle`:
-```gradle
-android {
-    signingConfigs {
-        release {
-            storeFile file('minepool-release-key.jks')
-            storePassword 'YOUR_STORE_PASSWORD'
-            keyAlias 'minepool'
-            keyPassword 'YOUR_KEY_PASSWORD'
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-}
-```
-
-### Step 3: Build Release Bundle
-```bash
+```powershell
 cd android
-./gradlew bundleRelease
+.\gradlew.bat bundleRelease
 ```
 
 Output: `android/app/build/outputs/bundle/release/app-release.aab`
 
----
+Verify the bundle is signed before upload:
 
-## Google Play Console Setup
+```powershell
+jarsigner -verify -verbose -certs android/app/build/outputs/bundle/release/app-release.aab
+```
 
-### Developer Account
-1. Go to https://play.google.com/console
-2. Pay $25 one-time registration fee
-3. Verify identity
+Keep the upload keystore and passwords outside Git. Enable Play App Signing in Play Console.
 
-### Create New App
-1. Click "Create app"
-2. Select "Game"
-3. Enter app name: "Mine Pool"
-4. Select language: English
+## Play Console checklist
 
-### Fill Required Sections
-1. **Store listing** - descriptions, screenshots
-2. **Content rating** - complete questionnaire
-3. **Pricing & distribution** - Free (with in-app purchases)
-4. **App content** - privacy policy, ads declaration
-5. **App release** - upload AAB file
+- [ ] Increment `versionCode` for every uploaded release.
+- [ ] Configure the real Google Web OAuth client ID; confirm Google sign-in on a Play-installed build.
+- [ ] Upload a signed AAB targeting the currently required Android API level.
+- [ ] Complete Store listing and upload current assets.
+- [ ] Complete Data safety using `PLAY_DATA_SAFETY.md` as a draft, verified against production.
+- [ ] Complete Target audience, Content rating, Ads, App access and privacy declarations.
+- [ ] Publish and test both policy URLs.
+- [ ] Test email registration/login, Google sign-in, sign-out and both deletion paths.
+- [ ] Test AI, tournament and multiplayer matches on physical devices and different networks.
+- [ ] Test reconnect, app background/resume, audio interruption, offline behavior and rotation lock.
+- [ ] Run the required closed test if the developer account is subject to Google’s personal-account testing rule.
 
----
+## Release gate
 
-## Before Submission Checklist
-
-- [ ] Privacy Policy URL is live
-- [ ] Terms of Service URL is live
-- [ ] Feature graphic (1024x500) created
-- [ ] At least 4 screenshots ready
-- [ ] App icon looks good at small sizes
-- [ ] Test on multiple devices
-- [ ] Test guest launch on mobile
-- [ ] Test game against AI
-- [ ] Test multiplayer match
-- [ ] Server is stable (Railway)
-- [ ] All links work (Zealy, Twitter, Telegram)
-
----
-
-## Post-Submission
-
-- Review typically takes 1-7 days
-- You may receive feedback requiring changes
-- First app submission often requires more review time
-- Watch for emails from Google Play
-
-Good luck! 🎱🚀
+Do not send the production release until all checklist items pass. A locally generated unsigned AAB is suitable only for build verification, not Play Console upload.

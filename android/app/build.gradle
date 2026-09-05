@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+def releaseKeystorePath = project.findProperty('MINEPOOL_KEYSTORE_FILE') ?: System.getenv('MINEPOOL_KEYSTORE_FILE')
+def releaseKeystorePassword = project.findProperty('MINEPOOL_KEYSTORE_PASSWORD') ?: System.getenv('MINEPOOL_KEYSTORE_PASSWORD')
+def releaseKeyAlias = project.findProperty('MINEPOOL_KEY_ALIAS') ?: System.getenv('MINEPOOL_KEY_ALIAS')
+def releaseKeyPassword = project.findProperty('MINEPOOL_KEY_PASSWORD') ?: System.getenv('MINEPOOL_KEY_PASSWORD')
+def hasReleaseSigning = [releaseKeystorePath, releaseKeystorePassword, releaseKeyAlias, releaseKeyPassword].every { it }
+
 android {
     namespace = "com.minepool.game"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -10,14 +16,31 @@ android {
         versionCode 1
         versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        def googleWebClientId = project.findProperty("MINEPOOL_GOOGLE_WEB_CLIENT_ID") ?: System.getenv("MINEPOOL_GOOGLE_WEB_CLIENT_ID") ?: "UNCONFIGURED"
+        resValue "string", "google_web_client_id", "\"${googleWebClientId}\""
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseKeystorePath)
+                storePassword releaseKeystorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn('Mine Pool release signing is not configured; the generated AAB will be unsigned.')
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -36,6 +59,9 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    implementation "androidx.credentials:credentials:1.6.0"
+    implementation "androidx.credentials:credentials-play-services-auth:1.6.0"
+    implementation "com.google.android.libraries.identity.googleid:googleid:1.2.0"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

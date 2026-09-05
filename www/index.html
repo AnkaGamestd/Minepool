@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="multiplayer.css">
   <link rel="stylesheet" href="game-shell.css">
   <link rel="stylesheet" href="spa.css">
+  <link rel="stylesheet" href="table-layout.css">
+  <link rel="stylesheet" href="tournament-mode.css">
+  <link rel="stylesheet" href="auth-ui.css">
 </head>
 <body>
   <div class="loading-screen" id="loading-screen" aria-live="polite"><div class="loading-mark">8</div></div>
@@ -28,7 +31,7 @@
         <span class="rank-shield" aria-hidden="true"><svg viewBox="0 0 100 116"><path d="M50 3 84 18l-4 51c-4 19-18 33-30 40-12-7-26-21-30-40l-4-51Z" fill="#0e8885" stroke="#68e6dd" stroke-width="3"/><path d="M50 14 73 24l-3 41c-3 13-12 23-20 29-8-6-17-16-20-29l-3-41Z" fill="#9ad1cb" stroke="#06292b" stroke-width="3"/><path d="m50 29 7 15 17 2-12 12 3 17-15-8-15 8 3-17-12-12 17-2Z" fill="#e7e9e4" stroke="#27454a" stroke-width="2"/><path d="M15 48C8 65 11 82 23 95M85 48c7 17 4 34-8 47" fill="none" stroke="#10c8bd" stroke-width="4"/><path d="m12 62-6-5m7 15-7-2m11 13-7 2m78-23 6-5m-7 15 7-2m-11 13 7 2" stroke="#10c8bd" stroke-width="3"/></svg></span>
         <span class="rank-copy"><span class="menu-stat-label">RATING</span><span class="rank-line"><strong class="rank-name">PRO II</strong><strong class="rating-score" id="player-rating">1,450</strong></span><span class="rating-progress" aria-hidden="true"><span></span></span></span>
       </section>
-      <button class="cue-chip" id="open-cues" type="button"><span class="menu-stat-label">CUES</span><span class="cue-visual" aria-hidden="true"></span><img id="cue-preview" src="assets/cue_legendary.png" alt=""><span class="sr-only" id="cue-name">Heritage</span></button>
+      <button class="cue-chip" id="open-cues" type="button" data-cue="legendary"><span class="menu-stat-label">CUES</span><span class="cue-visual" aria-hidden="true"></span><span class="sr-only" id="cue-name">Heritage</span></button>
     </header>
     <section class="main-stage">
       <aside class="challenge-panel" aria-label="Daily challenge">
@@ -44,6 +47,7 @@
         <div class="secondary-actions">
           <button class="secondary-button" id="play-two" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="17" cy="15" r="7" fill="currentColor"/><circle cx="32" cy="16" r="6" fill="currentColor"/><path d="M5 38c0-9 5-14 13-14s13 5 13 14H5Zm23-12c8 0 13 4 14 12H34c0-5-2-9-6-12Z" fill="currentColor"/></svg><span>2 PLAYERS</span></button>
           <button class="secondary-button" id="play-practice" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="24" cy="24" r="4" fill="currentColor"/><path d="M24 3v9m0 24v9M3 24h9m24 0h9" stroke="currentColor" stroke-width="4"/></svg><span>PRACTICE</span></button>
+          <button class="secondary-button tournament-menu-button" id="play-tournament" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 6h20v8c0 9-4 15-10 18-6-3-10-9-10-18V6Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M14 10H7c0 8 3 12 10 13m17-13h7c0 8-3 12-10 13M24 32v7m-9 3h18" fill="none" stroke="currentColor" stroke-width="3"/><path d="m24 11 2.3 4.6 5.1.7-3.7 3.6.9 5.1-4.6-2.4-4.6 2.4.9-5.1-3.7-3.6 5.1-.7Z" fill="currentColor"/></svg><span>TOURNAMENT</span></button>
         </div>
       </div>
     </section>
@@ -55,6 +59,9 @@
 
   <main class="game-shell game-view app-view hidden" id="game-view" aria-label="8-ball pool game">
     <header class="match-hud">
+      <button class="game-back-button" id="game-back-button" type="button" aria-label="Return to main menu" title="Main menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <section class="player player-panel player-1 active" id="p1-panel"><div class="avatar">M</div><div class="player-copy"><span class="player-name" id="p1-name">Mobile Player</span><span class="ball-group">SOLIDS</span></div><div class="ball-rack" id="solids-rack"></div></section>
       <div class="turn-core" id="turn-indicator"><span class="turn-label turn-text" id="turn-bar-text">YOUR TURN</span><span class="timer" id="timer-text">30</span></div>
       <section class="player player-panel player-2" id="p2-panel"><div class="ball-rack" id="stripes-rack"></div><div class="player-copy"><span class="player-name" id="p2-name">Rival</span><span class="ball-group">STRIPES</span></div><div class="avatar rival">R</div></section>
@@ -63,14 +70,25 @@
     <footer class="game-footer"><span>DRAG TO AIM</span><span>SET POWER • RELEASE TO SHOOT</span><span id="cloud-state">OFFLINE</span></footer>
   </main>
 
-  <main class="profile-shell app-view hidden" id="profile-view"><header class="profile-top"><button class="back-button" id="profile-home" type="button">← HOME</button><span class="brand" style="font-size:22px">MINE <span>POOL</span></span></header><section class="profile-card"><div class="identity"><div class="avatar" id="profile-avatar">P</div><div><div class="eyeline">PLAYER PROFILE</div><h1 id="profile-name">Mobile Player</h1><div class="platform-note" id="profile-cloud">Loading mobile profile…</div></div></div><div class="profile-grid"><div class="profile-stat"><span class="stat-label">Rating</span><strong id="profile-rating">1,450</strong></div><div class="profile-stat"><span class="stat-label">Coins</span><strong id="profile-coins">25,680</strong></div><div class="profile-stat"><span class="stat-label">Games played</span><strong id="profile-played">2</strong></div><div class="profile-stat"><span class="stat-label">Win rate</span><strong id="profile-rate">0%</strong></div></div><p class="cloud-note">Your player profile is saved on this device. Online matches are synchronized through the Mine Pool game server.</p></section></main>
+  <main class="tournament-shell app-view hidden" id="tournament-view" aria-label="Tournament mode">
+    <header class="tournament-top"><button class="tournament-back" id="tournament-back" type="button">← HOME</button><div class="tournament-title"><span>TOURNAMENT</span><small>8-PLAYER KNOCKOUT</small></div><div class="tournament-balance"><small>YOUR COINS</small><span id="tournament-coins">0</span></div></header>
+    <section class="tournament-lobby" id="tournament-lobby"><div class="tournament-intro"><h2>CHOOSE YOUR TOURNAMENT</h2><p>Win three matches in a row to take the prize.</p></div><div class="tournament-tiers">
+      <button class="tournament-tier bronze" data-tournament-tier="downtown" type="button"><span class="tier-head"><strong>DOWNTOWN CUP</strong><span class="tier-medal">★</span></span><span class="tier-economy"><span>ENTRY<strong>100</strong></span><span class="prize">WIN PRIZE<strong>800</strong></span></span><span class="tournament-enter-copy">ENTER TOURNAMENT</span></button>
+      <button class="tournament-tier gold" data-tournament-tier="crown" type="button"><span class="tier-head"><strong>CROWN MASTERS</strong><span class="tier-medal">★</span></span><span class="tier-economy"><span>ENTRY<strong>500</strong></span><span class="prize">WIN PRIZE<strong>4,000</strong></span></span><span class="tournament-enter-copy">ENTER TOURNAMENT</span></button>
+      <button class="tournament-tier diamond" data-tournament-tier="world" type="button"><span class="tier-head"><strong>WORLD CLASS</strong><span class="tier-medal">★</span></span><span class="tier-economy"><span>ENTRY<strong>2,500</strong></span><span class="prize">WIN PRIZE<strong>20,000</strong></span></span><span class="tournament-enter-copy">ENTER TOURNAMENT</span></button>
+    </div></section>
+    <section class="tournament-bracket hidden" id="tournament-bracket"><div class="bracket-heading"><h2 id="tournament-name">DOWNTOWN CUP</h2><div class="bracket-prize">CHAMPION PRIZE <strong id="tournament-prize">800</strong></div></div><div class="tournament-rounds" id="tournament-rounds"></div><div class="tournament-actionbar"><div class="tournament-status" id="tournament-status"></div><button class="tournament-primary" id="tournament-play-match" type="button">PLAY MATCH</button><button class="tournament-primary secondary hidden" id="tournament-new" type="button">NEW TOURNAMENT</button></div></section>
+  </main>
+
+  <main class="profile-shell app-view hidden" id="profile-view"><header class="profile-top"><button class="back-button" id="profile-home" type="button">← HOME</button><span class="brand" style="font-size:22px">MINE <span>POOL</span></span></header><section class="profile-card"><div class="identity"><div class="avatar" id="profile-avatar">P</div><div><div class="eyeline">PLAYER PROFILE</div><h1 id="profile-name">Mobile Player</h1><div class="platform-note" id="profile-cloud">Loading mobile profile…</div></div></div><div class="profile-grid"><div class="profile-stat"><span class="stat-label">Rating</span><strong id="profile-rating">1,450</strong></div><div class="profile-stat"><span class="stat-label">Coins</span><strong id="profile-coins">25,680</strong></div><div class="profile-stat"><span class="stat-label">Games played</span><strong id="profile-played">2</strong></div><div class="profile-stat"><span class="stat-label">Win rate</span><strong id="profile-rate">0%</strong></div></div><div class="account-summary"><div><strong>PLAYER ACCOUNT</strong><span id="profile-account-state">GUEST PLAYER</span></div><button class="account-button" id="account-open" type="button">ACCOUNT</button></div><p class="cloud-note">Sign in to keep your player identity available on another device. Offline play remains available without an account.</p></section></main>
 
   <div id="start-screen" class="hidden"></div>
   <div id="game-message" class="game-message hidden"><strong id="message-title"></strong><span id="message-text"></span></div>
   <section id="call-pocket-modal" class="overlay hidden" aria-label="Call a pocket"><div class="dialog"><p class="eyebrow">8 BALL</p><h2>CALL YOUR POCKET</h2><div class="pocket-grid"><button class="pocket-btn" data-pocket="0" type="button">TOP LEFT</button><button class="pocket-btn" data-pocket="1" type="button">TOP CENTER</button><button class="pocket-btn" data-pocket="2" type="button">TOP RIGHT</button><button class="pocket-btn" data-pocket="3" type="button">BOTTOM LEFT</button><button class="pocket-btn" data-pocket="4" type="button">BOTTOM CENTER</button><button class="pocket-btn" data-pocket="5" type="button">BOTTOM RIGHT</button></div></div></section>
   <section id="winner-screen" class="overlay hidden" aria-live="polite"><div class="dialog winner-card"><p class="eyebrow">MATCH COMPLETE</p><h1 id="winner-text">YOU WIN</h1><div class="winner-actions"><button id="play-again" class="primary" type="button">REMATCH</button><button id="btn-back-to-menu" type="button">MAIN MENU</button></div></div></section>
 
-  <div class="modal" id="cue-modal" hidden><section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cue-title"><div class="modal-head"><h2 id="cue-title">SELECT CUE</h2><button class="icon-button" id="close-cues" type="button" aria-label="Close cue selection">×</button></div><div class="cue-list"><button class="cue-option" type="button" data-cue="standard" data-image="assets/cue_standard.png"><span><strong>Standard</strong><br><span class="platform-note">Balanced control</span></span><img src="assets/cue_standard.png" alt=""></button><button class="cue-option" type="button" data-cue="premium" data-image="assets/cue_premium.png"><span><strong>Carbon</strong><br><span class="platform-note">Smooth power</span></span><img src="assets/cue_premium.png" alt=""></button><button class="cue-option" type="button" data-cue="legendary" data-image="assets/cue_legendary.png"><span><strong>Heritage</strong><br><span class="platform-note">Precision finish</span></span><img src="assets/cue_legendary.png" alt=""></button></div></section></div>
+  <div class="modal" id="cue-modal" hidden><section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cue-title"><div class="modal-head"><h2 id="cue-title">SELECT CUE</h2><button class="icon-button" id="close-cues" type="button" aria-label="Close cue selection">×</button></div><div class="cue-list"><button class="cue-option" type="button" data-cue="standard"><span><strong>Standard</strong><br><span class="platform-note">Balanced control</span></span><span class="cue-option-visual cue-standard" aria-hidden="true"></span></button><button class="cue-option" type="button" data-cue="premium"><span><strong>Carbon</strong><br><span class="platform-note">Smooth power</span></span><span class="cue-option-visual cue-premium" aria-hidden="true"></span></button><button class="cue-option" type="button" data-cue="legendary"><span><strong>Heritage</strong><br><span class="platform-note">Precision finish</span></span><span class="cue-option-visual cue-legendary" aria-hidden="true"></span></button></div></section></div>
+  <div class="modal" id="account-modal" hidden><section class="account-card" role="dialog" aria-modal="true" aria-labelledby="account-title"><div class="modal-head"><div><div class="eyeline">MINE POOL ID</div><h2 id="account-title">PLAYER ACCOUNT</h2></div><button class="icon-button" id="account-close" type="button" aria-label="Close account">×</button></div><div class="account-current"><div class="avatar">P</div><div><strong id="account-current-name">Player</strong><span id="account-current-provider">GUEST • SAVED ON THIS DEVICE</span></div></div><div id="account-forms"><div class="account-tabs"><button class="active" data-account-tab="login" type="button">SIGN IN</button><button data-account-tab="register" type="button">CREATE ACCOUNT</button></div><form class="account-form" id="account-login-form" data-account-panel="login"><label>EMAIL<input name="email" type="email" autocomplete="email" required></label><label>PASSWORD<input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required></label><button class="account-primary" type="submit">SIGN IN</button></form><form class="account-form" id="account-register-form" data-account-panel="register" hidden><label>PLAYER NAME<input name="username" type="text" autocomplete="nickname" minlength="3" maxlength="20" pattern="[A-Za-z0-9_-]+" required></label><label>EMAIL<input name="email" type="email" autocomplete="email" required></label><label>PASSWORD<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><button class="account-primary" type="submit">CREATE ACCOUNT</button></form><div class="account-or">OR</div><button class="account-google" id="account-google" type="button"><span class="account-google-mark">G</span>CONTINUE WITH GOOGLE</button></div><div class="account-signed-actions" id="account-signed-actions" hidden><button class="account-logout" id="account-logout" type="button">SIGN OUT</button><button class="account-delete-open" id="account-delete-open" type="button">DELETE ACCOUNT</button></div><div class="account-delete-confirm" id="account-delete-confirm" hidden><p>This permanently removes your account, profile and gameplay data.</p><form class="account-form" id="account-delete-form"><label>TYPE DELETE TO CONFIRM<input name="confirmation" autocomplete="off" pattern="DELETE" required></label><label id="account-delete-password">PASSWORD<input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128"></label><div class="account-delete-actions"><button id="account-delete-cancel" type="button">CANCEL</button><button class="account-delete-final" type="submit">DELETE PERMANENTLY</button></div></form></div><nav class="account-policy-links" aria-label="Account policies"><a href="privacy.html" target="_blank" rel="noopener">PRIVACY</a><a href="delete-account.html" target="_blank" rel="noopener">ACCOUNT DELETION</a></nav><p class="account-status" id="account-status" aria-live="polite"></p></section></div>
   <div class="pause-shield" role="status" aria-live="assertive"><div class="pause-card"><div class="eyebrow">MINE POOL</div><h2>PAUSED</h2><div class="platform-note">Return to the game to continue.</div></div></div>
 
   <script src="physics.js"></script>
@@ -79,22 +97,26 @@
   <script src="vendor/socket.io.min.js"></script>
   <script src="network.js"></script>
   <script src="multiplayer-ui.js"></script>
+  <script src="tournament-mode.js"></script>
+  <script src="auth-ui.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const platform = window.MinePoolPlatform;
       let player = await platform.init();
-      const identity = platform.getIdentity();
+      let identity = platform.getIdentity();
       let activeMode = 'ai';
       window.currentUser = { ...player, id: identity.id, username: identity.displayName, email: `${identity.id}@mobile.minepool`, provider: identity.provider };
 
-      const views = { menu: document.getElementById('menu-view'), game: document.getElementById('game-view'), profile: document.getElementById('profile-view') };
+      const views = { menu: document.getElementById('menu-view'), game: document.getElementById('game-view'), profile: document.getElementById('profile-view'), tournament: document.getElementById('tournament-view') };
       const format = () => new Intl.NumberFormat('en-US');
       const cueOptions = [...document.querySelectorAll('.cue-option')];
       const cueModal = document.getElementById('cue-modal');
       let multiplayerUI = null;
+      let tournamentUI = null;
+      let tournamentOutcome = null;
 
       function showView(name) { Object.entries(views).forEach(([key, view]) => view.classList.toggle('hidden', key !== name)); }
-      function renderCue(cue) { const option = cueOptions.find((item) => item.dataset.cue === cue) || cueOptions[0]; cueOptions.forEach((item) => item.classList.toggle('is-selected', item === option)); document.getElementById('cue-name').textContent = option.querySelector('strong').textContent; document.getElementById('cue-preview').src = option.dataset.image; }
+      function renderCue(cue) { const option = cueOptions.find((item) => item.dataset.cue === cue) || cueOptions[0]; cueOptions.forEach((item) => item.classList.toggle('is-selected', item === option)); document.getElementById('cue-name').textContent = option.querySelector('strong').textContent; document.getElementById('open-cues').dataset.cue = option.dataset.cue; }
       function renderProfile() {
         const number = format(); const progress = player.dailyProgress || {};
         document.getElementById('menu-player-name').textContent = identity.displayName; document.getElementById('menu-player-avatar').setAttribute('aria-label', identity.displayName);
@@ -102,22 +124,24 @@
         document.getElementById('profile-name').textContent = identity.displayName; document.getElementById('profile-avatar').textContent = identity.avatarText;
         document.getElementById('player-coins').textContent = number.format(player.coins); document.getElementById('player-rating').textContent = number.format(player.elo);
         document.getElementById('profile-coins').textContent = number.format(player.coins); document.getElementById('profile-rating').textContent = number.format(player.elo); document.getElementById('profile-played').textContent = number.format(player.gamesPlayed); document.getElementById('profile-rate').textContent = `${player.gamesPlayed ? Math.round(player.gamesWon / player.gamesPlayed * 100) : 0}%`;
-        const label = 'Mobile player profile'; document.getElementById('platform-note').textContent = label; document.getElementById('profile-cloud').textContent = label; document.getElementById('cloud-state').textContent = window.networkManager?.isConnected() ? 'ONLINE' : 'OFFLINE';
+        const label = identity.authenticated ? `${identity.provider.includes('google') ? 'Google' : 'Email'} account connected` : 'Guest profile • saved on this device'; document.getElementById('platform-note').textContent = label; document.getElementById('profile-cloud').textContent = label; document.getElementById('cloud-state').textContent = window.networkManager?.isConnected() ? 'ONLINE' : 'OFFLINE';
         document.getElementById('challenge-games-count').textContent = `${Math.min(3, progress.games || 0)} / 3`; document.getElementById('challenge-balls-count').textContent = `${Math.min(10, progress.balls || 0)} / 10`; document.getElementById('challenge-wins-count').textContent = `${Math.min(1, progress.wins || 0)} / 1`;
         document.getElementById('games-progress').style.setProperty('--progress', `${Math.min(100, (progress.games || 0) / 3 * 100)}%`); document.getElementById('balls-progress').style.setProperty('--progress', `${Math.min(100, (progress.balls || 0) / 10 * 100)}%`); document.getElementById('wins-progress').style.setProperty('--progress', `${Math.min(100, (progress.wins || 0) * 100)}%`); renderCue(player.selectedCue);
       }
-      function stopGame() { const game = window.gameInstance; if (!game) return; if (game.animationId) cancelAnimationFrame(game.animationId); game.animationId = null; game.stopShotTimer(); game.gameState = 'start'; document.body.classList.remove('game-active'); document.getElementById('winner-screen').classList.add('hidden'); document.getElementById('game-message').classList.add('hidden'); }
-      function startGame(mode) { activeMode = mode; stopGame(); showView('game'); document.getElementById('p2-name').textContent = mode === '2player' ? 'Player 2' : 'Rival'; window.gameInstance.startGame(mode); }
-      function showMenu() { stopGame(); player = platform.getPlayer(); renderProfile(); showView('menu'); }
-      function rematch() { document.getElementById('winner-screen').classList.add('hidden'); startGame(activeMode); }
-      window.MinePoolApp = Object.freeze({ showMenu, rematch });
+      function stopGame() { const game = window.gameInstance; if (!game) return; if (game.animationId) cancelAnimationFrame(game.animationId); if (game.aiTurnTimeout) clearTimeout(game.aiTurnTimeout); game.animationId = null; game.aiTurnTimeout = null; game.stopShotTimer(); game.gameState = 'start'; document.body.classList.remove('game-active'); document.getElementById('winner-screen').classList.add('hidden'); document.getElementById('game-message').classList.add('hidden'); }
+      function startGame(mode, opponent = 'Rival', difficulty = 'medium') { activeMode = mode; stopGame(); showView('game'); document.getElementById('play-again').textContent = 'REMATCH'; document.getElementById('p2-name').textContent = mode === '2player' ? 'Player 2' : opponent; document.querySelector('#p2-panel .avatar').textContent = (mode === '2player' ? 'P' : opponent.charAt(0)).toUpperCase(); window.gameInstance.aiDifficulty = difficulty; window.gameInstance.startGame(mode); }
+      function showMenu() { if (activeMode === 'multiplayer' && window.networkManager?.roomId) window.networkManager.leaveRoom(); stopGame(); player = platform.getPlayer(); renderProfile(); showView('menu'); }
+      function rematch() { document.getElementById('winner-screen').classList.add('hidden'); if (activeMode === 'tournament') { stopGame(); tournamentUI.show(); showView('tournament'); return; } startGame(activeMode); }
+      async function recordTournamentResult(won, pocketed) { tournamentOutcome = await tournamentUI.recordResult(won, pocketed); if (!tournamentOutcome) return; player = platform.getPlayer(); renderProfile(); const action = document.getElementById('play-again'); action.textContent = tournamentOutcome.complete ? 'VIEW TROPHY' : tournamentOutcome.eliminated ? 'TOURNAMENTS' : 'CONTINUE'; if (tournamentOutcome.complete) document.getElementById('winner-text').firstChild.textContent = 'CHAMPION!'; }
+      window.MinePoolApp = Object.freeze({ showMenu, rematch, recordTournamentResult });
 
       const applyAudio = (enabled) => { const sound = window.gameInstance?.sound; if (sound?.masterGain) sound.masterGain.gain.value = enabled ? 1 : 0; };
       applyAudio(platform.isAudioEnabled());
       document.addEventListener('minepool:audio', (event) => applyAudio(event.detail.enabled));
       document.addEventListener('minepool:pause', () => window.gameInstance?.pauseForPlatform());
       document.addEventListener('minepool:resume', () => window.gameInstance?.resumeFromPlatform());
-      document.addEventListener('minepool:player-updated', (event) => { player = event.detail.player; window.currentUser = { ...player, id: identity.id, username: identity.displayName, email: `${identity.id}@mobile.minepool`, provider: identity.provider }; renderProfile(); });
+      document.addEventListener('minepool:player-updated', (event) => { player = event.detail.player; identity = platform.getIdentity(); window.currentUser = { ...player, id: identity.id, username: identity.displayName, email: identity.email || `${identity.id}@mobile.minepool`, provider: identity.provider }; renderProfile(); });
+      document.addEventListener('minepool:account-changed', () => { if (window.networkManager?.isConnected()) window.networkManager.authenticate(window.currentUser); });
 
       const showMultiplayerMessage = (message) => { document.getElementById('message-title').textContent = 'ONLINE MULTIPLAYER'; document.getElementById('message-text').textContent = message; document.getElementById('game-message').classList.remove('hidden'); window.setTimeout(() => document.getElementById('game-message').classList.add('hidden'), 2600); };
       try {
@@ -143,7 +167,18 @@
         console.warn('Online multiplayer initialization failed.', error);
       }
 
+      tournamentUI = new TournamentMode({
+        platform,
+        onExit: showMenu,
+        onPlayerChange: (updated) => { player = updated; window.currentUser = { ...updated, id: identity.id, username: identity.displayName, email: `${identity.id}@mobile.minepool`, provider: identity.provider }; renderProfile(); },
+        onMessage: showMultiplayerMessage,
+        onStartMatch: ({ opponent, difficulty, roundLabel, tournamentName }) => { tournamentOutcome = null; startGame('tournament', opponent, difficulty); window.gameInstance.showMessage(roundLabel, tournamentName, 2200); }
+      });
+      const accountUI = new AccountUI(platform);
+
       document.getElementById('play-ai').addEventListener('click', () => multiplayerUI ? multiplayerUI.show() : showMultiplayerMessage('Game server is unavailable.')); document.getElementById('play-two').addEventListener('click', () => startGame('2player')); document.getElementById('play-practice').addEventListener('click', () => startGame('ai'));
+      document.getElementById('play-tournament').addEventListener('click', () => { tournamentUI.show(); showView('tournament'); });
+      document.getElementById('game-back-button').addEventListener('click', showMenu);
       document.getElementById('open-profile').addEventListener('click', () => { renderProfile(); showView('profile'); }); document.getElementById('profile-home').addEventListener('click', showMenu);
       document.getElementById('open-cues').addEventListener('click', () => { cueModal.hidden = false; document.getElementById('close-cues').focus(); }); document.getElementById('close-cues').addEventListener('click', () => { cueModal.hidden = true; }); cueModal.addEventListener('click', (event) => { if (event.target === cueModal) cueModal.hidden = true; }); document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cueModal.hidden = true; });
       cueOptions.forEach((option) => option.addEventListener('click', async () => { renderCue(option.dataset.cue); player = await platform.updatePlayer({ selectedCue: option.dataset.cue }); window.setTimeout(() => { cueModal.hidden = true; }, 120); }));

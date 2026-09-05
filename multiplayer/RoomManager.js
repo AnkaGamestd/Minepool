@@ -3,7 +3,7 @@
  * Handles room creation, joining, and management
  */
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('crypto');
 
 class GameRoom {
     constructor(roomId, host, wager = 50, currency = 'coins') {
