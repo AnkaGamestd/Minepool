@@ -45,7 +45,7 @@
             ...source,
             id,
             displayName: String(previewName || source.displayName || `Player ${suffix}`),
-            coins: Math.max(0, Number(source.coins) || DEFAULT_PLAYER.coins),
+            coins: Math.max(0, Number.isFinite(Number(source.coins)) ? Number(source.coins) : DEFAULT_PLAYER.coins),
             elo: Math.max(100, Number(source.elo) || DEFAULT_PLAYER.elo),
             gamesPlayed: Math.max(0, Number(source.gamesPlayed) || DEFAULT_PLAYER.gamesPlayed),
             gamesWon: Math.max(0, Number(source.gamesWon) || 0),
@@ -72,14 +72,23 @@
         return `${String(globalThis.MINEPOOL_API_URL || '').replace(/\/$/, '')}${path}`;
     }
 
+    function resolveAvatarUrl(value) {
+        if (!value) return null;
+        try {
+            const url = new URL(String(value), String(globalThis.MINEPOOL_SERVER_URL || location.origin));
+            return ['http:', 'https:'].includes(url.protocol) ? url.href : null;
+        } catch (error) { return null; }
+    }
+
     async function request(path, options = {}) {
+        const multipart = typeof FormData !== 'undefined' && options.body instanceof FormData;
         const response = await fetch(apiUrl(path), {
             method: options.method || 'GET',
             headers: {
-                'Content-Type': 'application/json',
+                ...(!multipart && options.body ? { 'Content-Type': 'application/json' } : {}),
                 ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
             },
-            body: options.body ? JSON.stringify(options.body) : undefined
+            body: options.body ? (multipart ? options.body : JSON.stringify(options.body)) : undefined
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || 'The server could not complete this request.');
@@ -98,7 +107,12 @@
             email: user.email,
             displayName: user.username,
             provider: user.provider || 'email',
-            avatarUrl: user.profilePicture || null
+            coins: user.coins,
+            elo: user.elo,
+            gamesPlayed: user.gamesPlayed,
+            gamesWon: user.gamesWon,
+            cues: user.cues || player.cues,
+            avatarUrl: resolveAvatarUrl(user.profilePicture)
         });
         persist();
         document.dispatchEvent(new CustomEvent('minepool:player-updated', { detail: { player: clone(player) } }));
@@ -186,6 +200,45 @@
         return applyAccount(await request('/auth/google', { method: 'POST', body: { idToken: google.idToken } }));
     }
 
+    async function updateProfile({ username }) {
+        if (!authToken) throw new Error('Sign in before editing your profile.');
+        return applyAccount(await request('/profile/change-username', { method: 'POST', body: { username } }));
+    }
+
+    async function uploadAvatar(file) {
+        if (!authToken) throw new Error('Sign in before changing your profile photo.');
+        const body = new FormData();
+        body.append('avatar', file, file.name || 'profile.jpg');
+        return applyAccount(await request('/profile/avatar', { method: 'POST', body }));
+    }
+
+    async function removeAvatar() {
+        if (!authToken) throw new Error('Sign in before changing your profile photo.');
+        return applyAccount(await request('/profile/avatar', { method: 'DELETE' }));
+    }
+
+    async function getFriends() {
+        if (!authToken) throw new Error('Sign in to use friends.');
+        return request('/friends');
+    }
+
+    async function searchFriends(query) {
+        if (!authToken) throw new Error('Sign in to find players.');
+        return request(`/friends/search?q=${encodeURIComponent(query)}`);
+    }
+
+    async function sendFriendRequest(targetUserId) {
+        return request('/friends/requests', { method: 'POST', body: { targetUserId } });
+    }
+
+    async function respondFriendRequest(requesterId, action) {
+        return request('/friends/requests/respond', { method: 'POST', body: { requesterId, action } });
+    }
+
+    async function removeFriend(friendId) {
+        return request(`/friends/${encodeURIComponent(friendId)}`, { method: 'DELETE' });
+    }
+
     async function logout() {
         try { if (authToken) await request('/auth/logout', { method: 'POST' }); } catch (error) { /* Local logout must still work offline. */ }
         return clearAccountState();
@@ -241,10 +294,23 @@
         register,
         login,
         signInWithGoogle,
+        updateProfile,
+        uploadAvatar,
+        removeAvatar,
+        getFriends,
+        searchFriends,
+        sendFriendRequest,
+        respondFriendRequest,
+        removeFriend,
         logout,
         deleteAccount,
         isAuthenticated: () => Boolean(authToken),
         getAuthToken: () => authToken || null,
+        rewards: async (action = '', body) => {
+            const data = await request('/rewards' + action, { method: action ? 'POST' : 'GET', body });
+            await updatePlayer({ coins: data.coins });
+            return data;
+        },
         flush: () => Promise.resolve()
     });
 })();

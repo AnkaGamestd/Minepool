@@ -8,6 +8,7 @@ const { MatchmakingQueue, EloCalculator } = require('./MatchmakingQueue');
 const { MatchHistory } = require('./MatchHistory');
 const { AchievementManager } = require('./Achievements');
 const jwt = require('jsonwebtoken');
+const { randomUUID } = require('crypto');
 
 class MultiplayerServer {
     constructor(io, users, saveUsersCallback = null, jwtSecret = '') {
@@ -22,6 +23,7 @@ class MultiplayerServer {
         this.achievements = new AchievementManager();
         this.connectedPlayers = new Map(); // socketId -> playerData
         this.disconnectedPlayers = new Map(); // oderId -> { playerData, roomId, timeout, disconnectTime }
+        this.friendInvites = new Map(); // inviteId -> short-lived private match invitation
         this.RECONNECT_TIMEOUT = 30000; // 30 seconds to reconnect
 
         this.setupSocketHandlers();
@@ -47,6 +49,11 @@ class MultiplayerServer {
             socket.on('find_match', (data) => this.handleFindMatch(socket, data));
             socket.on('cancel_matchmaking', () => this.handleCancelMatchmaking(socket));
             socket.on('get_queue_status', () => this.handleGetQueueStatus(socket));
+
+            // Friend match invitations
+            socket.on('invite_friend_match', (data) => this.handleFriendMatchInvite(socket, data));
+            socket.on('respond_friend_match', (data) => this.handleFriendMatchResponse(socket, data));
+            socket.on('cancel_friend_match', (data) => this.handleFriendMatchCancel(socket, data));
 
             // Game events
             socket.on('ready', () => this.handleReady(socket));
@@ -128,6 +135,7 @@ class MultiplayerServer {
             oderId: user.id,
             username: user.username,
             email: user.email,
+            provider: authoritativeUser.provider || user.provider,
             elo: authoritativeUser.elo || 1200,
             coins: authoritativeUser.coins || 1000,
             profilePicture: authoritativeUser.profilePicture || null,
@@ -135,7 +143,10 @@ class MultiplayerServer {
         };
         const publicPlayer = {
             id: user.id,
+            username: user.username,
             email: user.email,
+            provider: authoritativeUser.provider || user.provider,
+            profilePicture: playerData.profilePicture,
             coins: playerData.coins,
             elo: playerData.elo,
             gamesPlayed: authoritativeUser.gamesPlayed || 0,
@@ -144,6 +155,7 @@ class MultiplayerServer {
         };
 
         this.connectedPlayers.set(socket.id, playerData);
+        this.notifyPresenceChanged(user.id);
         console.log(`🔐 Auth: ${user.username} profilePicture: ${user.profilePicture || 'NONE'}`);
 
         // Check for reconnection to ongoing game
@@ -459,6 +471,103 @@ class MultiplayerServer {
 
         const status = this.matchmaking.getPlayerStatus(player.id);
         socket.emit('queue_status', status || { inQueue: false });
+    }
+
+    // === Friend Matches ===
+    isAccountOnline(accountId) {
+        return [...this.connectedPlayers.values()].some(player => String(player.oderId) === String(accountId));
+    }
+
+    accountSockets(accountId) {
+        return [...this.connectedPlayers.entries()]
+            .filter(([, player]) => String(player.oderId) === String(accountId))
+            .map(([socketId]) => this.io.sockets.sockets.get(socketId))
+            .filter(Boolean);
+    }
+
+    notifyFriendsChanged(accountIds) {
+        [...new Set((accountIds || []).map(String))].forEach(accountId => {
+            this.accountSockets(accountId).forEach(friendSocket => friendSocket.emit('friends_changed'));
+        });
+    }
+
+    notifyPresenceChanged(accountId) {
+        const account = [...this.users.values()].find(user => String(user.id) === String(accountId));
+        if (!account) return;
+        this.notifyFriendsChanged([account.id, ...(account.friends || [])]);
+    }
+
+    friendInviteError(socket, error) {
+        socket.emit('friend_match_error', { error });
+    }
+
+    handleFriendMatchInvite(socket, data) {
+        const player = this.connectedPlayers.get(socket.id);
+        const account = player && [...this.users.values()].find(user => String(user.id) === String(player.oderId));
+        const target = [...this.users.values()].find(user => String(user.id) === String(data?.targetUserId));
+        if (!player || !account || !['email', 'google', 'email+google'].includes(account.provider)) return this.friendInviteError(socket, 'Sign in to invite friends.');
+        if (!target || !(account.friends || []).some(id => String(id) === String(target.id))) return this.friendInviteError(socket, 'This player is not in your friends list.');
+        if (this.roomManager.getPlayerRoom(player.id)) return this.friendInviteError(socket, 'Leave your current room before inviting a friend.');
+        const targetSockets = this.accountSockets(target.id).filter(targetSocket => {
+            const targetPlayer = this.connectedPlayers.get(targetSocket.id);
+            return targetPlayer && !this.roomManager.getPlayerRoom(targetPlayer.id);
+        });
+        if (!targetSockets.length) return this.friendInviteError(socket, `${target.username} is offline or already in a match.`);
+
+        const room = this.roomManager.createRoom(player, 0, 'coins');
+        socket.join(room.id);
+        const inviteId = randomUUID();
+        const invite = { id: inviteId, roomId: room.id, fromSocketId: socket.id, fromAccountId: account.id, targetAccountId: target.id, expiresAt: Date.now() + 30000 };
+        invite.timer = setTimeout(() => this.closeFriendInvite(inviteId, 'expired'), 30000);
+        this.friendInvites.set(inviteId, invite);
+        const payload = {
+            inviteId, roomId: room.id, expiresAt: invite.expiresAt,
+            from: { id: account.id, username: account.username, elo: account.elo || 1200, profilePicture: account.profilePicture || null }
+        };
+        targetSockets.forEach(targetSocket => targetSocket.emit('friend_match_invite', payload));
+        socket.emit('friend_match_sent', { inviteId, roomId: room.id, target: { id: target.id, username: target.username } });
+    }
+
+    handleFriendMatchResponse(socket, data) {
+        const invite = this.friendInvites.get(String(data?.inviteId || ''));
+        const player = this.connectedPlayers.get(socket.id);
+        if (!invite || !player || String(player.oderId) !== String(invite.targetAccountId)) return this.friendInviteError(socket, 'This match invitation is no longer available.');
+        if (data?.accept !== true) return this.closeFriendInvite(invite.id, 'declined', player.username);
+        const hostSocket = this.io.sockets.sockets.get(invite.fromSocketId);
+        const room = this.roomManager.getRoom(invite.roomId);
+        if (!hostSocket || !room || room.status !== 'waiting' || this.roomManager.getPlayerRoom(player.id)) return this.closeFriendInvite(invite.id, 'unavailable');
+        const result = this.roomManager.joinRoom(invite.roomId, player);
+        if (result.error) return this.closeFriendInvite(invite.id, 'unavailable');
+        clearTimeout(invite.timer);
+        this.friendInvites.delete(invite.id);
+        socket.join(room.id);
+        this.accountSockets(invite.targetAccountId).forEach(targetSocket => {
+            if (targetSocket.id !== socket.id) targetSocket.emit('friend_match_closed', { inviteId: invite.id, reason: 'accepted_elsewhere' });
+        });
+        hostSocket.emit('friend_match_accepted', { inviteId: invite.id, roomId: room.id, opponent: player.username });
+        socket.emit('friend_match_accepted', { inviteId: invite.id, roomId: room.id, opponent: room.host.username });
+        this.io.to(room.id).emit('player_joined', { roomId: room.id, room: room.toJSON() });
+        const gameState = room.startGame();
+        this.io.to(room.id).emit('game_start', { roomId: room.id, gameState, currentPlayer: 1, host: room.host, guest: room.guest, wager: 0, isAiMatch: false, friendMatch: true });
+    }
+
+    handleFriendMatchCancel(socket, data) {
+        const invite = this.friendInvites.get(String(data?.inviteId || ''));
+        if (!invite || invite.fromSocketId !== socket.id) return;
+        this.closeFriendInvite(invite.id, 'cancelled');
+    }
+
+    closeFriendInvite(inviteId, reason, declinedBy = '') {
+        const invite = this.friendInvites.get(inviteId);
+        if (!invite) return;
+        clearTimeout(invite.timer);
+        this.friendInvites.delete(inviteId);
+        const hostPlayer = this.connectedPlayers.get(invite.fromSocketId);
+        if (hostPlayer) this.roomManager.leaveRoom(hostPlayer.id);
+        const hostSocket = this.io.sockets.sockets.get(invite.fromSocketId);
+        hostSocket?.leave(invite.roomId);
+        hostSocket?.emit('friend_match_closed', { inviteId, reason, declinedBy });
+        this.accountSockets(invite.targetAccountId).forEach(targetSocket => targetSocket.emit('friend_match_closed', { inviteId, reason }));
     }
 
     // === Game Events ===
@@ -940,6 +1049,9 @@ class MultiplayerServer {
         const player = this.connectedPlayers.get(socket.id);
 
         if (player) {
+            for (const invite of this.friendInvites.values()) {
+                if (invite.fromSocketId === socket.id) this.closeFriendInvite(invite.id, 'unavailable');
+            }
             // Remove from matchmaking
             this.matchmaking.removePlayer(player.id);
 
@@ -1002,6 +1114,12 @@ class MultiplayerServer {
 
             // Remove from connected players
             this.connectedPlayers.delete(socket.id);
+            if (!this.isAccountOnline(player.oderId)) {
+                for (const invite of this.friendInvites.values()) {
+                    if (String(invite.targetAccountId) === String(player.oderId)) this.closeFriendInvite(invite.id, 'unavailable');
+                }
+            }
+            this.notifyPresenceChanged(player.oderId);
 
             console.log(`👋 Player disconnected: ${player.username}`);
         } else {

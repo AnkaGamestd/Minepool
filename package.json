@@ -11,7 +11,13 @@
         "mobile:doctor": "cap doctor",
         "mobile:android": "cap open android",
         "mobile:ios": "cap open ios",
-        "test:auth": "node scripts/test-auth-integration.cjs"
+        "test:auth": "node scripts/test-auth-integration.cjs",
+        "test:rewards": "node scripts/test-rewards.cjs",
+        "test:rewards-ui": "node scripts/test-rewards-ui.cjs",
+        "test:profile": "node scripts/test-profile.cjs",
+        "test:profile-ui": "node scripts/test-profile-ui.cjs",
+        "test:friends": "node scripts/test-friends.cjs",
+        "test:friends-ui": "node scripts/test-friends-ui.cjs"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",

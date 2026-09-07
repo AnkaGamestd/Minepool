@@ -27,11 +27,17 @@ class NetworkManager {
     }
 
     connect(serverUrl = null) {
-        // Auto-detect server URL
-        if (!serverUrl) {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            serverUrl = `${protocol}//${window.location.host}`;
+        // Reopening matchmaking must use the same configured backend as startup.
+        serverUrl = serverUrl || window.MINEPOOL_SERVER_URL || window.location.origin;
+        if (this.isConnected() && this.serverUrl === serverUrl) return Promise.resolve(this.playerId);
+        // Retire a failed socket before retrying, so it cannot reconnect later
+        // and register a second session or deliver duplicate game events.
+        if (this.socket) {
+            this.socket.removeAllListeners();
+            this.socket.disconnect();
         }
+        this.connected = false;
+        this.serverUrl = serverUrl;
 
         return new Promise((resolve, reject) => {
             try {
@@ -145,6 +151,9 @@ class NetworkManager {
         // Game events
         this.socket.on('game_start', (data) => {
             console.log('🎮 Game starting!', data);
+            this.roomId = data.roomId;
+            this.isHost = data.host?.id === this.playerId;
+            this.myPlayerNumber = this.isHost ? 1 : 2;
 
             // Detect AI match - check both isAiMatch flag AND isBot property on players
             const hostIsBot = data.host && data.host.isBot;
@@ -284,6 +293,23 @@ class NetworkManager {
             this.emit('achievements', data);
         });
 
+        this.socket.on('friends_changed', () => this.emit('friends_changed', {}));
+        this.socket.on('friend_match_invite', (data) => this.emit('friend_match_invite', data));
+        this.socket.on('friend_match_sent', (data) => {
+            this.roomId = data.roomId;
+            this.isHost = true;
+            this.emit('friend_match_sent', data);
+        });
+        this.socket.on('friend_match_accepted', (data) => {
+            this.roomId = data.roomId;
+            this.emit('friend_match_accepted', data);
+        });
+        this.socket.on('friend_match_closed', (data) => {
+            if (data.reason !== 'accepted_elsewhere') this.roomId = null;
+            this.emit('friend_match_closed', data);
+        });
+        this.socket.on('friend_match_error', (data) => this.emit('friend_match_error', data));
+
         // Server stats
         this.socket.on('server_stats', (data) => {
             this.emit('server_stats', data);
@@ -364,6 +390,18 @@ class NetworkManager {
 
     getQueueStatus() {
         this.socket.emit('get_queue_status');
+    }
+
+    inviteFriend(targetUserId) {
+        this.socket.emit('invite_friend_match', { targetUserId });
+    }
+
+    respondFriendMatch(inviteId, accept) {
+        this.socket.emit('respond_friend_match', { inviteId, accept: Boolean(accept) });
+    }
+
+    cancelFriendMatch(inviteId) {
+        this.socket.emit('cancel_friend_match', { inviteId });
     }
 
     // === Game Actions ===

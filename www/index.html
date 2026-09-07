@@ -13,16 +13,19 @@
   <link rel="stylesheet" href="table-layout.css">
   <link rel="stylesheet" href="tournament-mode.css">
   <link rel="stylesheet" href="auth-ui.css">
+  <link rel="stylesheet" href="rewards.css">
+  <link rel="stylesheet" href="profile-editor.css">
+  <link rel="stylesheet" href="friends-ui.css">
 </head>
 <body>
   <div class="loading-screen" id="loading-screen" aria-live="polite"><div class="loading-mark">8</div></div>
 
   <main class="menu-shell app-view" id="menu-view">
     <header class="menu-header">
-      <section class="menu-header-section menu-profile" aria-label="Player">
+      <button class="menu-header-section menu-profile" id="open-profile" type="button" aria-label="Open player profile">
         <div class="menu-avatar" id="menu-player-avatar" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="32" cy="21" r="12" fill="currentColor" stroke="#8be1db"/><path d="M11 53c1-12 9-19 21-19s20 7 21 19c-6 4-36 4-42 0Z" fill="currentColor" stroke="#8be1db"/></svg></div>
         <div class="menu-player-label">PLAYER</div><span class="sr-only" id="menu-player-name">Mobile Player</span><span class="sr-only" id="platform-note">Loading player profile…</span>
-      </section>
+      </button>
       <section class="menu-header-section menu-coins" aria-label="Coins">
         <span class="coin-emblem" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="m32 8 6.7 13.6 15 2.2-10.9 10.6 2.6 14.9L32 42.2l-13.4 7.1 2.6-14.9L10.3 23.8l15-2.2Z" fill="currentColor" stroke="#5d3100" stroke-width="2"/></svg></span>
         <span class="stat-copy"><span class="menu-stat-label">COINS</span><strong class="menu-stat-value gold" id="player-coins">25,680</strong></span><span class="coin-add" aria-hidden="true">+</span>
@@ -45,7 +48,7 @@
         <div class="brand-lockup"><h1 class="brand">MINE <span>POOL</span></h1><div class="brand-divider"></div><div class="eight-ball" aria-hidden="true"></div></div>
         <button class="play-button" id="play-ai" type="button"><span class="play-icon" aria-hidden="true"></span><span>PLAY</span></button>
         <div class="secondary-actions">
-          <button class="secondary-button" id="play-two" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="17" cy="15" r="7" fill="currentColor"/><circle cx="32" cy="16" r="6" fill="currentColor"/><path d="M5 38c0-9 5-14 13-14s13 5 13 14H5Zm23-12c8 0 13 4 14 12H34c0-5-2-9-6-12Z" fill="currentColor"/></svg><span>2 PLAYERS</span></button>
+          <button class="secondary-button" id="play-friend" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="17" cy="15" r="7" fill="currentColor"/><circle cx="32" cy="16" r="6" fill="currentColor"/><path d="M5 38c0-9 5-14 13-14s13 5 13 14H5Zm23-12c8 0 13 4 14 12H34c0-5-2-9-6-12Z" fill="currentColor"/><path d="M21 8h6v5h5v6h-5v5h-6v-5h-5v-6h5Z" fill="#071219"/></svg><span>PLAY WITH FRIEND</span></button>
           <button class="secondary-button" id="play-practice" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="24" cy="24" r="4" fill="currentColor"/><path d="M24 3v9m0 24v9M3 24h9m24 0h9" stroke="currentColor" stroke-width="4"/></svg><span>PRACTICE</span></button>
           <button class="secondary-button tournament-menu-button" id="play-tournament" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 6h20v8c0 9-4 15-10 18-6-3-10-9-10-18V6Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M14 10H7c0 8 3 12 10 13m17-13h7c0 8-3 12-10 13M24 32v7m-9 3h18" fill="none" stroke="currentColor" stroke-width="3"/><path d="m24 11 2.3 4.6 5.1.7-3.7 3.6.9 5.1-4.6-2.4-4.6 2.4.9-5.1-3.7-3.6 5.1-.7Z" fill="currentColor"/></svg><span>TOURNAMENT</span></button>
         </div>
@@ -53,7 +56,7 @@
     </section>
     <nav class="bottom-nav" aria-label="Main navigation">
       <button class="nav-item active" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M5 23 24 6l19 17-5 1v17H28V29h-8v12H10V24Z" fill="currentColor"/></svg><span class="nav-label">HOME</span></button>
-      <button class="nav-item" id="open-profile" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="15" r="9" fill="currentColor"/><path d="M10 42c0-11 5-17 14-17s14 6 14 17c-7 3-21 3-28 0Z" fill="currentColor"/></svg><span class="nav-label">PROFILE</span></button>
+      <button class="nav-item" id="open-rewards" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 20h34v23H7V20Zm-3-9h40v10H4V11Z" fill="currentColor"/><path d="M21 11H10c-4 0-5-6-1-8 5-2 10 4 12 8Zm6 0h11c4 0 5-6 1-8-5-2-10 4-12 8ZM21 11h6v32h-6Z" fill="#071219"/></svg><span class="nav-label">REWARDS</span></button>
     </nav>
   </main>
 
@@ -80,7 +83,7 @@
     <section class="tournament-bracket hidden" id="tournament-bracket"><div class="bracket-heading"><h2 id="tournament-name">DOWNTOWN CUP</h2><div class="bracket-prize">CHAMPION PRIZE <strong id="tournament-prize">800</strong></div></div><div class="tournament-rounds" id="tournament-rounds"></div><div class="tournament-actionbar"><div class="tournament-status" id="tournament-status"></div><button class="tournament-primary" id="tournament-play-match" type="button">PLAY MATCH</button><button class="tournament-primary secondary hidden" id="tournament-new" type="button">NEW TOURNAMENT</button></div></section>
   </main>
 
-  <main class="profile-shell app-view hidden" id="profile-view"><header class="profile-top"><button class="back-button" id="profile-home" type="button">← HOME</button><span class="brand" style="font-size:22px">MINE <span>POOL</span></span></header><section class="profile-card"><div class="identity"><div class="avatar" id="profile-avatar">P</div><div><div class="eyeline">PLAYER PROFILE</div><h1 id="profile-name">Mobile Player</h1><div class="platform-note" id="profile-cloud">Loading mobile profile…</div></div></div><div class="profile-grid"><div class="profile-stat"><span class="stat-label">Rating</span><strong id="profile-rating">1,450</strong></div><div class="profile-stat"><span class="stat-label">Coins</span><strong id="profile-coins">25,680</strong></div><div class="profile-stat"><span class="stat-label">Games played</span><strong id="profile-played">2</strong></div><div class="profile-stat"><span class="stat-label">Win rate</span><strong id="profile-rate">0%</strong></div></div><div class="account-summary"><div><strong>PLAYER ACCOUNT</strong><span id="profile-account-state">GUEST PLAYER</span></div><button class="account-button" id="account-open" type="button">ACCOUNT</button></div><p class="cloud-note">Sign in to keep your player identity available on another device. Offline play remains available without an account.</p></section></main>
+  <main class="profile-shell app-view hidden" id="profile-view"><header class="profile-top"><button class="back-button" id="profile-home" type="button">← HOME</button><span class="brand" style="font-size:22px">MINE <span>POOL</span></span></header><section class="profile-card"><div class="identity"><div class="avatar" id="profile-avatar">P</div><div><div class="eyeline">PLAYER PROFILE</div><h1 id="profile-name">Mobile Player</h1><div class="platform-note" id="profile-cloud">Loading mobile profile…</div></div><button class="account-button profile-edit-button" id="profile-edit" type="button">EDIT PROFILE</button></div><div class="profile-grid"><div class="profile-stat"><span class="stat-label">Rating</span><strong id="profile-rating">1,450</strong></div><div class="profile-stat"><span class="stat-label">Coins</span><strong id="profile-coins">25,680</strong></div><div class="profile-stat"><span class="stat-label">Games played</span><strong id="profile-played">2</strong></div><div class="profile-stat"><span class="stat-label">Win rate</span><strong id="profile-rate">0%</strong></div></div><div class="account-summary"><div><strong>PLAYER ACCOUNT</strong><span id="profile-account-state">GUEST PLAYER</span></div><button class="account-button" id="account-open" type="button">ACCOUNT</button></div><p class="cloud-note">Sign in to keep your player identity available on another device. Offline play remains available without an account.</p></section></main>
 
   <div id="start-screen" class="hidden"></div>
   <div id="game-message" class="game-message hidden"><strong id="message-title"></strong><span id="message-text"></span></div>
@@ -93,25 +96,30 @@
 
   <script src="physics.js"></script>
   <script src="ai-player.js"></script>
+  <script src="js/pool-art.js"></script>
   <script src="game.js"></script>
   <script src="vendor/socket.io.min.js"></script>
   <script src="network.js"></script>
   <script src="multiplayer-ui.js"></script>
   <script src="tournament-mode.js"></script>
+  <script src="profile-editor.js"></script>
   <script src="auth-ui.js"></script>
+  <script src="friends-ui.js"></script>
+  <script src="rewards.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const platform = window.MinePoolPlatform;
       let player = await platform.init();
       let identity = platform.getIdentity();
       let activeMode = 'ai';
-      window.currentUser = { ...player, id: identity.id, username: identity.displayName, email: `${identity.id}@mobile.minepool`, provider: identity.provider };
+      window.currentUser = { ...player, id: identity.id, username: identity.displayName, email: `${identity.id}@mobile.minepool`, provider: identity.provider, profilePicture: player.avatarUrl || null };
 
       const views = { menu: document.getElementById('menu-view'), game: document.getElementById('game-view'), profile: document.getElementById('profile-view'), tournament: document.getElementById('tournament-view') };
       const format = () => new Intl.NumberFormat('en-US');
       const cueOptions = [...document.querySelectorAll('.cue-option')];
       const cueModal = document.getElementById('cue-modal');
       let multiplayerUI = null;
+      let friendsUI = null;
       let tournamentUI = null;
       let tournamentOutcome = null;
 
@@ -119,9 +127,10 @@
       function renderCue(cue) { const option = cueOptions.find((item) => item.dataset.cue === cue) || cueOptions[0]; cueOptions.forEach((item) => item.classList.toggle('is-selected', item === option)); document.getElementById('cue-name').textContent = option.querySelector('strong').textContent; document.getElementById('open-cues').dataset.cue = option.dataset.cue; }
       function renderProfile() {
         const number = format(); const progress = player.dailyProgress || {};
-        document.getElementById('menu-player-name').textContent = identity.displayName; document.getElementById('menu-player-avatar').setAttribute('aria-label', identity.displayName);
-        document.getElementById('p1-name').textContent = identity.displayName; document.querySelector('#p1-panel .avatar').textContent = identity.avatarText;
-        document.getElementById('profile-name').textContent = identity.displayName; document.getElementById('profile-avatar').textContent = identity.avatarText;
+        const avatar = { ...identity, avatarUrl: player.avatarUrl || null };
+        document.getElementById('menu-player-name').textContent = identity.displayName; window.MinePoolAvatar.render(document.getElementById('menu-player-avatar'), avatar);
+        document.getElementById('p1-name').textContent = identity.displayName; window.MinePoolAvatar.render(document.querySelector('#p1-panel .avatar'), avatar);
+        document.getElementById('profile-name').textContent = identity.displayName; window.MinePoolAvatar.render(document.getElementById('profile-avatar'), avatar);
         document.getElementById('player-coins').textContent = number.format(player.coins); document.getElementById('player-rating').textContent = number.format(player.elo);
         document.getElementById('profile-coins').textContent = number.format(player.coins); document.getElementById('profile-rating').textContent = number.format(player.elo); document.getElementById('profile-played').textContent = number.format(player.gamesPlayed); document.getElementById('profile-rate').textContent = `${player.gamesPlayed ? Math.round(player.gamesWon / player.gamesPlayed * 100) : 0}%`;
         const label = identity.authenticated ? `${identity.provider.includes('google') ? 'Google' : 'Email'} account connected` : 'Guest profile • saved on this device'; document.getElementById('platform-note').textContent = label; document.getElementById('profile-cloud').textContent = label; document.getElementById('cloud-state').textContent = window.networkManager?.isConnected() ? 'ONLINE' : 'OFFLINE';
@@ -140,7 +149,7 @@
       document.addEventListener('minepool:audio', (event) => applyAudio(event.detail.enabled));
       document.addEventListener('minepool:pause', () => window.gameInstance?.pauseForPlatform());
       document.addEventListener('minepool:resume', () => window.gameInstance?.resumeFromPlatform());
-      document.addEventListener('minepool:player-updated', (event) => { player = event.detail.player; identity = platform.getIdentity(); window.currentUser = { ...player, id: identity.id, username: identity.displayName, email: identity.email || `${identity.id}@mobile.minepool`, provider: identity.provider }; renderProfile(); });
+      document.addEventListener('minepool:player-updated', (event) => { player = event.detail.player; identity = platform.getIdentity(); window.currentUser = { ...player, id: identity.id, username: identity.displayName, email: identity.email || `${identity.id}@mobile.minepool`, provider: identity.provider, profilePicture: player.avatarUrl || null }; renderProfile(); });
       document.addEventListener('minepool:account-changed', () => { if (window.networkManager?.isConnected()) window.networkManager.authenticate(window.currentUser); });
 
       const showMultiplayerMessage = (message) => { document.getElementById('message-title').textContent = 'ONLINE MULTIPLAYER'; document.getElementById('message-text').textContent = message; document.getElementById('game-message').classList.remove('hidden'); window.setTimeout(() => document.getElementById('game-message').classList.add('hidden'), 2600); };
@@ -170,16 +179,26 @@
       tournamentUI = new TournamentMode({
         platform,
         onExit: showMenu,
-        onPlayerChange: (updated) => { player = updated; window.currentUser = { ...updated, id: identity.id, username: identity.displayName, email: `${identity.id}@mobile.minepool`, provider: identity.provider }; renderProfile(); },
+        onPlayerChange: (updated) => { player = updated; window.currentUser = { ...updated, id: identity.id, username: identity.displayName, email: `${identity.id}@mobile.minepool`, provider: identity.provider, profilePicture: updated.avatarUrl || null }; renderProfile(); },
         onMessage: showMultiplayerMessage,
         onStartMatch: ({ opponent, difficulty, roundLabel, tournamentName }) => { tournamentOutcome = null; startGame('tournament', opponent, difficulty); window.gameInstance.showMessage(roundLabel, tournamentName, 2200); }
       });
       const accountUI = new AccountUI(platform);
+      const profileEditor = new ProfileEditor(platform, { onAccount: () => accountUI.open() });
+      friendsUI = new FriendsUI(window.networkManager, platform, {
+        onAccount: () => accountUI.open(),
+        onMessage: showMultiplayerMessage,
+        onGameStart: () => { activeMode = 'multiplayer'; showView('game'); }
+      });
+      const rewardsUI = new RewardsUI(platform, { onHome: showMenu, onAccount: () => accountUI.open() });
+      views.rewards = rewardsUI.root;
 
-      document.getElementById('play-ai').addEventListener('click', () => multiplayerUI ? multiplayerUI.show() : showMultiplayerMessage('Game server is unavailable.')); document.getElementById('play-two').addEventListener('click', () => startGame('2player')); document.getElementById('play-practice').addEventListener('click', () => startGame('ai'));
+      document.getElementById('play-ai').addEventListener('click', () => multiplayerUI ? multiplayerUI.show() : showMultiplayerMessage('Game server is unavailable.')); document.getElementById('play-friend').addEventListener('click', () => friendsUI.show()); document.getElementById('play-practice').addEventListener('click', () => startGame('ai'));
       document.getElementById('play-tournament').addEventListener('click', () => { tournamentUI.show(); showView('tournament'); });
       document.getElementById('game-back-button').addEventListener('click', showMenu);
       document.getElementById('open-profile').addEventListener('click', () => { renderProfile(); showView('profile'); }); document.getElementById('profile-home').addEventListener('click', showMenu);
+      document.getElementById('profile-edit').addEventListener('click', () => profileEditor.open());
+      document.getElementById('open-rewards').addEventListener('click', () => { showView('rewards'); rewardsUI.load(); });
       document.getElementById('open-cues').addEventListener('click', () => { cueModal.hidden = false; document.getElementById('close-cues').focus(); }); document.getElementById('close-cues').addEventListener('click', () => { cueModal.hidden = true; }); cueModal.addEventListener('click', (event) => { if (event.target === cueModal) cueModal.hidden = true; }); document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cueModal.hidden = true; });
       cueOptions.forEach((option) => option.addEventListener('click', async () => { renderCue(option.dataset.cue); player = await platform.updatePlayer({ selectedCue: option.dataset.cue }); window.setTimeout(() => { cueModal.hidden = true; }, 120); }));
 

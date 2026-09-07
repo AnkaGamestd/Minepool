@@ -76,9 +76,10 @@
         }
         render() {
             const identity = this.platform.getIdentity();
+            const player = this.platform.getPlayer();
             const authenticated = this.platform.isAuthenticated();
             document.getElementById('account-current-name').textContent = identity.displayName;
-            document.querySelector('.account-current .avatar').textContent = identity.avatarText;
+            window.MinePoolAvatar.render(document.querySelector('.account-current .avatar'), { ...identity, avatarUrl: player.avatarUrl || null });
             document.getElementById('account-current-provider').textContent = authenticated ? (identity.provider.includes('google') ? 'GOOGLE ACCOUNT' : 'EMAIL ACCOUNT') : 'GUEST • SAVED ON THIS DEVICE';
             document.getElementById('account-forms').hidden = authenticated;
             document.getElementById('account-signed-actions').hidden = !authenticated;

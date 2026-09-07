@@ -72,10 +72,13 @@ function loadUsers() {
 function saveUsers() {
     try {
         const usersArray = Array.from(users.values());
-        fs.writeFileSync(USERS_FILE, JSON.stringify(usersArray, null, 2));
+        fs.writeFileSync(USERS_FILE + '.tmp', JSON.stringify(usersArray, null, 2));
+        fs.renameSync(USERS_FILE + '.tmp', USERS_FILE);
         console.log(`💾 Saved ${usersArray.length} users to persistent storage`);
+        return true;
     } catch (error) {
         console.error('Error saving users:', error);
+        return false;
     }
 }
 
@@ -223,9 +226,14 @@ const publicUser = (user) => ({
     elo: user.elo,
     gamesPlayed: user.gamesPlayed,
     gamesWon: user.gamesWon,
+    winRate: user.gamesPlayed > 0 ? Number(((user.gamesWon / user.gamesPlayed) * 100).toFixed(1)) : 0,
     rank: EloCalculator.getRankFromElo(user.elo),
+    achievements: user.achievements || [],
+    createdAt: user.createdAt,
+    nationality: user.nationality || null,
     profileComplete: user.profileComplete !== false,
-    cues: user.cues || ['standard']
+    cues: user.cues || ['standard'],
+    cash: user.cash || 0
 });
 
 const issueSession = (res, user) => {
@@ -315,7 +323,8 @@ app.post('/api/auth/google', authRateLimit, async (req, res) => {
                 id: nextUserId++, username, email, provider: 'google', googleSubject: payload.sub,
                 coins: 1000, diamonds: 0, elo: 1200, gamesPlayed: 0, gamesWon: 0,
                 createdAt: new Date().toISOString(), achievements: [], matchHistory: [], nationality: null,
-                profilePicture: payload.picture || null, profileComplete: true, cues: ['standard']
+                profilePicture: payload.picture || null, providerProfilePicture: payload.picture || null,
+                profilePictureSource: payload.picture ? 'google' : null, profileComplete: true, cues: ['standard']
             };
         } else {
             const previousKey = Array.from(users.entries()).find(([, candidate]) => candidate === user)?.[0];
@@ -323,7 +332,12 @@ app.post('/api/auth/google', authRateLimit, async (req, res) => {
             user.email = email;
             user.googleSubject = payload.sub;
             user.provider = user.provider === 'email' ? 'email+google' : 'google';
-            user.profilePicture = payload.picture || user.profilePicture || null;
+            user.providerProfilePicture = payload.picture || user.providerProfilePicture || null;
+            const hasUploadedPicture = user.profilePictureSource === 'upload' || String(user.profilePicture || '').startsWith('/uploads/avatars/');
+            if (!hasUploadedPicture) {
+                user.profilePicture = payload.picture || user.profilePicture || null;
+                user.profilePictureSource = user.profilePicture ? 'google' : null;
+            }
         }
         users.set(email, user);
         saveUsers();
@@ -353,27 +367,7 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
         return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    res.json({
-        success: true,
-        user: {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            coins: user.coins,
-            elo: user.elo,
-            gamesPlayed: user.gamesPlayed,
-            gamesWon: user.gamesWon,
-            winRate: user.gamesPlayed > 0 ? ((user.gamesWon / user.gamesPlayed) * 100).toFixed(1) : 0,
-            rank: EloCalculator.getRankFromElo(user.elo),
-            achievements: user.achievements || [],
-            createdAt: user.createdAt,
-            nationality: user.nationality || null,
-            profilePicture: user.profilePicture || null,
-            profileComplete: user.profileComplete || false,
-            cues: user.cues || [],
-            cash: user.cash || 0
-        }
-    });
+    res.json({ success: true, user: publicUser(user) });
 });
 
 // Logout
@@ -442,21 +436,12 @@ app.post('/api/profile/complete', authenticateToken, (req, res) => {
 // Change username
 app.post('/api/profile/change-username', authenticateToken, (req, res) => {
     try {
-        const { username } = req.body;
+        const username = cleanUsername(req.body?.username);
         const userEmail = req.user.email;
 
         // Validation
-        if (!username || username.trim().length < 3) {
+        if (username.length < 3) {
             return res.status(400).json({ success: false, error: 'Username must be at least 3 characters' });
-        }
-
-        if (username.length > 20) {
-            return res.status(400).json({ success: false, error: 'Username must be 20 characters or less' });
-        }
-
-        // Only allow alphanumeric, underscores and hyphens
-        if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-            return res.status(400).json({ success: false, error: 'Username can only contain letters, numbers, underscores and hyphens' });
         }
 
         // Check username uniqueness
@@ -476,17 +461,13 @@ app.post('/api/profile/change-username', authenticateToken, (req, res) => {
         const oldUsername = user.username;
         user.username = username;
         users.set(userEmail, user);
-        saveUsers();
+        if (!saveUsers()) return res.status(503).json({ success: false, error: 'Profile could not be saved. Please retry.' });
 
         console.log(`📝 Username changed: ${oldUsername} → ${username}`);
 
         res.json({
             success: true,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email
-            }
+            user: publicUser(user)
         });
 
     } catch (error) {
@@ -496,6 +477,8 @@ app.post('/api/profile/change-username', authenticateToken, (req, res) => {
 });
 
 // ============ REFERRAL SYSTEM ============
+require('./src/rewards')(app, { users, authenticateToken, saveUsers });
+const friendSystem = require('./src/friends')(app, { users, authenticateToken, saveUsers, multiplayer });
 
 // Generate a unique referral code for a user
 function generateReferralCode(user) {
@@ -519,7 +502,7 @@ app.get('/api/referral/code', authenticateToken, (req, res) => {
             saveUsers();
         }
 
-        const referralLink = `${req.protocol}://${req.get('host')}/login.html?ref=${user.referralCode}`;
+        const referralLink = `${req.protocol}://${req.get('host')}/?ref=${user.referralCode}`;
 
         res.json({
             success: true,
@@ -563,7 +546,7 @@ app.get('/api/referral/stats', authenticateToken, (req, res) => {
 // ============ AVATAR UPLOAD ============
 
 // Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, 'uploads', 'avatars');
+const uploadsDir = path.join(DATA_DIR, 'uploads', 'avatars');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -574,22 +557,21 @@ const avatarStorage = multer.diskStorage({
         cb(null, uploadsDir);
     },
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        // Use timestamp for unique filename (user id will be added after auth)
-        const filename = `avatar_${Date.now()}_${Math.random().toString(36).substring(7)}${ext}`;
+        const extensions = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
+        const filename = `avatar_${req.user.id}_${uuidv4()}${extensions[file.mimetype]}`;
         cb(null, filename);
     }
 });
 
 const avatarUpload = multer({
     storage: avatarStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+    limits: { fileSize: 3 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
         if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.'));
+            cb(new Error('Invalid file type. Only JPEG, PNG, and WebP are allowed.'));
         }
     }
 });
@@ -601,9 +583,8 @@ app.use('/uploads/avatars', express.static(uploadsDir));
 app.post('/api/profile/avatar', authenticateToken, (req, res) => {
     avatarUpload.single('avatar')(req, res, (err) => {
         if (err) {
-            console.error('Multer error:', err);
             if (err.code === 'LIMIT_FILE_SIZE') {
-                return res.status(400).json({ success: false, error: 'File too large. Maximum size is 5MB.' });
+                return res.status(400).json({ success: false, error: 'File too large. Maximum size is 3MB.' });
             }
             return res.status(400).json({ success: false, error: err.message || 'Upload failed' });
         }
@@ -615,27 +596,30 @@ app.post('/api/profile/avatar', authenticateToken, (req, res) => {
 
             const user = users.get(req.user.email);
             if (!user) {
+                fs.unlinkSync(req.file.path);
                 return res.status(404).json({ success: false, error: 'User not found' });
             }
 
-            // Delete old avatar if exists
-            if (user.profilePicture && user.profilePicture.startsWith('/uploads/avatars/')) {
-                const oldPath = path.join(__dirname, user.profilePicture);
-                if (fs.existsSync(oldPath)) {
-                    fs.unlinkSync(oldPath);
-                }
-            }
-
-            // Save new avatar path
+            const previousPicture = user.profilePicture || null;
+            const previousSource = user.profilePictureSource || null;
+            const oldPath = previousPicture?.startsWith('/uploads/avatars/') ? path.join(uploadsDir, path.basename(previousPicture)) : null;
             const avatarUrl = `/uploads/avatars/${req.file.filename}`;
             user.profilePicture = avatarUrl;
+            user.profilePictureSource = 'upload';
 
             console.log('Avatar uploaded successfully:', avatarUrl);
-            saveUsers(); // Persist avatar change
+            if (!saveUsers()) {
+                user.profilePicture = previousPicture;
+                user.profilePictureSource = previousSource;
+                fs.unlinkSync(req.file.path);
+                return res.status(503).json({ success: false, error: 'Profile photo could not be saved. Please retry.' });
+            }
+            if (oldPath && fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
 
             res.json({
                 success: true,
                 avatarUrl: avatarUrl,
+                user: publicUser(user),
                 message: 'Avatar uploaded successfully'
             });
         } catch (error) {
@@ -653,20 +637,22 @@ app.delete('/api/profile/avatar', authenticateToken, (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        // Delete avatar file if exists
-        if (user.profilePicture && user.profilePicture.startsWith('/uploads/avatars/')) {
-            const avatarPath = path.join(__dirname, user.profilePicture);
-            if (fs.existsSync(avatarPath)) {
-                fs.unlinkSync(avatarPath);
-            }
+        const previousPicture = user.profilePicture || null;
+        const previousSource = user.profilePictureSource || null;
+        const avatarPath = previousPicture?.startsWith('/uploads/avatars/') ? path.join(uploadsDir, path.basename(previousPicture)) : null;
+        user.profilePicture = user.providerProfilePicture || null;
+        user.profilePictureSource = user.profilePicture ? 'google' : null;
+        if (!saveUsers()) {
+            user.profilePicture = previousPicture;
+            user.profilePictureSource = previousSource;
+            return res.status(503).json({ success: false, error: 'Profile photo could not be updated. Please retry.' });
         }
-
-        user.profilePicture = null;
-        saveUsers(); // Persist avatar removal
+        if (avatarPath && fs.existsSync(avatarPath)) fs.unlinkSync(avatarPath);
 
         res.json({
             success: true,
-            message: 'Avatar removed successfully'
+            message: user.profilePicture ? 'Google profile photo restored' : 'Avatar removed successfully',
+            user: publicUser(user)
         });
     } catch (error) {
         console.error('Avatar delete error:', error);
@@ -923,84 +909,15 @@ app.get('/api/achievements', authenticateToken, (req, res) => {
 
 // ============ DAILY TASKS & REWARDS ============
 
-// Claim daily reward
-app.post('/api/rewards/claim', authenticateToken, (req, res) => {
-    try {
-        const user = users.get(req.user.email);
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found' });
-        }
-
-        const { reward, day } = req.body;
-
-        if (!reward || reward <= 0 || reward > 5000) {
-            return res.status(400).json({ success: false, error: 'Invalid reward amount' });
-        }
-
-        // Add coins to user
-        user.coins = (user.coins || 0) + reward;
-        saveUsers();
-
-        console.log("REWARD: " + user.username + " claimed daily reward: " + reward + " coins (Day " + day + ")");
-
-        res.json({
-            success: true,
-            message: 'Reward claimed!',
-            coins: user.coins,
-            reward: reward
-        });
-    } catch (error) {
-        console.error('Claim reward error:', error);
-        res.status(500).json({ success: false, error: 'Failed to claim reward' });
-    }
+// Retired: this legacy route trusted a client-supplied reward amount. The new
+// /api/rewards/daily route calculates eligibility and value on the server.
+app.post('/api/rewards/claim', authenticateToken, (_req, res) => {
+    res.status(410).json({ success: false, error: 'Update the app to use the current rewards system.' });
 });
 
-// Claim task reward
-app.post('/api/tasks/claim', authenticateToken, (req, res) => {
-    try {
-        const user = users.get(req.user.email);
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found' });
-        }
-
-        const { taskId, reward } = req.body;
-
-        if (!taskId || !reward || reward <= 0 || reward > 2000) {
-            return res.status(400).json({ success: false, error: 'Invalid task or reward' });
-        }
-
-        // Initialize completedTasks if not exists
-        if (!user.completedTasks) {
-            user.completedTasks = [];
-        }
-
-        // Check if already claimed (except for repeatable tasks)
-        if (taskId !== 'invite_friend' && user.completedTasks.includes(taskId)) {
-            return res.status(400).json({ success: false, error: 'Task already claimed' });
-        }
-
-        // Mark task as completed
-        if (!user.completedTasks.includes(taskId)) {
-            user.completedTasks.push(taskId);
-        }
-
-        // Add coins to user
-        user.coins = (user.coins || 0) + reward;
-        saveUsers();
-
-        console.log("TASK: " + user.username + " completed task: " + taskId + " (+" + reward + " coins)");
-
-        res.json({
-            success: true,
-            message: 'Task reward claimed!',
-            taskId: taskId,
-            coins: user.coins,
-            reward: reward
-        });
-    } catch (error) {
-        console.error('Claim task error:', error);
-        res.status(500).json({ success: false, error: 'Failed to claim task reward' });
-    }
+// Retired for the same reason: task rewards must never be chosen by the client.
+app.post('/api/tasks/claim', authenticateToken, (_req, res) => {
+    res.status(410).json({ success: false, error: 'This reward route is no longer available.' });
 });
 
 // Get completed tasks for user
@@ -1022,65 +939,10 @@ app.get('/api/tasks', authenticateToken, (req, res) => {
     }
 });
 
-// Process referral during registration
-app.post('/api/referral/apply', authenticateToken, (req, res) => {
-    try {
-        const user = users.get(req.user.email);
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found' });
-        }
-
-        const { referralCode } = req.body;
-
-        if (!referralCode) {
-            return res.status(400).json({ success: false, error: 'Referral code required' });
-        }
-
-        // Check if user already used a referral
-        if (user.usedReferral) {
-            return res.status(400).json({ success: false, error: 'Referral already applied' });
-        }
-
-        // Find the referrer by invite code
-        let referrer = null;
-        for (const u of users.values()) {
-            if (u.inviteCode && u.inviteCode === referralCode) {
-                referrer = u;
-                break;
-            }
-        }
-
-        if (!referrer) {
-            return res.status(404).json({ success: false, error: 'Invalid referral code' });
-        }
-
-        if (referrer.email === user.email) {
-            return res.status(400).json({ success: false, error: 'Cannot use your own code' });
-        }
-
-        // Award both users
-        const referralBonus = 500;
-        const referrerBonus = 1000;
-
-        user.coins = (user.coins || 0) + referralBonus;
-        user.usedReferral = referralCode;
-
-        referrer.coins = (referrer.coins || 0) + referrerBonus;
-        referrer.invitedFriends = (referrer.invitedFriends || 0) + 1;
-
-        saveUsers();
-
-        console.log("REFERRAL: " + user.username + " used referral from " + referrer.username);
-
-        res.json({
-            success: true,
-            message: "You received " + referralBonus + " bonus coins!",
-            bonus: referralBonus
-        });
-    } catch (error) {
-        console.error('Apply referral error:', error);
-        res.status(500).json({ success: false, error: 'Failed to apply referral' });
-    }
+// Retired in favour of /api/rewards/referral, which has account-age and
+// duplicate-redemption checks and awards the documented server-side amount.
+app.post('/api/referral/apply', authenticateToken, (_req, res) => {
+    res.status(410).json({ success: false, error: 'Update the app to use the current invite system.' });
 });
 
 // Generate/Get invite code for user
@@ -2145,6 +2007,7 @@ app.delete('/api/auth/account', authRateLimit, authenticateToken, async (req, re
             const avatarPath = path.join(uploadsDir, path.basename(user.profilePicture));
             if (fs.existsSync(avatarPath)) fs.unlinkSync(avatarPath);
         }
+        friendSystem.removeAccount(user.id);
         users.delete(req.user.email);
         deletionRequests = deletionRequests.filter((request) => request.email !== req.user.email);
         saveUsers();

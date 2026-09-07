@@ -1,6 +1,5 @@
 /**
- * Mine Pool Physics Engine - Miniclip Arcade Style
- * Exaggerated spin mechanics: topspin = strong follow, backspin = strong draw, english = rail effect only
+ * Mine Pool fixed-step physics: sliding/rolling cloth contact and angular momentum.
  */
 
 class PhysicsEngine {
@@ -8,7 +7,8 @@ class PhysicsEngine {
         // Table scale
         this.SCALE = 100;
         this.BALL_RADIUS = 14;
-        this.MAX_CUE_SPEED = 750;      // Preferred arcade power level
+        this.SOFT_CUE_SPEED = 1100;    // Stronger response even at medium power.
+        this.MAX_CUE_SPEED = 1650;     // Firm breaks and faster travel across the table.
 
         // Detect mobile device
         this.isMobile = ('ontouchstart' in window) ||
@@ -38,6 +38,8 @@ class PhysicsEngine {
         this.pockets = [];
         this.pocketRadius = 22;          // Corner pocket radius
         this.centerPocketRadius = 18;    // Center pocket radius (smaller, more recessed)
+        this.centerPocketInset = 12;
+        this.centerPocketMouthHalfWidth = 12;
 
         if (this.isMobile) {
             console.log('📱 Mobile device detected (using consistent physics)');
@@ -55,12 +57,12 @@ class PhysicsEngine {
         this.pockets = [
             // Corner pockets (indices 0, 2, 3, 5) - normal size
             { x: c + pw / 2, y: c + pw / 2, isCenter: false },
-            // Center top pocket (index 1) - flush with cushion edge
-            { x: width / 2, y: c, isCenter: true },
+            // Side pockets sit behind the cushion, sharing positions with artwork.
+            { x: width / 2, y: c - this.centerPocketInset, isCenter: true },
             { x: width - c - pw / 2, y: c + pw / 2, isCenter: false },
             { x: c + pw / 2, y: height - c - pw / 2, isCenter: false },
-            // Center bottom pocket (index 4) - flush with cushion edge
-            { x: width / 2, y: height - c, isCenter: true },
+            // Center bottom pocket (index 4).
+            { x: width / 2, y: height - c + this.centerPocketInset, isCenter: true },
             { x: width - c - pw / 2, y: height - c - pw / 2, isCenter: false }
         ];
     }
@@ -73,64 +75,59 @@ class PhysicsEngine {
         });
 
         // Use fixed timestep for consistent physics
-        const steps = 4;
+        // Keep travel per substep below a quarter radius at the higher cue speed.
+        const fastest = balls.reduce((speed, ball) => ball.active ? Math.max(speed, Math.hypot(ball.vx, ball.vy)) : speed, 0);
+        const steps = Math.max(4, Math.ceil(fastest * this.dt / (this.BALL_RADIUS * .25)));
         const dt = this.dt / steps;
 
+        const pocketed = [];
         for (let s = 0; s < steps; s++) {
             this.handleBallCollisions(balls);
-            this.handleCushionCollisions(balls);
-
             for (const ball of balls) {
                 if (!ball.active) continue;
                 this.updateBallPhysics(ball, dt);
             }
+            // Capture pocket crossings before a rail can reflect the ball away.
+            pocketed.push(...this.checkPockets(balls));
+            this.handleCushionCollisions(balls);
         }
 
-        return this.checkPockets(balls);
+        return pocketed;
     }
 
     updateBallPhysics(ball, dt) {
-        const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-
-        // STOP if very slow (lower threshold for gradual slowdown)
-        if (speed < 0.5) {
-            ball.vx = 0;
-            ball.vy = 0;
-            ball.topspin = 0;
-            ball.sidespin = 0;
-            if (ball.w) ball.w = { x: 0, y: 0, z: 0 };
-            return;
-        }
-
-        // === FRICTION ===
-        const deceleration = this.MU_ROLL * this.GRAVITY;
-        const speedLoss = deceleration * dt;
-
-        if (speed > speedLoss) {
-            const newSpeed = speed - speedLoss;
-            const factor = newSpeed / speed;
-            ball.vx *= factor;
-            ball.vy *= factor;
+        const R = this.BALL_RADIUS;
+        ball.w ||= { x: -ball.vy / R, y: ball.vx / R, z: 0 };
+        const w = ball.w;
+        const beforeX = ball.vx, beforeY = ball.vy;
+        // Contact-patch slip = translation minus the rolling surface velocity.
+        // For a solid sphere I = 2/5 mR², so friction removes slip 3.5x
+        // faster than it changes the centre-of-mass velocity.
+        const slipX = ball.vx - R * w.y;
+        const slipY = ball.vy + R * w.x;
+        const slip = Math.hypot(slipX, slipY);
+        if (slip > .01) {
+            const impulse = Math.min(this.MU_SLIDE * this.GRAVITY * dt, slip / 3.5);
+            const ax = -slipX / slip * impulse;
+            const ay = -slipY / slip * impulse;
+            ball.vx += ax; ball.vy += ay;
+            w.x += 2.5 * ay / R; w.y -= 2.5 * ax / R;
         } else {
-            ball.vx = 0;
-            ball.vy = 0;
+            const speed = Math.hypot(ball.vx, ball.vy);
+            const factor = speed ? Math.max(0, 1 - this.MU_ROLL * this.GRAVITY * dt / speed) : 0;
+            ball.vx *= factor; ball.vy *= factor;
+            w.x = -ball.vy / R; w.y = ball.vx / R;
         }
-
-        // === MINICLIP ARCADE PHYSICS ===
-        // Sidespin does NOT curve mid-table in Miniclip physics
-        // It ONLY affects cushion rebounds (handled in handleCushionCollisions)
-
-        // === SPIN DECAY ===
-        // Residual spin dissipates on the cloth between impacts.
-        ball.topspin *= Math.exp(-0.45 * dt);
-        ball.sidespin *= Math.exp(-0.3 * dt);
-
-        // === MOVEMENT ===
-        ball.x += ball.vx * dt;
-        ball.y += ball.vy * dt;
-
-        // Visual rotation
-        ball.rotation = (ball.rotation || 0) + (speed * dt) / this.BALL_RADIUS;
+        // Vertical-axis spin dissipates separately; it never curves a level shot.
+        w.z *= Math.exp(-1.15 * dt);
+        ball.topspin = -Math.hypot(w.x, w.y) * R / this.MAX_CUE_SPEED;
+        ball.sidespin = w.z * R / (this.MAX_CUE_SPEED * .8);
+        if (Math.hypot(ball.vx, ball.vy) < .35 && Math.hypot(w.x, w.y) * R < .35) {
+            ball.vx = 0; ball.vy = 0; w.x = 0; w.y = 0;
+        }
+        ball.x += (beforeX + ball.vx) * .5 * dt;
+        ball.y += (beforeY + ball.vy) * .5 * dt;
+        ball.rotation = (ball.rotation || 0) + Math.hypot(ball.vx, ball.vy) * dt / R;
     }
 
     handleBallCollisions(balls) {
@@ -152,12 +149,6 @@ class PhysicsEngine {
                     const nx = dist > 0 ? dx / dist : 1;
                     const ny = dist > 0 ? dy / dist : 0;
 
-                    // === RULE TRACKING: First Contact ===
-                    if (this.shotFirstContact === null) {
-                        if (b1.id === 0) this.shotFirstContact = b2.id;
-                        else if (b2.id === 0) this.shotFirstContact = b1.id;
-                    }
-
                     // Separate balls
                     const overlap = minDist - dist;
                     b1.x -= nx * overlap * 0.5;
@@ -171,6 +162,10 @@ class PhysicsEngine {
                     const vn = dvx * nx + dvy * ny;
 
                     if (vn > 0) {
+                        if (this.shotFirstContact === null) {
+                            if (b1.id === 0) this.shotFirstContact = b2.id;
+                            else if (b2.id === 0) this.shotFirstContact = b1.id;
+                        }
                         // Elastic collision
                         const impulse = vn * (1 + this.E_BALL) / 2;
 
@@ -179,30 +174,6 @@ class PhysicsEngine {
                         b2.vx += impulse * nx;
                         b2.vy += impulse * ny;
 
-                        // === SPIN EFFECTS AFTER COLLISION ===
-                        // Apply spin effects AFTER the collision impulse
-                        if (b1.id === 0 && Math.abs(b1.topspin) > 0.15) {
-                            // Get current speed after collision
-                            const currentSpeed = Math.sqrt(b1.vx * b1.vx + b1.vy * b1.vy);
-
-                            // BACKSPIN (positive): Cue ball DRAWS BACK
-                            if (b1.topspin > 0.15) {
-                                const drawForce = b1.topspin * Math.min(90, vn * 0.3);
-                                // Subtract velocity (go backwards)
-                                b1.vx -= nx * drawForce;
-                                b1.vy -= ny * drawForce;
-                            }
-                            // TOPSPIN (negative): Cue ball FOLLOWS through
-                            else if (b1.topspin < -0.15) {
-                                const followForce = Math.abs(b1.topspin) * Math.min(90, vn * 0.3);
-                                // Add velocity in the direction of the collision
-                                b1.vx += nx * followForce;
-                                b1.vy += ny * followForce;
-                            }
-
-                            // Consume spin on impact
-                            b1.topspin *= 0.15;
-                        }
 
                         this.playCollisionSound(Math.min(1, vn / 15));
                     }
@@ -214,50 +185,34 @@ class PhysicsEngine {
     handleCushionCollisions(balls) {
         const c = this.cushionWidth;
         const r = this.BALL_RADIUS;
-        const englishStrength = 100;
-
         for (const ball of balls) {
             if (!ball.active) continue;
-
             let hitCushion = false;
-
-            // LEFT cushion
-            if (ball.x - r < c) {
-                ball.x = c + r;
-                ball.vx = -ball.vx * this.E_CUSHION;
-                // Right english → ball goes more down, Left english → ball goes more up
-                ball.vy += ball.sidespin * englishStrength;
-                ball.sidespin *= 0.7;
+            const rebound = (nx, ny) => {
+                const normalSpeed = ball.vx * nx + ball.vy * ny;
+                if (normalSpeed >= 0) return;
+                ball.w ||= { x: -ball.vy / r, y: ball.vx / r, z: 0 };
+                const normalImpulse = -(1 + this.E_CUSHION) * normalSpeed;
+                ball.vx += normalImpulse * nx;
+                ball.vy += normalImpulse * ny;
+                const tx = -ny, ty = nx;
+                const slip = ball.vx * tx + ball.vy * ty - r * ball.w.z;
+                const limit = .16 * normalImpulse;
+                const impulse = Math.max(-limit, Math.min(limit, -slip / 3.5));
+                ball.vx += impulse * tx; ball.vy += impulse * ty;
+                ball.w.z -= 2.5 * impulse / r;
+                // Cushion contact also dissipates some horizontal rotation.
+                ball.w.x *= .75; ball.w.y *= .75;
                 hitCushion = true;
-            }
-            // RIGHT cushion
-            else if (ball.x + r > this.tableWidth - c) {
-                ball.x = this.tableWidth - c - r;
-                ball.vx = -ball.vx * this.E_CUSHION;
-                // Right english → ball goes more up, Left english → ball goes more down
-                ball.vy -= ball.sidespin * englishStrength;
-                ball.sidespin *= 0.7;
-                hitCushion = true;
-            }
-
-            // TOP cushion
-            if (ball.y - r < c) {
-                ball.y = c + r;
-                ball.vy = -ball.vy * this.E_CUSHION;
-                // Right english → ball goes more right, Left english → ball goes more left
-                ball.vx += ball.sidespin * englishStrength;
-                ball.sidespin *= 0.7;
-                hitCushion = true;
-            }
-            // BOTTOM cushion
-            else if (ball.y + r > this.tableHeight - c) {
-                ball.y = this.tableHeight - c - r;
-                ball.vy = -ball.vy * this.E_CUSHION;
-                // Right english → ball goes more left, Left english → ball goes more right
-                ball.vx -= ball.sidespin * englishStrength;
-                ball.sidespin *= 0.7;
-                hitCushion = true;
-            }
+            };
+            if (ball.x - r < c) { ball.x = c + r; rebound(1, 0); }
+            else if (ball.x + r > this.tableWidth - c) { ball.x = this.tableWidth - c - r; rebound(-1, 0); }
+            // The recessed side pocket has a short mouth through the cushion.
+            // Open it only for inward travel; a ball running along the rail
+            // still follows the cushion line rather than being pulled inside.
+            const inMouth = Math.abs(ball.x - this.tableWidth / 2) < this.centerPocketMouthHalfWidth;
+            if (ball.y - r < c && !(inMouth && ball.vy < 0)) { ball.y = c + r; rebound(0, 1); }
+            else if (ball.y + r > this.tableHeight - c && !(inMouth && ball.vy > 0)) { ball.y = this.tableHeight - c - r; rebound(0, -1); }
 
             if (hitCushion) {
                 // === RULE TRACKING ===
@@ -277,6 +232,13 @@ class PhysicsEngine {
         }
     }
 
+    getShotSpeed(power) {
+        const p = Math.max(0, Math.min(100, Number.isFinite(power) ? power : 0)) / 100;
+        const t = Math.max(0, (p - .15) / .85);
+        const boost = t * t * (3 - 2 * t);
+        return p * (this.SOFT_CUE_SPEED + (this.MAX_CUE_SPEED - this.SOFT_CUE_SPEED) * boost);
+    }
+
     applyShot(cueBall, angle, power, spinX, spinY) {
         // Reset shot tracking variables
         this.shotFirstContact = null; // ID of the first ball hit by cue ball
@@ -284,26 +246,23 @@ class PhysicsEngine {
         this.railsHitOnBreak = 0; // Count distinct balls hitting rails (for break rule)
         this.ballsHitRailSet = new Set(); // Helper to track unique balls hitting rail
 
-        const speed = (power / 100) * this.MAX_CUE_SPEED;
-
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-
-        cueBall.vx = cos * speed;
-        cueBall.vy = sin * speed;
-
-        // === SPIN SYSTEM ===
-        // spinY: negative = top spin (follow), positive = backspin (draw)
-        // spinX: left/right english
-
-        cueBall.topspin = spinY;  // Negative = top (follow), Positive = back (draw)
-        cueBall.sidespin = spinX;   // Left/right
-
+        const finite = value => Number.isFinite(value) ? value : 0;
+        const speed = this.getShotSpeed(power);
+        angle = finite(angle);
+        spinX = finite(spinX); spinY = finite(spinY);
+        const length = Math.max(1, Math.hypot(spinX, spinY));
+        spinX /= length; spinY /= length;
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        cueBall.vx = cos * speed; cueBall.vy = sin * speed;
+        cueBall.topspin = spinY; cueBall.sidespin = spinX;
+        // UI top is negative Y. Topspin rotates forward, draw backward.
+        // Preserve angular momentum through ball contact: the cloth then
+        // produces follow/draw instead of adding an artificial collision kick.
         const R = this.BALL_RADIUS;
         cueBall.w = {
-            x: -sin * spinY * speed / R * 0.5,
-            y: cos * spinY * speed / R * 0.5,
-            z: spinX * speed / R * 0.3
+            x: sin * spinY * speed * 2.5 / R,
+            y: -cos * spinY * speed * 2.5 / R,
+            z: spinX * speed * .8 / R
         };
     }
 
@@ -321,24 +280,16 @@ class PhysicsEngine {
                 const effectiveRadius = pocket.isCenter ? this.centerPocketRadius : this.pocketRadius;
 
                 if (distSq < effectiveRadius * effectiveRadius) {
-                    // For center pockets, check if ball is moving TOWARD the pocket (from playing surface)
-                    // This prevents balls rolling along the rail from falling in
                     if (pocket.isCenter) {
-                        const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-                        if (speed > 1) { // Ball must be moving
-                            // For top center pocket (y near cushion), ball must be moving UP (negative vy)
-                            // For bottom center pocket, ball must be moving DOWN (positive vy)
-                            const isTopPocket = pocket.y < this.tableHeight / 2;
-                            const movingTowardPocket = isTopPocket ? ball.vy < -speed * 0.15 : ball.vy > speed * 0.15;
-
-                            // Also check that ball isn't too close to the cushion (running along rail)
-                            const distFromCenter = Math.abs(ball.x - pocket.x);
-                            const isApproachingFromCenter = distFromCenter < effectiveRadius * 1.5;
-
-                            if (!movingTowardPocket && !isApproachingFromCenter) {
-                                continue; // Ball is running along rail, don't pocket
-                            }
-                        }
+                        // A circular sensor overlaps the playable rail line by R.
+                        // Require entry beyond the ball-centre rail boundary,
+                        // not merely proximity to the pocket's painted circle.
+                        const top = pocket.y < this.tableHeight / 2;
+                        const mouthLine = top ? this.cushionWidth + this.BALL_RADIUS :
+                            this.tableHeight - this.cushionWidth - this.BALL_RADIUS;
+                        const entryDepth = top ? mouthLine - ball.y : ball.y - mouthLine;
+                        const inwardSpeed = top ? -ball.vy : ball.vy;
+                        if (entryDepth <= 1e-7 || inwardSpeed <= 0) continue;
                     }
 
                     ball.active = false;
@@ -356,7 +307,7 @@ class PhysicsEngine {
         for (const ball of balls) {
             if (!ball.active) continue;
             const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-            if (speed > 3) return false;
+            if (speed > .35 || (ball.w && Math.hypot(ball.w.x, ball.w.y) * this.BALL_RADIUS > .35)) return false;
         }
         return true;
     }
@@ -379,11 +330,22 @@ class PhysicsEngine {
             x += dx * step;
             y += dy * step;
 
+            const sidePocket = this.pockets.find(pocket => pocket.isCenter &&
+                Math.hypot(x - pocket.x, y - pocket.y) < this.centerPocketRadius &&
+                (pocket.y < this.tableHeight / 2 ? dy < 0 : dy > 0));
+            if (sidePocket) {
+                currentSegment.points.push({ x, y });
+                segments.push(currentSegment);
+                points.push({ x, y, type: 'pocket' });
+                return { points, segments };
+            }
+
             let hitWall = false;
             if (x < this.cushionWidth + this.BALL_RADIUS) { dx = Math.abs(dx); hitWall = true; }
             else if (x > this.tableWidth - this.cushionWidth - this.BALL_RADIUS) { dx = -Math.abs(dx); hitWall = true; }
-            if (y < this.cushionWidth + this.BALL_RADIUS) { dy = Math.abs(dy); hitWall = true; }
-            else if (y > this.tableHeight - this.cushionWidth - this.BALL_RADIUS) { dy = -Math.abs(dy); hitWall = true; }
+            const inMouth = Math.abs(x - this.tableWidth / 2) < this.centerPocketMouthHalfWidth;
+            if (y < this.cushionWidth + this.BALL_RADIUS && !(inMouth && dy < 0)) { dy = Math.abs(dy); hitWall = true; }
+            else if (y > this.tableHeight - this.cushionWidth - this.BALL_RADIUS && !(inMouth && dy > 0)) { dy = -Math.abs(dy); hitWall = true; }
 
             if (hitWall) {
                 reflectionNum++;
