@@ -981,6 +981,34 @@ class NetworkManager {
 
             let bestShot = shots[0];
 
+            // Use the same position-aware planner as offline matches. The legacy
+            // scorer remains as a fallback for unusual layouts and bank shots.
+            if (typeof AIPlayer !== 'undefined') {
+                try {
+                    this.aiPlanner = this.aiPlanner || new AIPlayer('hard');
+                    const plannerGroup = aiGroup === 'solid' ? 'solids' : aiGroup === 'stripe' ? 'stripes' : null;
+                    const planned = this.aiPlanner.calculateShot(this.game.gameState, freshBalls, freshCueBall, pockets, plannerGroup);
+                    const plannedBall = freshBalls.find(ball => ball.id === planned?.targetBall);
+                    if (planned && Number.isFinite(planned.angle) && Number.isFinite(planned.power) && plannedBall) {
+                        bestShot = {
+                            ball: plannedBall,
+                            pocket: planned.pocket,
+                            ghostBall: planned.ghostBall,
+                            angle: planned.angle,
+                            power: Math.max(36, Math.min(94, planned.power * 100)),
+                            cutAngle: Number.isFinite(planned.cutAngle) ? planned.cutAngle * 180 / Math.PI : 0,
+                            score: planned.score ?? 0,
+                            isBank: planned.type === 'bank',
+                            isCombo: planned.type === 'combo',
+                            isSafety: planned.isSafety || planned.type === 'safety' || planned.type === 'emergency',
+                            plannedSpin: { spinX: planned.spinX || 0, spinY: planned.spinY || 0 }
+                        };
+                    }
+                } catch (error) {
+                    console.warn('Shared AI planner failed; using legacy shot scorer.', error);
+                }
+            }
+
             if (!bestShot) {
                 // EXPERT SAFETY PLAY: Strategic defensive shot
                 console.log('🤖 No pocketing shot - playing expert safety');
@@ -1108,7 +1136,7 @@ class NetworkManager {
             };
 
             // Get spin for this shot
-            const spin = calculatePositionSpin(bestShot, freshCueBall, targetBalls, pockets);
+            const spin = bestShot.plannedSpin || calculatePositionSpin(bestShot, freshCueBall, targetBalls, pockets);
 
             // EXPERT DIFFICULTY: Perfect aim with strategic spin
             const finalAngle = bestShot.angle;

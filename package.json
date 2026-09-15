@@ -11,6 +11,8 @@
         "mobile:doctor": "cap doctor",
         "mobile:android": "cap open android",
         "mobile:ios": "cap open ios",
+        "test:ai": "node scripts/test-ai.cjs",
+        "test:game-rules": "node scripts/test-game-rules.cjs",
         "test:auth": "node scripts/test-auth-integration.cjs",
         "test:rewards": "node scripts/test-rewards.cjs",
         "test:rewards-ui": "node scripts/test-rewards-ui.cjs",

@@ -46,9 +46,9 @@ class AIPlayer {
                 safetyIntelligence: 0.7
             },
             'hard': {
-                accuracy: 0.94,
-                angleError: 2.5,
-                powerError: 0.04,
+                accuracy: 0.995,
+                angleError: 0.6,
+                powerError: 0.012,
                 thinkingTime: [800, 2000],
                 preferEasyShots: false,
                 useSpin: true,
@@ -58,9 +58,9 @@ class AIPlayer {
                 safetyIntelligence: 0.85
             },
             'expert': {
-                accuracy: 0.98,
-                angleError: 0.8,
-                powerError: 0.015,
+                accuracy: 1,
+                angleError: 0.25,
+                powerError: 0.008,
                 thinkingTime: [500, 1200],
                 preferEasyShots: false,
                 useSpin: true,
@@ -172,7 +172,7 @@ class AIPlayer {
         };
         const distToPocket = Math.sqrt(ballToPocket.x ** 2 + ballToPocket.y ** 2);
 
-        if (distToPocket > 500) return null;
+        if (distToPocket < 1 || distToPocket > 650) return null;
 
         // Calculate ghost ball position
         const ghostBall = {
@@ -186,6 +186,12 @@ class AIPlayer {
         };
         const distToGhost = Math.sqrt(cueToGhost.x ** 2 + cueToGhost.y ** 2);
 
+        // Reject contact points that the cue ball cannot physically occupy. This
+        // prevents the planner from choosing impossible rail-side cuts.
+        const playableInset = this.CUSHION + this.BALL_RADIUS;
+        if (ghostBall.x < playableInset || ghostBall.x > this.TABLE_WIDTH - playableInset ||
+            ghostBall.y < playableInset || ghostBall.y > this.TABLE_HEIGHT - playableInset) return null;
+
         // Check paths
         if (this.isPathBlocked(cueBall, ghostBall, allBalls, targetBall)) return null;
         if (this.isPathBlocked(targetBall, pocket, allBalls, null)) return null;
@@ -196,8 +202,15 @@ class AIPlayer {
             cueToGhost.x * ballToPocket.x + cueToGhost.y * ballToPocket.y
         ));
 
-        // Skip very sharp cuts
-        if (cutAngle > Math.PI * 0.45) return null;
+        // Thin cuts are disproportionately unreliable in the real physics model.
+        if (cutAngle > Math.PI * 0.40) return null;
+
+        // Side pockets have a narrow mouth. Reject steep diagonal entries that
+        // would strike the long cushion instead of entering the pocket.
+        if (pocket.isCenter) {
+            const verticalTravel = Math.abs(ballToPocket.y);
+            if (verticalTravel < 1 || Math.abs(ballToPocket.x) / verticalTravel > 1.15) return null;
+        }
 
         // Enhanced scoring
         let score = 100;
@@ -207,10 +220,10 @@ class AIPlayer {
         score -= distToPocket / 10;
 
         // Cut angle penalty (exponential)
-        score -= Math.pow(cutAngle, 1.8) * 30;
+        score -= Math.pow(cutAngle, 1.7) * 52;
 
         // Bonuses
-        if (cutAngle < 0.12) score += 20; // Straight shot
+        if (cutAngle < 0.12) score += 26; // Straight shot
         if (distToGhost < 120) score += 15; // Short cue ball travel
         if (distToPocket < 150) score += 12; // Short pocket distance
         if (!pocket.isCenter) score += 6; // Corner pocket
@@ -459,7 +472,7 @@ class AIPlayer {
      * Calculate optimal power for shot
      */
     calculateOptimalPower(distToGhost, distToPocket, cutAngle) {
-        let basePower = 0.4 + (distToGhost + distToPocket) / 800;
+        let basePower = 0.36 + (distToGhost + distToPocket) / 1050;
 
         // More power for cut shots
         if (cutAngle > 0.4) basePower *= 1.15;
@@ -468,7 +481,7 @@ class AIPlayer {
         // Less power for very close shots
         if (distToGhost < 80) basePower *= 0.85;
 
-        return Math.max(0.35, Math.min(0.95, basePower));
+        return Math.max(0.38, Math.min(0.88, basePower));
     }
 
     /**
@@ -507,23 +520,23 @@ class AIPlayer {
 
         // For 8-ball, use minimal spin for control
         if (is8BallTime) {
-            shot.spinY = 0.15; // Slight draw for control
+            shot.spinY = 0.08; // Minimal draw for control
             return shot;
         }
 
         // No spin needed for very straight shots
         if (shot.cutAngle < 0.1) {
-            shot.spinY = -0.25; // Follow through
+            shot.spinY = -0.14; // Gentle follow through
             return shot;
         }
 
         // Draw for sharp cuts
         if (shot.cutAngle > 0.35) {
-            shot.spinY = 0.5; // Draw back
+            shot.spinY = 0.28; // Controlled draw
         } else if (shot.cutAngle > 0.2) {
-            shot.spinY = 0.25; // Moderate draw
+            shot.spinY = 0.18; // Moderate draw
         } else {
-            shot.spinY = -0.2; // Follow
+            shot.spinY = -0.12; // Follow
         }
 
         // Add english for position
@@ -533,9 +546,9 @@ class AIPlayer {
             const ghostX = shot.ghostBall?.x || cueBall.x;
 
             if (avgNextBallX > ghostX) {
-                shot.spinX = 0.25; // Right english
+                shot.spinX = 0.14; // Right english
             } else {
-                shot.spinX = -0.25; // Left english
+                shot.spinX = -0.14; // Left english
             }
         }
 
@@ -600,7 +613,7 @@ class AIPlayer {
             }
         }
 
-        if (bestSafety && Math.random() < this.config.safetyIntelligence) {
+        if (bestSafety && (this.difficulty === 'hard' || this.difficulty === 'expert' || Math.random() < this.config.safetyIntelligence)) {
             return bestSafety;
         }
 
@@ -715,6 +728,8 @@ class AIPlayer {
         for (const ball of allBalls) {
             if (ball.active === false || ball.pocketed || ball.id === 0) continue;
             if (excludeBall && ball.id === excludeBall.id) continue;
+            // A ball travelling from its own centre must not block its own path.
+            if (Math.hypot(ball.x - from.x, ball.y - from.y) < this.BALL_RADIUS * 0.5) continue;
 
             const dx = to.x - from.x;
             const dy = to.y - from.y;

@@ -24,7 +24,7 @@
                   <div><span class="matchmaking-kicker">ONLINE MULTIPLAYER</span><h2 id="matchmaking-title">FIND A RIVAL</h2></div>
                   <button class="matchmaking-close" id="matchmaking-close" type="button" aria-label="Close matchmaking">×</button>
                 </header>
-                <div class="matchmaking-status"><span class="online-dot"></span><span id="matchmaking-connection">Connecting to game server…</span></div>
+                <div class="matchmaking-status"><span class="online-dot"></span><span id="matchmaking-connection">Connecting to game server…</span><span class="search-timer-chip hidden" id="search-timer-chip"><small>WAIT</small><strong id="search-elapsed">0:00</strong></span></div>
                 <div class="matchmaking-setup" id="matchmaking-setup">
                   <p class="matchmaking-copy">Choose a table and enter the live matchmaking queue.</p>
                   <div class="tier-grid" role="group" aria-label="Table stake">
@@ -46,7 +46,7 @@
                   <div class="radar"><span></span></div>
                   <h3>SEARCHING FOR OPPONENT</h3>
                   <p>Matching players near your rating…</p>
-                  <strong id="search-elapsed">0:00</strong>
+                  <span class="searching-hint">Keep this screen open while we find a rival.</span>
                   <button class="matchmaking-cancel" id="cancel-matchmaking" type="button">CANCEL</button>
                 </div>
                 <div class="matchmaking-room hidden" id="matchmaking-room" aria-live="polite">
@@ -157,6 +157,7 @@
 
         showSetup() {
             this.stopTimer();
+            document.getElementById('search-timer-chip').classList.add('hidden');
             document.getElementById('matchmaking-setup').classList.remove('hidden');
             document.getElementById('matchmaking-searching').classList.add('hidden');
             document.getElementById('matchmaking-room').classList.add('hidden');
@@ -168,6 +169,8 @@
             document.getElementById('matchmaking-room').classList.add('hidden');
             document.querySelector('#matchmaking-searching h3').textContent = 'SEARCHING FOR OPPONENT';
             document.querySelector('#matchmaking-searching p').textContent = 'Matching players near your rating…';
+            document.getElementById('search-timer-chip').classList.remove('hidden');
+            document.getElementById('search-elapsed').textContent = '0:00';
             this.startedAt = Date.now();
             this.stopTimer();
             this.timer = setInterval(() => {
@@ -177,6 +180,7 @@
         }
 
         showRoom(code) {
+            document.getElementById('search-timer-chip').classList.add('hidden');
             document.getElementById('matchmaking-setup').classList.add('hidden');
             document.getElementById('matchmaking-searching').classList.add('hidden');
             document.getElementById('matchmaking-room').classList.remove('hidden');

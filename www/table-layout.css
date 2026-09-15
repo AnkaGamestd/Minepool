@@ -25,8 +25,8 @@
   .game-shell .table-frame:before { inset: 2px; border-radius: 16px; }
   .game-shell #pool-table { border-radius: 14px; }
   .game-shell .spin-console, .game-shell .power-console { width: 52px; padding: 6px 3px; gap: 5px; border-radius: 12px; }
-  .game-shell .spin-console { left: -58px; }
-  .game-shell .power-console { right: -58px; }
+  .game-shell .power-console { left: -58px; right: auto; }
+  .game-shell .spin-console { right: -58px; left: auto; }
   .game-shell .spin-ball { width: 42px; height: 42px; }
   .game-shell .control-label { font-size: 8px; letter-spacing: .06em; }
   .game-shell #power-gauge { height: clamp(70px, 40cqh, 176px); width: 20px; }

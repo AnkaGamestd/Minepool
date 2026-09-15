@@ -23,24 +23,24 @@
     </header>
 
     <section class="table-stage">
-      <aside class="spin-console" aria-label="Cue ball spin">
-        <span class="control-label">SPIN</span>
-        <div class="spin-ball" role="button" tabindex="0" aria-label="Set cue ball spin"><span id="spin-indicator"></span></div>
-        <button id="reset-spin" type="button">RESET</button><span id="spin-info">CENTER</span>
+      <aside class="power-console" aria-label="Shot power">
+        <span class="control-label">POWER</span>
+        <div id="power-gauge"><div id="power-fill"></div><div id="power-handle"></div></div>
+        <output id="power-value">0%</output>
       </aside>
 
       <div class="table-frame">
         <canvas id="pool-table" width="1000" height="500" aria-label="Pool table"></canvas>
       </div>
 
-      <aside class="power-console" aria-label="Shot power">
-        <span class="control-label">POWER</span>
-        <div id="power-gauge"><div id="power-fill"></div><div id="power-handle"></div></div>
-        <output id="power-value">0%</output>
+      <aside class="spin-console" aria-label="Cue ball spin">
+        <span class="control-label">SPIN</span>
+        <div class="spin-ball" role="button" tabindex="0" aria-label="Set cue ball spin"><span id="spin-indicator"></span></div>
+        <button id="reset-spin" type="button">RESET</button><span id="spin-info">CENTER</span>
       </aside>
     </section>
 
-    <footer class="game-footer"><span>DRAG TO AIM</span><span>SET POWER • RELEASE TO SHOOT</span><span id="cloud-state">CLOUD PROFILE</span></footer>
+    <footer class="game-footer"><span>TAP OR DRAG ON YOUR TARGET</span><span>AIM DIRECTLY • SET POWER • RELEASE</span><span id="cloud-state">CLOUD PROFILE</span></footer>
   </main>
 
   <div id="start-screen" class="hidden"></div>

@@ -550,6 +550,29 @@
                 transform: scale(1.1);
             }
         }
+
+        /* Keep elapsed matchmaking time above the fold on short phones. */
+        @media (max-height: 700px), (orientation: landscape) {
+            .mm-content { gap: 9px; padding: 9px 12px 14px; }
+            .mm-timer-section {
+                order: -1;
+                position: sticky;
+                top: 0;
+                z-index: 20;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                padding: 8px 12px;
+                border-color: rgba(0, 212, 255, .55);
+                box-shadow: 0 7px 18px rgba(0, 0, 0, .3);
+            }
+            .mm-timer-label { margin: 0; font-size: .72rem; }
+            .mm-timer-display { gap: 5px; }
+            .mm-timer-box { min-width: 44px; padding: 4px 8px; border-width: 1px; }
+            .mm-timer-value, .mm-timer-separator { font-size: 1.15rem; }
+            .mm-timer-unit { display: none; }
+        }
     </style>
 </head>
 

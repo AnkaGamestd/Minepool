@@ -28,7 +28,7 @@ class MatchmakingQueue {
             expansionInterval: 5000,  // 5 seconds
             maxEloRange: 1000,        // Maximum ELO difference
             maxWaitTime: 120000,      // 2 minutes max wait
-            aiTimeout: 15000          // 15 seconds before AI fallback
+            aiTimeout: 10000          // 10 seconds before AI fallback
         };
 
         // AI bot tracking
@@ -211,9 +211,8 @@ class MatchmakingQueue {
 
     estimateWaitTime(tier) {
         const queue = this.queues[tier];
-        if (queue.length === 0) return 30; // 30 seconds if empty
-        if (queue.length === 1) return 15; // Match likely soon
-        return Math.max(5, 30 - queue.length * 2); // Less wait with more players
+        if (queue.length <= 1) return 10; // AI fallback guarantees a short wait
+        return Math.max(3, 10 - queue.length); // Less wait with more players
     }
 
     getQueueStats() {
@@ -298,7 +297,7 @@ class MatchmakingQueue {
             const match = this.tryMatch(player, tier);
             if (match.matched) return match;
 
-            // AI fallback after 15 seconds
+            // AI fallback after 10 seconds
             if (waitTime >= this.settings.aiTimeout) {
                 const bot = this.getRandomBot(player.elo);
                 if (bot) {

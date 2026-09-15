@@ -81,9 +81,10 @@ class PoolGame {
         this.isBreakShot = true;
         this.foulReason = null;
         this.winner = null;
-        this.aiDifficulty = 'medium';
+        this.aiDifficulty = 'hard';
         this.aiPlayer = null;
         this.aiTurnTimeout = null;
+        this.aiRecoveryCount = 0;
 
         // MINICLIP FEATURES
         this.shotTimer = null;
@@ -117,12 +118,12 @@ class PoolGame {
 
         // Mobile control settings (adjustable for sensitivity)
         this.mobileSettings = {
-            aimSensitivity: 0.003,      // How fast aim changes with swipe (lower = more precise)
             powerSensitivity: 0.8,      // How fast power builds (lower = more control)
             minSwipeDistance: 20,       // Minimum pixels to register as a swipe
             maxPower: 100,              // Max power cap
             tapThreshold: 200,          // Time in ms to distinguish tap from drag
             deadZone: 10,               // Pixels of movement ignored (prevents jitter)
+            directAimMinRadius: 34,     // Ignore touches too close to the cue-ball centre
         };
 
         // Mobile touch state tracking
@@ -138,6 +139,9 @@ class PoolGame {
             isPullingBack: false,
             initialAimAngle: 0,
             touchId: null,
+            aimSamples: [],
+            lastClientX: 0,
+            lastClientY: 0,
         };
 
         // Visual feedback for mobile
@@ -302,6 +306,7 @@ class PoolGame {
             this.isMultiplayer = mode === 'multiplayer';
             if (this.aiTurnTimeout) clearTimeout(this.aiTurnTimeout);
             this.aiTurnTimeout = null;
+            this.aiRecoveryCount = 0;
             if ((mode === 'ai' || mode === 'tournament') && typeof AIPlayer !== 'undefined') {
                 this.aiPlayer = new AIPlayer(this.aiDifficulty || 'medium');
             } else {
@@ -315,6 +320,7 @@ class PoolGame {
             this.initializeBalls();
             this.playerTypes = { 1: null, 2: null };
             this.tableState = 'open';
+            this.resetBallRacks();
             this.calledPocket = null;
             this.needsCallPocket = false;
             this.gameState = 'aiming';
@@ -444,6 +450,7 @@ class PoolGame {
             this.isMyTurn = (this.currentPlayer === this.myPlayerNumber);
             this.tableState = data.gameState?.tableOpen ? 'open' : 'assigned';
             this.playerTypes = data.gameState?.playerTypes || { 1: null, 2: null };
+            this.rebuildBallRacksFromState();
             this.isBreakShot = data.gameState?.isBreakShot || false;
             this.ballInHand = data.gameState?.ballInHand || false;
             this.ballInHandKitchen = data.gameState?.ballInHandKitchen || false;
@@ -562,7 +569,8 @@ class PoolGame {
         document.documentElement.classList.remove('platform-paused');
         if (window.MinePoolPlatform?.isAudioEnabled()) this.sound.audioContext?.resume();
         if (this.gameState !== 'gameover' && this.gameState !== 'start') {
-            this.startShotTimer();
+            if (this.isLocalAITurn()) this.scheduleAITurn();
+            else if (!this.isMultiplayer || this.isMyTurn) this.startShotTimer();
             this.animate();
         }
     }
@@ -812,6 +820,8 @@ class PoolGame {
         this.mobileTouch.touchId = touch.identifier;
         this.mobileTouch.currentX = touchX;
         this.mobileTouch.currentY = touchY;
+        this.mobileTouch.lastClientX = touch.clientX;
+        this.mobileTouch.lastClientY = touch.clientY;
 
         // Visual feedback
         this.touchFeedback.visible = true;
@@ -846,11 +856,12 @@ class PoolGame {
             return;
         }
 
-        // DIRECT AIMING: Point cue at finger
+        // Direct aiming: the cue points at the touched table position. Players
+        // can tap a target ball or drag across the table to rotate a full 360°.
         const cueBall = this.balls[0];
-        const distance = Math.hypot(touchX - cueBall.x, touchY - cueBall.y);
-        this.touchAimAngle = Math.atan2(touchY - cueBall.y, touchX - cueBall.x);
-        if (distance > this.physics.BALL_RADIUS * 3) this.aimAngle = this.touchAimAngle;
+        this.aimAngle = this.calculateDirectTouchAim(touchX, touchY, cueBall, this.aimAngle);
+        this.mobileTouch.initialAimAngle = this.aimAngle;
+        this.mobileTouch.aimSamples = [{ angle: this.aimAngle, time: performance.now() }];
         this.mobileTouch.isAiming = true;
     }
 
@@ -896,12 +907,10 @@ class PoolGame {
 
         // UPDATE AIM
         if (this.gameState === 'aiming' && this.mobileTouch.isAiming && this.powerPointer == null) {
-            const cueBall = this.balls[0];
-            const angle = Math.atan2(touchY - cueBall.y, touchX - cueBall.x);
-            const delta = Math.atan2(Math.sin(angle - this.touchAimAngle), Math.cos(angle - this.touchAimAngle));
-            const distance = Math.hypot(touchX - cueBall.x, touchY - cueBall.y);
-            this.aimAngle += delta * Math.min(1, Math.max(.2, distance / 160));
-            this.touchAimAngle = angle;
+            this.mobileTouch.lastClientX = touch.clientX;
+            this.mobileTouch.lastClientY = touch.clientY;
+            this.aimAngle = this.calculateDirectTouchAim(touchX, touchY, this.balls[0], this.aimAngle);
+            this.recordAimSample(this.aimAngle);
         }
     }
 
@@ -909,6 +918,7 @@ class PoolGame {
         if (e.touches && Array.from(e.touches).some(t => t.identifier === this.mobileTouch.touchId)) return;
         this.touchFeedback.visible = false;
         this.mobileTouch.isAiming = false;
+        this.settleTouchAim();
 
         // BALL IN HAND PLACEMENT
         if (this.ballInHand && this.isDraggingBall) {
@@ -1036,6 +1046,34 @@ class PoolGame {
         this.updateSpinIndicator();
     }
 
+    normalizeAngle(angle) {
+        return Math.atan2(Math.sin(angle), Math.cos(angle));
+    }
+
+    calculateDirectTouchAim(touchX, touchY, cueBall, fallbackAngle = 0) {
+        if (!cueBall || !Number.isFinite(touchX) || !Number.isFinite(touchY)) return fallbackAngle;
+        const dx = touchX - cueBall.x;
+        const dy = touchY - cueBall.y;
+        const minRadius = this.mobileSettings?.directAimMinRadius ?? 34;
+        if (Math.hypot(dx, dy) < minRadius) return fallbackAngle;
+        return this.normalizeAngle(Math.atan2(dy, dx));
+    }
+
+    recordAimSample(angle) {
+        const samples = this.mobileTouch.aimSamples;
+        samples.push({ angle, time: performance.now() });
+        if (samples.length > 10) samples.shift();
+    }
+
+    settleTouchAim() {
+        const samples = this.mobileTouch.aimSamples;
+        if (!samples.length) return;
+        // Touchend itself carries no new position. Keep the final deliberate
+        // sample exactly, so lifting the finger cannot alter or rewind aim.
+        this.aimAngle = this.normalizeAngle(samples[samples.length - 1].angle);
+        samples.length = 0;
+    }
+
     updatePowerGauge() {
         this.powerFill.style.height = this.power + '%';
         this.powerValue.textContent = Math.round(this.power) + '%';
@@ -1069,7 +1107,8 @@ class PoolGame {
 
     updateTurnIndicator() {
         const turnText = document.querySelector('.turn-text');
-        let text = this.isMultiplayer
+        const aiTurn = this.isLocalAITurn();
+        let text = aiTurn ? 'AI THINKING…' : this.isMultiplayer
             ? (this.currentPlayer === this.myPlayerNumber ? 'YOUR TURN' : "OPPONENT'S TURN")
             : `PLAYER ${this.currentPlayer}'s TURN`;
 
@@ -1101,11 +1140,56 @@ class PoolGame {
         if (p1Panel) p1Panel.classList.toggle('active', this.currentPlayer === 1);
         if (p2Panel) p2Panel.classList.toggle('active', this.currentPlayer === 2);
 
-        // Update rack headers to show who owns what
+        // Keep labels and pocketed-ball racks attached to the actual owner.
         const p1Group = this.playerTypes[1];
         const p2Group = this.playerTypes[2];
+        this.updatePlayerGroupPanel(p1Panel, p1Group, 1);
+        this.updatePlayerGroupPanel(p2Panel, p2Group, 2);
+    }
 
-        // This assumes simple UI, might need more complex DOM manipulation if we want to color code names
+    formatGroupLabel(group) {
+        if (group === 'solid') return 'SOLIDS';
+        if (group === 'stripe') return 'STRIPES';
+        return 'OPEN TABLE';
+    }
+
+    updatePlayerGroupPanel(panel, group, playerNumber) {
+        if (!panel) return;
+        const label = panel.querySelector('.ball-group');
+        if (label) label.textContent = this.formatGroupLabel(group);
+        panel.dataset.group = group || 'open';
+
+        const rack = group === 'solid' ? this.solidsRack : group === 'stripe' ? this.stripesRack : null;
+        if (!rack || rack.parentElement === panel) return;
+        // Player 1's rack sits after the identity; Player 2's sits before it.
+        if (playerNumber === 1) panel.appendChild(rack);
+        else panel.insertBefore(rack, panel.firstChild);
+    }
+
+    resetBallRacks() {
+        this.clearBallRackVisuals();
+        const p1Panel = document.getElementById('p1-panel');
+        const p2Panel = document.getElementById('p2-panel');
+        if (p1Panel && this.solidsRack?.parentElement !== p1Panel) p1Panel.appendChild(this.solidsRack);
+        if (p2Panel && this.stripesRack?.parentElement !== p2Panel) p2Panel.insertBefore(this.stripesRack, p2Panel.firstChild);
+    }
+
+    clearBallRackVisuals() {
+        for (const rack of [this.solidsRack, this.stripesRack]) {
+            rack?.querySelectorAll('.rack-ball').forEach(ball => {
+                ball.className = 'rack-ball empty';
+                ball.style.removeProperty('--ball-color');
+                ball.textContent = '';
+                ball.removeAttribute('aria-label');
+            });
+        }
+    }
+
+    rebuildBallRacksFromState() {
+        this.clearBallRackVisuals();
+        this.balls?.forEach(ball => {
+            if (ball.id !== 0 && ball.id !== 8 && ball.active === false) this.updateBallRack(ball);
+        });
     }
 
     // MINICLIP FEATURE: Shot Timer
@@ -1195,41 +1279,83 @@ class PoolGame {
 
     scheduleAITurn() {
         if (!this.isLocalAITurn() || this.gameState === 'gameover') return;
+        if (!this.aiPlayer && typeof AIPlayer !== 'undefined') this.aiPlayer = new AIPlayer(this.aiDifficulty || 'medium');
         if (this.aiTurnTimeout) clearTimeout(this.aiTurnTimeout);
         this.stopShotTimer();
         this.gameState = 'waiting';
         this.canvas.style.cursor = 'default';
         const delay = Math.min(1800, Math.max(650, this.aiPlayer?.getThinkingTime?.() || 900));
+        this.updateTurnIndicator();
         this.aiTurnTimeout = setTimeout(() => this.executeLocalAITurn(), delay);
     }
 
     executeLocalAITurn() {
         this.aiTurnTimeout = null;
         if (!this.isLocalAITurn() || this.gameState === 'gameover') return;
-        const cueBall = this.balls.find((ball) => ball.id === 0);
-        if (!cueBall) return;
+        try {
+            const cueBall = this.balls.find((ball) => ball.id === 0);
+            if (!cueBall) throw new Error('Cue ball is unavailable');
 
-        if (this.ballInHand || !cueBall.active) {
-            cueBall.active = true;
-            const candidates = [{ x: 250, y: 250 }, { x: 330, y: 180 }, { x: 330, y: 320 }, { x: 430, y: 250 }];
-            const spot = candidates.find((point) => this.balls.every((ball) => ball === cueBall || !ball.active || Math.hypot(point.x - ball.x, point.y - ball.y) > 34)) || candidates[0];
-            cueBall.x = spot.x; cueBall.y = spot.y; cueBall.vx = 0; cueBall.vy = 0;
-            this.ballInHand = false; this.ballInHandKitchen = false;
+            if (this.ballInHand || !cueBall.active) {
+                cueBall.active = true;
+                const candidates = [{ x: 250, y: 250 }, { x: 330, y: 180 }, { x: 330, y: 320 }, { x: 430, y: 250 }];
+                const spot = candidates.find((point) => this.balls.every((ball) => ball === cueBall || !ball.active || Math.hypot(point.x - ball.x, point.y - ball.y) > 34)) || candidates[0];
+                cueBall.x = spot.x; cueBall.y = spot.y; cueBall.vx = 0; cueBall.vy = 0;
+                this.ballInHand = false; this.ballInHandKitchen = false;
+            }
+
+            let targetType = this.playerTypes[2];
+            if (targetType === 'solid') targetType = 'solids';
+            if (targetType === 'stripe') targetType = 'stripes';
+            let shot;
+            try {
+                shot = this.aiPlayer?.calculateShot(this.gameState, this.balls, cueBall, this.physics.pockets, targetType);
+            } catch (error) {
+                console.warn('AI planner failed; using safe fallback shot.', error);
+            }
+            if (!shot || !Number.isFinite(shot.angle) || !Number.isFinite(shot.power)) {
+                shot = this.getFallbackAIShot(cueBall, targetType);
+            }
+
+            this.aimAngle = this.normalizeAngle(shot.angle);
+            this.power = Math.max(32, Math.min(92, shot.power * 100));
+            this.spinX = Number.isFinite(shot.spinX) ? shot.spinX : 0;
+            this.spinY = Number.isFinite(shot.spinY) ? shot.spinY : 0;
+            this.gameState = 'aiming';
+            this.shoot();
+            if (this.gameState !== 'shooting') throw new Error('AI shot did not start');
+            this.aiRecoveryCount = 0;
+        } catch (error) {
+            console.error('AI turn recovery:', error);
+            this.aiRecoveryCount++;
+            if (this.isLocalAITurn() && this.aiRecoveryCount <= 2) {
+                this.gameState = 'waiting';
+                this.aiTurnTimeout = setTimeout(() => this.executeLocalAITurn(), 350);
+            } else if (this.isLocalAITurn()) {
+                this.aiRecoveryCount = 0;
+                this.showMessage('AI RECOVERED', 'Opponent skipped a stalled turn.', 1600);
+                this.ballInHand = true;
+                this.switchPlayer();
+                this.startShotTimer();
+            }
         }
+    }
 
-        let targetType = this.playerTypes[2];
-        if (targetType === 'solid') targetType = 'solids';
-        if (targetType === 'stripe') targetType = 'stripes';
-        const shot = this.aiPlayer?.calculateShot(this.gameState, this.balls, cueBall, this.physics.pockets, targetType) || {
-            angle: Math.atan2(this.balls.find((ball) => ball.active && ball.id !== 0)?.y - cueBall.y || 0, this.balls.find((ball) => ball.active && ball.id !== 0)?.x - cueBall.x || 1),
-            power: 0.55, spinX: 0, spinY: 0
+    getFallbackAIShot(cueBall, targetType) {
+        const candidates = this.balls.filter(ball => {
+            if (!ball.active || ball.id === 0) return false;
+            if (targetType === 'solids') return ball.id >= 1 && ball.id <= 7;
+            if (targetType === 'stripes') return ball.id >= 9 && ball.id <= 15;
+            return ball.id !== 8;
+        });
+        const target = candidates.sort((a, b) => Math.hypot(a.x - cueBall.x, a.y - cueBall.y) - Math.hypot(b.x - cueBall.x, b.y - cueBall.y))[0]
+            || this.balls.find(ball => ball.active && ball.id !== 0);
+        return {
+            angle: target ? Math.atan2(target.y - cueBall.y, target.x - cueBall.x) : 0,
+            power: 0.58,
+            spinX: 0,
+            spinY: 0
         };
-        this.aimAngle = shot.angle;
-        this.power = Math.max(28, Math.min(92, shot.power * 100));
-        this.spinX = shot.spinX || 0;
-        this.spinY = shot.spinY || 0;
-        this.gameState = 'aiming';
-        this.shoot();
     }
 
     shoot() {
@@ -1425,6 +1551,7 @@ class PoolGame {
                 }
             });
             console.log('   - Ball positions synced');
+            this.rebuildBallRacksFromState();
         } else {
             console.log('   - No ball data in update');
         }
@@ -1551,17 +1678,11 @@ class PoolGame {
 
                     if (otherBallsPocketed.length > 0) {
                         // Assign groups based on what was pocketed (excluding 8-ball)
-                        const solidsPotted = otherBallsPocketed.filter(b => b.type === 'solid').length;
-                        const stripesPotted = otherBallsPocketed.filter(b => b.type === 'stripe').length;
+                        const assignedGroup = this.getFirstPocketedGroup(otherBallsPocketed);
 
-                        if (solidsPotted > 0 || stripesPotted > 0) {
-                            const assignedGroup = solidsPotted > 0 ? 'solid' : 'stripe';
-                            this.playerTypes[this.currentPlayer] = assignedGroup;
-                            const opponent = this.currentPlayer === 1 ? 2 : 1;
-                            this.playerTypes[opponent] = assignedGroup === 'solid' ? 'stripe' : 'solid';
-                            this.tableState = 'closed';
+                        if (assignedGroup) {
+                            this.setPlayerGroups(this.currentPlayer, assignedGroup);
                             this.showMessage('GROUPS ASSIGNED', `YOU ARE ${assignedGroup.toUpperCase()}S!`, 4000);
-                            this.updateTurnIndicator();
                         }
                         turnChange = false;
                     } else {
@@ -1587,15 +1708,10 @@ class PoolGame {
 
                         console.log(`   - Solids pocketed: ${solidsPotted}, Stripes pocketed: ${stripesPotted}`);
 
-                        if (solidsPotted > 0 || stripesPotted > 0) {
-                            // Assign group based on first ball type pocketed
-                            const assignedGroup = solidsPotted > 0 ? 'solid' : 'stripe';
-                            this.playerTypes[this.currentPlayer] = assignedGroup;
-                            const opponent = this.currentPlayer === 1 ? 2 : 1;
-                            this.playerTypes[opponent] = assignedGroup === 'solid' ? 'stripe' : 'solid';
-                            this.tableState = 'closed';
+                        const assignedGroup = this.getFirstPocketedGroup(pocketedBalls);
+                        if (assignedGroup) {
+                            this.setPlayerGroups(this.currentPlayer, assignedGroup);
                             this.showMessage('GROUPS ASSIGNED ON BREAK', `YOU ARE ${assignedGroup.toUpperCase()}S!`, 4000);
-                            this.updateTurnIndicator();
                             turnChange = false; // Keep turn
                             reason = "Legal break - groups assigned.";
                             console.log(`   ✅ Groups assigned: Player ${this.currentPlayer} = ${assignedGroup}, turnChange = ${turnChange}`);
@@ -1711,19 +1827,15 @@ class PoolGame {
 
                         this.stopShotTimer();
 
-                        // Assign groups based on first ball type potted
-                        const firstBallType = solidsPotted > 0 ? 'solid' : 'stripe';
-                        this.playerTypes[this.currentPlayer] = firstBallType;
-                        const opponent = this.currentPlayer === 1 ? 2 : 1;
-                        this.playerTypes[opponent] = firstBallType === 'solid' ? 'stripe' : 'solid';
-                        this.tableState = 'closed';
+                        // The first legally pocketed object ball owns the table.
+                        const firstBallType = this.getFirstPocketedGroup(pocketedBalls);
+                        this.setPlayerGroups(this.currentPlayer, firstBallType);
 
                         // Flag that we just assigned groups (to send to server)
                         this.justAssignedGroups = true;
                         this.assignedGroup = firstBallType;
 
                         this.showMessage('GROUPS ASSIGNED', `YOU ARE ${firstBallType.toUpperCase()}S!`, 4000);
-                        this.updateTurnIndicator();
                         this.startShotTimer();
                     } else {
                         // No balls potted on open table - turn changes
@@ -2009,12 +2121,22 @@ class PoolGame {
 
     // NOTE: The main animate() function with frame-rate independent physics is defined earlier in this class.
 
-    assignGroups(player, group) {
+    getFirstPocketedGroup(pocketedBalls) {
+        return pocketedBalls.find(ball => ball.type === 'solid' || ball.type === 'stripe')?.type || null;
+    }
+
+    setPlayerGroups(player, group) {
+        if ((player !== 1 && player !== 2) || (group !== 'solid' && group !== 'stripe')) return false;
         this.tableState = 'closed';
         this.playerTypes[player] = group;
         this.playerTypes[player === 1 ? 2 : 1] = group === 'solid' ? 'stripe' : 'solid';
-        this.showMessage('GROUPS ASSIGNED', `Player ${player} is ${group.toUpperCase()}S`);
         this.updateTurnIndicator();
+        return true;
+    }
+
+    assignGroups(player, group) {
+        if (!this.setPlayerGroups(player, group)) return;
+        this.showMessage('GROUPS ASSIGNED', `Player ${player} is ${group.toUpperCase()}S`);
     }
 
     isGroupCleared(group) {
@@ -2059,12 +2181,14 @@ class PoolGame {
 
     updateBallRack(ball) {
         if (ball.id === 0 || ball.id === 8) return;
-        const rack = ball.type === 'solid' ? this.solidsRack : this.stripesRack;
+        const type = ball.type || (ball.id >= 9 ? 'stripe' : 'solid');
+        const rack = type === 'solid' ? this.solidsRack : this.stripesRack;
         const rackBall = rack.querySelector(`[data-number="${ball.id}"]`);
         if (rackBall) {
-            rackBall.classList.remove('empty');
-            rackBall.style.background = this.getBallColor(ball.id);
+            rackBall.className = `rack-ball pocketed ${type}`;
+            rackBall.style.setProperty('--ball-color', this.getBallColor(ball.id));
             rackBall.textContent = ball.id;
+            rackBall.setAttribute('aria-label', `Pocketed ball ${ball.id}`);
         }
     }
 
@@ -2617,12 +2741,17 @@ class PoolGame {
         if (!cueBall.active) return;
         const aimData = this.physics.calculateAimLine(cueBall, this.aimAngle, this.balls, this.power);
         const { points, segments } = aimData;
-        // Draw solid aim line (Miniclip style)
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.68)';
+        ctx.shadowBlur = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        // High-contrast guide that stays readable on every felt colour.
         if (segments.length > 0) {
             const segment = segments[0];
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([]); // Solid line, not dashed
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.96)';
+            ctx.lineWidth = this.isMobile ? 3 : 2.4;
+            ctx.setLineDash([]);
             ctx.beginPath();
             ctx.moveTo(segment.start.x, segment.start.y);
             for (const point of segment.points) {
@@ -2641,11 +2770,12 @@ class PoolGame {
             // Ghost ball - circle showing where cue ball will be at impact (Miniclip style)
             if (point.type === 'contact') {
                 ctx.save();
-                // Ghost ball outline only (no fill)
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(point.ghostX, point.ghostY, this.physics.BALL_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.11)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.94)';
+                ctx.lineWidth = this.isMobile ? 2.8 : 2.2;
                 ctx.stroke();
                 ctx.restore();
             }
@@ -2690,6 +2820,7 @@ class PoolGame {
                 ctx.stroke();
             }
         }
+        ctx.restore();
     }
 
     drawCue(ctx) {
