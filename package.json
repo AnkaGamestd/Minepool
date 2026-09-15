@@ -12,6 +12,7 @@
         "mobile:android": "cap open android",
         "mobile:ios": "cap open ios",
         "test:ai": "node scripts/test-ai.cjs",
+        "test:ai-turns": "node scripts/test-ai-turn-recovery.cjs",
         "test:game-rules": "node scripts/test-game-rules.cjs",
         "test:auth": "node scripts/test-auth-integration.cjs",
         "test:rewards": "node scripts/test-rewards.cjs",

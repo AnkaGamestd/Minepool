@@ -1368,6 +1368,7 @@ class PoolGame {
         this.physicsAccumulator = 0; // Reset physics timing for consistent behavior
         this.shotSteps = 0; // Reset step counter for debug
         this.lastShotPower = Math.round(this.power); // Track power for debug
+        this.shotResolutionStartedAt = Date.now();
         this.gameState = 'shooting';
 
         // Clear ball-in-hand since we're taking a shot
@@ -1466,7 +1467,12 @@ class PoolGame {
 
             // Sync ball-in-hand state from server
             if (data.gameState.ballInHand !== undefined) {
-                this.ballInHand = data.gameState.ballInHand && this.isMyTurn;
+                // In an online AI match this client also drives the bot. Preserve
+                // the authoritative ball-in-hand flag while it is the bot's turn;
+                // otherwise the AI proxy cannot place/reactivate the cue ball
+                // after a human foul and can wait forever.
+                const aiProxyTurn = Boolean(window.networkManager?.isAiMatch && !this.isMyTurn);
+                this.ballInHand = data.gameState.ballInHand && (this.isMyTurn || aiProxyTurn);
                 this.ballInHandKitchen = data.gameState.ballInHandKitchen || false;
                 console.log(`   - Ball-in-hand synced: ${this.ballInHand}`);
             }
@@ -1621,9 +1627,20 @@ class PoolGame {
 
     checkShotResult() {
         if (!this.physics.allBallsStopped(this.balls)) {
-            setTimeout(() => this.checkShotResult(), 100);
-            return;
+            if (!this.shotResolutionStartedAt || Date.now() - this.shotResolutionStartedAt < 20000) {
+                setTimeout(() => this.checkShotResult(), 100);
+                return;
+            }
+            console.warn('Shot resolution exceeded 20 seconds; forcing a safe settle.');
+            this.balls.forEach(ball => {
+                ball.vx = 0;
+                ball.vy = 0;
+                ball.spinX = 0;
+                ball.spinY = 0;
+                if (ball.w) ball.w = { x: 0, y: 0, z: 0 };
+            });
         }
+        this.shotResolutionStartedAt = 0;
 
         // Reset ball physics
         this.balls.forEach(ball => {
