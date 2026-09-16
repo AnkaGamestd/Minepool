@@ -220,6 +220,17 @@ offlineTurnNetwork.switchToHumanTurn(false);
 assert.equal(offlineTurnGame.currentPlayer, 1, 'A bot shot completed offline must restore the human turn');
 assert.equal(offlineTurnGame.gameState, 'aiming');
 assert.equal(offlineTurnGame.ballInHand, false);
+offlineTurnNetwork.executeAiTurn = () => { offlineTurnGame.duplicateShotStarted = true; };
+offlineTurnNetwork.applyAuthoritativeGameState({
+    gameState: { currentPlayer: 2, ballInHand: false }
+});
+assert.equal(offlineTurnGame.currentPlayer, 1, 'A pre-shot reconnect snapshot must not overwrite a completed offline turn');
+assert.equal(offlineTurnGame.duplicateShotStarted, undefined, 'A stale reconnect snapshot must not start a duplicate AI shot');
+assert.ok(offlineTurnNetwork.lastAiResultPayload, 'The completed result must remain queued until acknowledged');
+offlineTurnNetwork.applyAuthoritativeGameState({
+    gameState: { currentPlayer: 1, ballInHand: false }
+}, { aiResultAcknowledged: true });
+assert.equal(offlineTurnNetwork.lastAiResultPayload, null, 'Acknowledgement must retire the queued AI result');
 
 const recoveryRooms = new RoomManager();
 const recoveryRoom = recoveryRooms.createRoom({ id: 'human-timeout', username: 'Human' });

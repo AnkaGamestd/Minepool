@@ -306,6 +306,15 @@ class NetworkManager {
                 this.game.isMyTurn = false;
                 this.game.hideReconnectionTimer?.();
                 console.log('🤖 Resuming the in-flight AI shot after reconnect.');
+            } else if (pendingResult) {
+                // The shot already finished locally while offline. Keep that
+                // resolved table/turn until the idempotent result is accepted;
+                // the rejoin snapshot still represents the pre-shot position.
+                this.game.isMultiplayer = true;
+                this.game.roomId = data.roomId;
+                this.game.myPlayerNumber = this.myPlayerNumber;
+                this.game.hideReconnectionTimer?.();
+                console.log('🤖 Preserving the completed AI shot while its result is resubmitted.');
             } else if (this.game && this.game.onGameRejoin) {
                 this.game.onGameRejoin(data);
             }
@@ -612,8 +621,19 @@ class NetworkManager {
         this.lastAiResultPayload = null;
     }
 
-    applyAuthoritativeGameState(data) {
+    applyAuthoritativeGameState(data, options = {}) {
         if (!data?.gameState) return;
+        const pendingResult = this.lastAiResultPayload;
+        const pendingResultId = pendingResult?.resultId;
+        const updateResultId = data.lastResult?.resultId;
+        const confirmsPendingResult = Boolean(
+            options.aiResultAcknowledged ||
+            (pendingResultId && updateResultId === pendingResultId)
+        );
+        if (pendingResult && !confirmsPendingResult) {
+            console.warn('🤖 Ignoring a pre-shot server snapshot until the completed AI result is acknowledged.');
+            return;
+        }
         this.aiAwaitingResultSince = 0;
         this.aiStateSyncPending = false;
         this.lastAiResultPayload = null;
@@ -691,13 +711,15 @@ class NetworkManager {
             const stillAiTurn = response.gameState.currentPlayer !== this.myPlayerNumber;
             const pendingResult = this.lastAiResultPayload;
             if (stillAiTurn && pendingResult) {
-                // The server never applied the result. Synchronize positions, then
-                // resend the exact same idempotent result instead of taking a new shot.
-                if (this.game?.onGameStateUpdate) this.game.onGameStateUpdate(response);
+                // The server never applied the result. Keep the locally completed
+                // table intact and resend the exact same idempotent result instead
+                // of restoring the pre-shot snapshot or taking a new shot.
                 this.aiAwaitingResultSince = 0;
                 this.sendAiShotResult(pendingResult);
             } else {
-                this.applyAuthoritativeGameState(response);
+                this.applyAuthoritativeGameState(response, {
+                    aiResultAcknowledged: Boolean(pendingResult && !stillAiTurn)
+                });
             }
         };
         if (typeof this.socket.timeout === 'function') {
@@ -1683,7 +1705,7 @@ class NetworkManager {
                 console.warn('🤖 AI result was not acknowledged; state sync will retry.');
                 return;
             }
-            this.applyAuthoritativeGameState(response);
+            this.applyAuthoritativeGameState(response, { aiResultAcknowledged: true });
         };
         if (!this.socket || this.socket.connected === false) return;
         if (typeof this.socket.timeout === 'function') {
