@@ -31,6 +31,7 @@ class NetworkManager {
         this.aiStateSyncPending = false;
         this.lastAiResultPayload = null;
         this.aiResultSequence = 0;
+        this.aiConnectionRecoveryTimeout = null;
 
         // 8-Ball pocket call
         this.calledPocket = null;
@@ -103,6 +104,11 @@ class NetworkManager {
         this.socket.on('authenticated', (data) => {
             console.log('✅ Authenticated successfully');
             this.emit('authenticated', data);
+            if (this.isAiMatch && this.roomId && !data?.reconnected) {
+                window.setTimeout(() => this.requestAuthoritativeGameState(() => {
+                    this.recoverAiMatchLocally('The online game session was reset.');
+                }), 250);
+            }
         });
 
         this.socket.on('auth_error', (data) => {
@@ -287,6 +293,8 @@ class NetworkManager {
             this.isAiMatch = this.isAiMatch || hostIsBot || guestIsBot;
             if (Number.isFinite(Number(data.myPlayerNumber))) this.myPlayerNumber = Number(data.myPlayerNumber);
             if (this.isAiMatch) this.startAiTurnWatchdog();
+            if (this.aiConnectionRecoveryTimeout) clearTimeout(this.aiConnectionRecoveryTimeout);
+            this.aiConnectionRecoveryTimeout = null;
         });
 
         // Chat events
@@ -354,6 +362,13 @@ class NetworkManager {
             this.connected = false;
             this.resetAiTurnScheduling();
             this.stopAiTurnWatchdog();
+            if (this.aiConnectionRecoveryTimeout) clearTimeout(this.aiConnectionRecoveryTimeout);
+            if (this.isAiMatch && this.roomId) {
+                this.aiConnectionRecoveryTimeout = window.setTimeout(() => {
+                    this.aiConnectionRecoveryTimeout = null;
+                    if (!this.connected) this.recoverAiMatchLocally('Connection to the game server was lost.');
+                }, 10000);
+            }
             console.log('❌ Disconnected from server');
             this.emit('disconnected', {});
         });
@@ -619,12 +634,15 @@ class NetworkManager {
         }
     }
 
-    requestAuthoritativeGameState() {
+    requestAuthoritativeGameState(onUnavailable = null) {
         if (this.aiStateSyncPending || !this.socket?.connected || !this.roomId) return;
         this.aiStateSyncPending = true;
         const finish = (error, response) => {
             this.aiStateSyncPending = false;
-            if (error || !response?.success || !response.gameState) return;
+            if (error || !response?.success || !response.gameState) {
+                if (typeof onUnavailable === 'function') onUnavailable(error || response);
+                return;
+            }
             const stillAiTurn = response.gameState.currentPlayer !== this.myPlayerNumber;
             const pendingResult = this.lastAiResultPayload;
             if (stillAiTurn && pendingResult) {
@@ -642,6 +660,40 @@ class NetworkManager {
         } else {
             this.socket.emit('request_game_state', { roomId: this.roomId }, response => finish(null, response));
         }
+    }
+
+    recoverAiMatchLocally(reason) {
+        if (!this.isAiMatch || !this.game || this.game.gameState === 'gameover') return;
+        console.warn(`🤖 Recovering online AI match locally: ${reason}`);
+        this.resetAiTurnScheduling();
+        this.stopAiTurnWatchdog();
+        this.isAiMatch = false;
+        this.roomId = null;
+
+        const game = this.game;
+        game.balls?.forEach(ball => {
+            ball.vx = 0; ball.vy = 0; ball.spinX = 0; ball.spinY = 0;
+            if (ball.w) ball.w = { x: 0, y: 0, z: 0 };
+        });
+        game.isMultiplayer = false;
+        game.gameMode = 'ai';
+        game.myPlayerNumber = 1;
+        game.wasMyShot = false;
+        game.aiRecoveryCount = 0;
+        if (!game.aiPlayer && typeof AIPlayer !== 'undefined') {
+            game.aiPlayer = new AIPlayer(game.aiDifficulty || 'hard');
+        }
+        game.startLocalAIWatchdog?.();
+        if (game.currentPlayer === 2) {
+            game.gameState = 'waiting';
+            game.scheduleAITurn?.();
+        } else {
+            game.gameState = 'aiming';
+            game.isMyTurn = true;
+            game.startShotTimer?.();
+        }
+        game.updateTurnIndicator?.();
+        game.showMessage?.('MATCH RECOVERED', 'Continuing against AI offline.', 2200);
     }
 
     isAiTurnActive() {
@@ -1545,6 +1597,7 @@ class NetworkManager {
             // AI continues - trigger another AI turn
             console.log('🤖 AI continues its turn...');
             this.aiShotPending = false;
+            this.game.gameState = 'waiting';
             setTimeout(() => {
                 if (this.isAiTurnActive() && !this.aiShotPending) this.executeAiTurn({});
             }, 500);

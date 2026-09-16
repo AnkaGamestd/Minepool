@@ -187,4 +187,26 @@ assert.equal(recoveryRoom.gameState.currentPlayer, 1, 'A hard AI timeout must re
 assert.equal(recoveryRoom.gameState.ballInHand, true, 'A timed-out AI turn must grant ball-in-hand');
 assert.equal(livenessEvents.at(-1).payload.aiRecovered, true, 'The authoritative recovery update must be broadcast');
 
+const fallbackGame = {
+    ...game,
+    balls: [{ ...cueBall, active: true }, { ...objectBall }],
+    currentPlayer: 2,
+    gameState: 'shooting',
+    isMultiplayer: true,
+    gameMode: 'multiplayer',
+    startLocalAIWatchdog() { this.watchdogStarted = true; },
+    scheduleAITurn() { this.aiScheduled = true; this.gameState = 'waiting'; },
+    updateTurnIndicator() {},
+    showMessage() {}
+};
+const fallbackNetwork = new NetworkManager(fallbackGame);
+fallbackNetwork.isAiMatch = true;
+fallbackNetwork.roomId = 'lost-server-room';
+fallbackNetwork.recoverAiMatchLocally('test server restart');
+assert.equal(fallbackGame.isMultiplayer, false, 'A lost online AI room must fall back to a local AI match');
+assert.equal(fallbackGame.gameMode, 'ai');
+assert.equal(fallbackGame.watchdogStarted, true, 'The local AI watchdog must take ownership after fallback');
+assert.equal(fallbackGame.aiScheduled, true, 'An interrupted bot turn must be rescheduled locally');
+assert.equal(fallbackGame.gameState, 'waiting');
+
 console.log('PASS: AI recovers from stalls and server acknowledgements are idempotent');
