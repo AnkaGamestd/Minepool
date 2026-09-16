@@ -1271,9 +1271,11 @@ class NetworkManager {
                     const plannerGroup = aiGroup === 'solid' ? 'solids' : aiGroup === 'stripe' ? 'stripes' : null;
                     const planned = this.aiPlanner.calculateShot(this.game.gameState, freshBalls, freshCueBall, pockets, plannerGroup);
                     const plannedBall = freshBalls.find(ball => ball.id === planned?.targetBall);
+                    const plannedComboBall = freshBalls.find(ball => ball.id === planned?.comboBall);
                     if (planned && Number.isFinite(planned.angle) && Number.isFinite(planned.power) && plannedBall) {
                         bestShot = {
                             ball: plannedBall,
+                            comboBall: plannedComboBall,
                             pocket: planned.pocket,
                             ghostBall: planned.ghostBall,
                             angle: planned.angle,
@@ -1426,7 +1428,10 @@ class NetworkManager {
 
             // Better logging
             let shotTypeStr = 'DIRECT';
-            if (bestShot.isCombo) shotTypeStr = `COMBO (${bestShot.ball.id}→${bestShot.comboBall.id})`;
+            if (bestShot.isCombo) {
+                const comboTarget = bestShot.comboBall?.id ?? '?';
+                shotTypeStr = `COMBO (${bestShot.ball.id}→${comboTarget})`;
+            }
             else if (bestShot.isBank) shotTypeStr = 'BANK';
             else if (bestShot.isSafety) shotTypeStr = 'SAFETY';
 

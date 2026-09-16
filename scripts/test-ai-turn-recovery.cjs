@@ -209,6 +209,48 @@ assert.equal(fallbackGame.watchdogStarted, true, 'The local AI watchdog must tak
 assert.equal(fallbackGame.aiScheduled, true, 'An interrupted bot turn must be rescheduled locally');
 assert.equal(fallbackGame.gameState, 'waiting');
 
+timers.splice(0);
+context.AIPlayer = class {};
+let comboShotApplied = false;
+const comboGame = {
+    ...game,
+    balls: [
+        { ...cueBall, active: true, x: 200, y: 250 },
+        { ...objectBall, id: 9, type: 'stripe', x: 500, y: 250, active: true },
+        { ...objectBall, id: 10, type: 'stripe', x: 650, y: 250, active: true }
+    ],
+    currentPlayer: 2,
+    gameState: 'waiting',
+    tableState: 'closed',
+    playerTypes: { 1: 'solid', 2: 'stripe' },
+    ballInHand: false,
+    shotPocketedBalls: [],
+    physics: {
+        ...game.physics,
+        applyShot() { comboShotApplied = true; }
+    }
+};
+const comboNetwork = new NetworkManager(comboGame);
+comboNetwork.isAiMatch = true;
+comboNetwork.myPlayerNumber = 1;
+comboNetwork.roomId = 'combo-room';
+comboNetwork.socket = { connected: true, emit() {} };
+comboNetwork.aiPlanner = {
+    calculateShot() {
+        return {
+            type: 'combo',
+            targetBall: 9,
+            comboBall: 10,
+            angle: 0,
+            power: 0.65,
+            score: 100
+        };
+    }
+};
+comboNetwork.executeAiTurn({ gameState: { currentPlayer: 2, ballInHand: false } });
+timers.shift()();
+assert.equal(comboShotApplied, true, 'A planned combo shot must execute instead of crashing while its target is logged');
+
 const continuingGame = {
     ...game,
     balls: [{ ...cueBall, active: true }, { ...objectBall, active: false }],
