@@ -209,4 +209,23 @@ assert.equal(fallbackGame.watchdogStarted, true, 'The local AI watchdog must tak
 assert.equal(fallbackGame.aiScheduled, true, 'An interrupted bot turn must be rescheduled locally');
 assert.equal(fallbackGame.gameState, 'waiting');
 
+const continuingGame = {
+    ...game,
+    balls: [{ ...cueBall, active: true }, { ...objectBall, active: false }],
+    currentPlayer: 2,
+    gameState: 'shooting',
+    tableState: 'closed',
+    playerTypes: { 1: 'stripe', 2: 'solid' },
+    shotPocketedBalls: [{ id: 1, type: 'solid' }]
+};
+const continuingNetwork = new NetworkManager(continuingGame);
+continuingNetwork.isAiMatch = true;
+continuingNetwork.myPlayerNumber = 1;
+continuingNetwork.roomId = 'continue-room';
+continuingNetwork.aiShotPending = true;
+continuingNetwork.socket = { connected: true, emit() {} };
+continuingNetwork.waitForAiShotComplete();
+assert.equal(continuingGame.gameState, 'waiting', 'Consecutive AI turns must leave the completed shooting state');
+assert.equal(continuingNetwork.aiShotPending, false, 'The next AI shot must be allowed to schedule');
+
 console.log('PASS: AI recovers from stalls and server acknowledgements are idempotent');
