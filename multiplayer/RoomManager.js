@@ -34,6 +34,11 @@ class GameRoom {
         this.lastAction = Date.now();
         this.shotTimer = null;
         this.shotTimeLimit = 30; // seconds
+        // AI matches are simulated by the connected human client. These fields
+        // let the server independently detect a lost/stalled proxy turn so a
+        // match can never wait forever when a mobile timer is suspended.
+        this.aiRecoveryRequestedAt = 0;
+        this.aiRecoveryCount = 0;
         // Socket retries are expected on mobile networks. Keep a bounded set of
         // authoritative result ids so the same shot can never switch turns twice.
         this.processedShotResultIds = new Set();
@@ -269,6 +274,7 @@ class GameRoom {
     switchTurn() {
         this.gameState.currentPlayer =
             this.gameState.currentPlayer === 1 ? 2 : 1;
+        this.aiRecoveryRequestedAt = 0;
     }
 
     placeCueBall(x, y) {

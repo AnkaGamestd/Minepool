@@ -217,6 +217,17 @@ class NetworkManager {
             this.applyAuthoritativeGameState(data);
         });
 
+        this.socket.on('ai_turn_recovery_requested', (data) => {
+            if (!this.isAiMatch || (data?.roomId && data.roomId !== this.roomId)) return;
+            console.warn('🤖 Server requested AI turn recovery.');
+            this.requestAuthoritativeGameState();
+            if (this.isAiTurnActive() && !this.aiShotPending) {
+                this.retryAiTurn('server liveness request', 50);
+            } else {
+                this.ensureAiTurnProgress();
+            }
+        });
+
         this.socket.on('cue_ball_placed', (data) => {
             this.emit('cue_ball_placed', data);
             if (this.game && this.game.onCueBallPlaced) {
@@ -547,6 +558,10 @@ class NetworkManager {
         this.aiStateSyncPending = false;
         this.lastAiResultPayload = null;
         if (this.game?.onGameStateUpdate) this.game.onGameStateUpdate(data);
+        if (data.aiRecovered) {
+            this.resetAiTurnScheduling();
+            this.game?.showMessage?.('AI TURN RECOVERED', 'Your turn. Ball in hand.', 1800);
+        }
 
         console.log(`🔍 AI Check: isAiMatch=${this.isAiMatch}, gameOver=${data.gameOver}, aiShotPending=${this.aiShotPending}`);
         if (!this.isAiMatch || data.gameOver) return;
@@ -1370,6 +1385,10 @@ class NetworkManager {
             this.game.gameState = 'shooting';
             this.game.shotPocketedBalls = [];
             this.game.wasMyShot = false;
+
+            if (this.socket?.connected !== false && this.roomId) {
+                this.socket.emit('ai_turn_started', { roomId: this.roomId });
+            }
 
             this.game.physics.applyShot(freshCueBall, finalAngle, finalPower, spin.spinX, spin.spinY);
 

@@ -60,6 +60,7 @@ class MultiplayerServer {
             socket.on('aim_update', (data) => this.handleAimUpdate(socket, data));
             socket.on('take_shot', (data) => this.handleTakeShot(socket, data));
             socket.on('shot_result', (data, acknowledge) => this.handleShotResult(socket, data, acknowledge));
+            socket.on('ai_turn_started', (data) => this.handleAiTurnStarted(socket, data));
             socket.on('request_game_state', (data, acknowledge) => this.handleRequestGameState(socket, data, acknowledge));
             socket.on('cue_ball_placed', (data) => this.handleCueBallPlaced(socket, data));
             socket.on('request_rematch', () => this.handleRematchRequest(socket));
@@ -740,6 +741,63 @@ class MultiplayerServer {
         else socket.emit('game_state_update', payload);
     }
 
+    handleAiTurnStarted(socket, data) {
+        const player = this.connectedPlayers.get(socket.id);
+        const room = player ? this.roomManager.getPlayerRoom(player.id) : null;
+        if (!room || room.status !== 'playing' || !room.isAiMatch) return;
+        if (data?.roomId && data.roomId !== room.id) return;
+        const botPlayerNumber = room.host?.isBot ? 1 : room.guest?.isBot ? 2 : 0;
+        if (!botPlayerNumber || room.gameState.currentPlayer !== botPlayerNumber) return;
+        // The proxy has genuinely started simulating the bot shot. Give physics
+        // its own full deadline instead of measuring from the start of thinking.
+        room.lastAction = Date.now();
+        room.aiRecoveryRequestedAt = 0;
+    }
+
+    recoverStalledAiMatches(now = Date.now()) {
+        const RECOVERY_REQUEST_MS = 12000;
+        const HARD_TIMEOUT_MS = 30000;
+
+        for (const room of this.roomManager.rooms.values()) {
+            if (!room.isAiMatch || room.status !== 'playing') continue;
+
+            const botPlayerNumber = room.host?.isBot ? 1 : room.guest?.isBot ? 2 : 0;
+            if (!botPlayerNumber || room.gameState.currentPlayer !== botPlayerNumber) {
+                room.aiRecoveryRequestedAt = 0;
+                continue;
+            }
+
+            const stalledFor = Math.max(0, now - room.lastAction);
+            if (stalledFor >= RECOVERY_REQUEST_MS &&
+                (!room.aiRecoveryRequestedAt || now - room.aiRecoveryRequestedAt >= 5000)) {
+                room.aiRecoveryRequestedAt = now;
+                this.io.to(room.id).emit('ai_turn_recovery_requested', {
+                    roomId: room.id,
+                    currentPlayer: botPlayerNumber,
+                    stalledFor
+                });
+            }
+
+            if (stalledFor < HARD_TIMEOUT_MS) continue;
+
+            // A timed-out AI turn is treated as a foul. This guarantees forward
+            // progress even if the phone suspended JavaScript or lost the final
+            // shot result during a network transition.
+            room.gameState.ballInHand = true;
+            room.gameState.ballInHandKitchen = false;
+            room.switchTurn();
+            room.lastAction = now;
+            room.aiRecoveryCount = (room.aiRecoveryCount || 0) + 1;
+            this.io.to(room.id).emit('game_state_update', {
+                gameState: room.gameState,
+                balls: room.gameState.balls,
+                aiRecovered: true,
+                recoveryReason: 'ai_turn_timeout'
+            });
+            console.warn(`🤖 Recovered stalled AI turn in ${room.id} after ${stalledFor}ms`);
+        }
+    }
+
     handleCueBallPlaced(socket, data) {
         const player = this.connectedPlayers.get(socket.id);
         if (!player) return;
@@ -1156,6 +1214,10 @@ class MultiplayerServer {
 
     // === Background Tasks ===
     startBackgroundTasks() {
+        // Server-side liveness guard. Client watchdogs improve responsiveness,
+        // but only the server can guarantee that an AI match always progresses.
+        setInterval(() => this.recoverStalledAiMatches(), 1000);
+
         // Process matchmaking queues every 2 seconds (with AI fallback)
         setInterval(() => {
             const allTiers = ['casual', 'competitive', 'highStakes', 'bronze', 'silver', 'gold', 'diamond', 'ruby', 'crown'];

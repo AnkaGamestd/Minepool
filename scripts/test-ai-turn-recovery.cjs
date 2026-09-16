@@ -163,4 +163,28 @@ assert.equal(reconnectRooms.rebindPlayerConnection(reconnectRoom.id, 'old-socket
 assert.equal(reconnectRooms.getPlayerRoom('old-socket'), null, 'The stale socket must be removed after reconnect');
 assert.equal(reconnectRooms.getPlayerRoom('new-socket'), reconnectRoom, 'The reconnected socket must remain bound to its active game');
 
+const recoveryRooms = new RoomManager();
+const recoveryRoom = recoveryRooms.createRoom({ id: 'human-timeout', username: 'Human' });
+recoveryRooms.joinRoom(recoveryRoom.id, { id: 'bot-timeout', username: 'AI_Test', isBot: true });
+recoveryRoom.isAiMatch = true;
+recoveryRoom.startGame();
+recoveryRoom.gameState.currentPlayer = 2;
+recoveryRoom.lastAction = 1000;
+const livenessEvents = [];
+const livenessServer = Object.create(MultiplayerServer.prototype);
+livenessServer.roomManager = recoveryRooms;
+livenessServer.connectedPlayers = new Map([['human-timeout', { id: 'human-timeout' }]]);
+livenessServer.io = { to: roomId => ({ emit(event, payload) { livenessEvents.push({ roomId, event, payload }); } }) };
+livenessServer.recoverStalledAiMatches(14000);
+assert.equal(recoveryRoom.gameState.currentPlayer, 2, 'A recovery request must not steal an active AI turn');
+assert.equal(livenessEvents.at(-1).event, 'ai_turn_recovery_requested', 'The server must request recovery before timing out the bot');
+const actionBeforeHeartbeat = recoveryRoom.lastAction;
+livenessServer.handleAiTurnStarted({ id: 'human-timeout' }, { roomId: recoveryRoom.id });
+assert.ok(recoveryRoom.lastAction > actionBeforeHeartbeat, 'Starting a real AI shot must refresh the server deadline');
+recoveryRoom.lastAction = 1000;
+livenessServer.recoverStalledAiMatches(32000);
+assert.equal(recoveryRoom.gameState.currentPlayer, 1, 'A hard AI timeout must return the turn to the human');
+assert.equal(recoveryRoom.gameState.ballInHand, true, 'A timed-out AI turn must grant ball-in-hand');
+assert.equal(livenessEvents.at(-1).payload.aiRecovered, true, 'The authoritative recovery update must be broadcast');
+
 console.log('PASS: AI recovers from stalls and server acknowledgements are idempotent');

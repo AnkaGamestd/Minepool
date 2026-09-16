@@ -85,6 +85,8 @@ class PoolGame {
         this.aiPlayer = null;
         this.aiTurnTimeout = null;
         this.aiRecoveryCount = 0;
+        this.aiLivenessInterval = null;
+        this.aiTurnBeganAt = 0;
 
         // MINICLIP FEATURES
         this.shotTimer = null;
@@ -307,8 +309,10 @@ class PoolGame {
             if (this.aiTurnTimeout) clearTimeout(this.aiTurnTimeout);
             this.aiTurnTimeout = null;
             this.aiRecoveryCount = 0;
+            this.stopLocalAIWatchdog();
             if ((mode === 'ai' || mode === 'tournament') && typeof AIPlayer !== 'undefined') {
                 this.aiPlayer = new AIPlayer(this.aiDifficulty || 'medium');
+                this.startLocalAIWatchdog();
             } else {
                 this.aiPlayer = null;
             }
@@ -1277,12 +1281,48 @@ class PoolGame {
         return !this.isMultiplayer && (this.gameMode === 'ai' || this.gameMode === 'tournament') && this.currentPlayer === 2;
     }
 
+    startLocalAIWatchdog() {
+        this.stopLocalAIWatchdog();
+        this.aiLivenessInterval = setInterval(() => {
+            try { this.ensureLocalAIProgress(); }
+            catch (error) { console.error('Local AI watchdog recovered from an error:', error); }
+        }, 1000);
+    }
+
+    stopLocalAIWatchdog() {
+        if (this.aiLivenessInterval) clearInterval(this.aiLivenessInterval);
+        this.aiLivenessInterval = null;
+    }
+
+    ensureLocalAIProgress() {
+        if (!this.isLocalAITurn() || this.gameState === 'gameover') return;
+
+        if (this.gameState === 'shooting') {
+            const resolvingFor = this.shotResolutionStartedAt ? Date.now() - this.shotResolutionStartedAt : 0;
+            if (resolvingFor < 22000) return;
+            console.warn('Local AI shot stalled; forcing physics to settle.');
+            this.balls.forEach(ball => {
+                ball.vx = 0; ball.vy = 0; ball.spinX = 0; ball.spinY = 0;
+                if (ball.w) ball.w = { x: 0, y: 0, z: 0 };
+            });
+            return;
+        }
+
+        // Timers can be dropped when Android suspends/resumes the WebView. If
+        // the AI owns the turn but no callback is armed, recreate it.
+        if (!this.aiTurnTimeout) {
+            console.warn('Local AI turn was idle; rescheduling it.');
+            this.scheduleAITurn();
+        }
+    }
+
     scheduleAITurn() {
         if (!this.isLocalAITurn() || this.gameState === 'gameover') return;
         if (!this.aiPlayer && typeof AIPlayer !== 'undefined') this.aiPlayer = new AIPlayer(this.aiDifficulty || 'medium');
         if (this.aiTurnTimeout) clearTimeout(this.aiTurnTimeout);
         this.stopShotTimer();
         this.gameState = 'waiting';
+        this.aiTurnBeganAt = Date.now();
         this.canvas.style.cursor = 'default';
         const delay = Math.min(1800, Math.max(650, this.aiPlayer?.getThinkingTime?.() || 900));
         this.updateTurnIndicator();
@@ -1584,6 +1624,8 @@ class PoolGame {
 
     showWinner(winnerNum, reason, wager = 0, currency = 'coins') {
         if (!this.winnerScreen) return;
+
+        this.stopLocalAIWatchdog();
 
         const isWinner = (winnerNum === this.myPlayerNumber);
         const resultTitle = this.winnerScreen.querySelector('.result-title');
@@ -2056,6 +2098,7 @@ class PoolGame {
     }
 
     showWinner(player, reason) {
+        this.stopLocalAIWatchdog();
         let winnerText;
         let isWin = false;
 
