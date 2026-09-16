@@ -99,7 +99,8 @@ class GameRoom {
             vy: 0,
             active: true,
             spinX: 0,
-            spinY: 0
+            spinY: 0,
+            type: 'cue'
         });
 
         // Rack balls - proper 8-ball order
@@ -119,7 +120,8 @@ class GameRoom {
                     vy: 0,
                     active: true,
                     spinX: 0,
-                    spinY: 0
+                    spinY: 0,
+                    type: this.getBallType(id)
                 });
                 ballIndex++;
             }
@@ -174,7 +176,27 @@ class GameRoom {
     }
 
     updateBallPositions(balls) {
-        this.gameState.balls = balls;
+        if (!Array.isArray(balls)) return;
+        const existingById = new Map(this.gameState.balls.map(ball => [Number(ball.id), ball]));
+        this.gameState.balls = balls.map(ball => {
+            const id = Number(ball.id);
+            const existing = existingById.get(id) || {};
+            return {
+                ...existing,
+                ...ball,
+                id,
+                type: ball.type || existing.type || this.getBallType(id)
+            };
+        });
+    }
+
+    getBallType(id) {
+        const ballId = Number(id);
+        if (ballId === 0) return 'cue';
+        if (ballId === 8) return 'eight';
+        if (ballId >= 1 && ballId <= 7) return 'solid';
+        if (ballId >= 9 && ballId <= 15) return 'stripe';
+        return null;
     }
 
     handleShotResult(result) {

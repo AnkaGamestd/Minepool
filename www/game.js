@@ -447,12 +447,13 @@ class PoolGame {
             this.gameState = 'aiming';
 
             if (data.gameState && data.gameState.balls) {
-                this.balls = data.gameState.balls;
+                this.mergeAuthoritativeBalls(data.gameState.balls, true);
             }
 
             this.currentPlayer = data.gameState?.currentPlayer || 1;
             this.isMyTurn = (this.currentPlayer === this.myPlayerNumber);
-            this.tableState = data.gameState?.tableOpen ? 'open' : 'assigned';
+            this.gameState = this.isMyTurn ? 'aiming' : 'waiting';
+            this.tableState = data.gameState?.tableOpen ? 'open' : 'closed';
             this.playerTypes = data.gameState?.playerTypes || { 1: null, 2: null };
             this.rebuildBallRacksFromState();
             this.isBreakShot = data.gameState?.isBreakShot || false;
@@ -461,7 +462,8 @@ class PoolGame {
 
             this.updateTurnIndicator();
             this.showMessage('RECONNECTED', 'You have rejoined the game!');
-            this.startShotTimer();
+            if (this.isMyTurn) this.checkCallPocket();
+            else this.stopShotTimer();
             this.animate();
         } catch (error) {
             console.error('Error rejoining game:', error);
@@ -955,6 +957,41 @@ class PoolGame {
         return this.gameState === 'aiming' && (!this.isMultiplayer || this.isMyTurn);
     }
 
+    getBallType(ballOrId) {
+        const id = Number(typeof ballOrId === 'object' ? ballOrId?.id : ballOrId);
+        const explicitType = typeof ballOrId === 'object' ? ballOrId?.type : null;
+        if (explicitType === 'cue' || explicitType === 'eight' || explicitType === 'solid' || explicitType === 'stripe') {
+            return explicitType;
+        }
+        if (id === 0) return 'cue';
+        if (id === 8) return 'eight';
+        if (id >= 1 && id <= 7) return 'solid';
+        if (id >= 9 && id <= 15) return 'stripe';
+        return null;
+    }
+
+    mergeAuthoritativeBalls(serverBalls, replace = false) {
+        if (!Array.isArray(serverBalls)) return;
+        const localById = new Map((this.balls || []).map(ball => [Number(ball.id), ball]));
+        const merged = serverBalls.map(serverBall => {
+            const id = Number(serverBall.id);
+            const localBall = localById.get(id) || {};
+            return {
+                vx: 0,
+                vy: 0,
+                spinX: 0,
+                spinY: 0,
+                rotation: 0,
+                ...localBall,
+                ...serverBall,
+                id,
+                type: this.getBallType(serverBall) || this.getBallType(localBall) || this.getBallType(id)
+            };
+        });
+        if (replace) this.balls = merged;
+        return merged;
+    }
+
     cancelCueInput() {
         this.powerPointer = null; this.spinPointer = null;
         this.isDraggingBall = false;
@@ -1263,15 +1300,19 @@ class PoolGame {
             this.gameState = 'calling-pocket';
             this.stopShotTimer();
 
-            // Use NetworkManager overlay for visual pocket selection
-            if (window.networkManager && window.networkManager.showPocketCallOverlay) {
-                console.log('🎱 Showing pocket call overlay for 8-ball shot');
-                window.networkManager.showPocketCallOverlay();
+            // Use the responsive modal that is part of the current game layout.
+            if (this.callPocketModal) {
+                console.log('🎱 Showing pocket call modal for 8-ball shot');
+                this.callPocketModal.classList.remove('hidden');
             } else {
                 // Fallback to message
                 this.showMessage('CALL POCKET', 'Click on a pocket to call your 8-ball shot', 5000);
             }
         } else {
+            this.needsCallPocket = false;
+            if (this.gameState === 'calling-pocket') this.gameState = 'aiming';
+            this.callPocketModal?.classList.add('hidden');
+            window.networkManager?.hidePocketCallOverlay?.();
             if (this.isLocalAITurn()) this.scheduleAITurn();
             else this.startShotTimer();
         }
@@ -1545,8 +1586,6 @@ class PoolGame {
                     console.log('   - Cue ball reactivated for my turn');
                 }
 
-                // Check if player needs to call pocket for 8-ball, or start normal timer
-                this.checkCallPocket();
             } else if (!this.isMyTurn) {
                 // If it's not my turn, set to waiting
                 this.gameState = 'waiting';
@@ -1563,8 +1602,9 @@ class PoolGame {
         // 2. Sync Ball Positions
         if (data.balls) {
             console.log(`   - Syncing ${data.balls.length} ball positions`);
+            const normalizedBalls = this.mergeAuthoritativeBalls(data.balls);
             // Update local balls with server state to fix drift
-            data.balls.forEach(serverBall => {
+            normalizedBalls.forEach(serverBall => {
                 const localBall = this.balls.find(b => b.id === serverBall.id);
                 if (localBall) {
                     const oldX = localBall.x;
@@ -1601,6 +1641,11 @@ class PoolGame {
         } else {
             console.log('   - No ball data in update');
         }
+
+        // Call-pocket eligibility must be evaluated only after authoritative ball
+        // activity and types have been merged. Checking stale pre-sync balls can
+        // incorrectly put a player on the 8-ball after reconnecting.
+        if (this.isMyTurn && this.gameState !== 'gameover') this.checkCallPocket();
 
         // 3. Sync Game Over State
         if (data.gameOver) {
@@ -2201,8 +2246,11 @@ class PoolGame {
 
     isGroupCleared(group) {
         if (!group) return false;
-        // Check if any active balls of this type exist
-        return !this.balls.some(b => b.active && b.type === group);
+        const normalizedGroup = group === 'solids' ? 'solid' : group === 'stripes' ? 'stripe' : group;
+        // Ball numbers are authoritative. Reconnect payloads from older servers
+        // may not contain `type`, so never infer that a group is cleared from a
+        // missing cosmetic field.
+        return !this.balls.some(b => b.active && this.getBallType(b) === normalizedGroup);
     }
 
     hasOtherBalls() {

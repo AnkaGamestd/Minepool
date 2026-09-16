@@ -189,7 +189,7 @@ class MultiplayerServer {
                 this.roomManager.rebindPlayerConnection(room.id, previousSocketId, socket.id);
 
                 // Notify reconnection
-                this.io.to(room.id).emit('opponent_reconnected', {
+                socket.to(room.id).emit('opponent_reconnected', {
                     reconnectedPlayer: user.username,
                     playerNumber: disconnectData.playerNumber
                 });

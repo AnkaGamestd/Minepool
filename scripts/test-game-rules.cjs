@@ -85,4 +85,22 @@ assert.equal(game.stripesRack.balls.get(9).className, 'rack-ball pocketed stripe
 assert.equal(game.stripesRack.balls.get(10).className, 'rack-ball empty');
 assert.equal(game.stripesRack.balls.get(9).style.values['--ball-color'], 'color-9');
 
+game.balls = [
+    { id: 0, active: true },
+    { id: 2, active: true },
+    { id: 10, active: false },
+    { id: 8, active: true }
+];
+assert.equal(game.isGroupCleared('solid'), false, 'A reconnect payload without type must still see remaining solids by number');
+assert.equal(game.isGroupCleared('stripe'), true, 'A group is cleared only when all numbered balls are inactive');
+const mergedBalls = game.mergeAuthoritativeBalls([
+    { id: 0, x: 100, y: 100, active: true },
+    { id: 2, x: 300, y: 200, active: true },
+    { id: 10, x: 400, y: 200, active: false },
+    { id: 8, x: 500, y: 200, active: true }
+]);
+assert.equal(mergedBalls.find(ball => ball.id === 2).type, 'solid');
+assert.equal(mergedBalls.find(ball => ball.id === 10).type, 'stripe');
+assert.equal(mergedBalls.find(ball => ball.id === 8).type, 'eight');
+
 console.log('PASS: group ownership, pocketed-ball HUD and direct 360-degree touch aiming stay consistent');

@@ -18,6 +18,7 @@ const context = {
     },
     clearTimeout() {}
 };
+context.window.setTimeout = context.setTimeout;
 vm.runInNewContext(source, context);
 const NetworkManager = context.window.NetworkManager;
 
@@ -162,6 +163,45 @@ reconnectRoom.host.id = 'new-socket';
 assert.equal(reconnectRooms.rebindPlayerConnection(reconnectRoom.id, 'old-socket', 'new-socket'), true);
 assert.equal(reconnectRooms.getPlayerRoom('old-socket'), null, 'The stale socket must be removed after reconnect');
 assert.equal(reconnectRooms.getPlayerRoom('new-socket'), reconnectRoom, 'The reconnected socket must remain bound to its active game');
+assert.equal(reconnectRoom.gameState.balls.find(ball => ball.id === 1).type, 'solid', 'Server snapshots must carry ball groups');
+reconnectRoom.updateBallPositions([{ id: 1, x: 123, y: 234, active: true }]);
+assert.equal(reconnectRoom.gameState.balls[0].type, 'solid', 'Position updates must restore missing ball types by number');
+
+const socketHandlers = {};
+const reconnectingGame = {
+    ...game,
+    currentPlayer: 2,
+    gameState: 'shooting',
+    isMultiplayer: true,
+    hideReconnectionTimer() { this.reconnectTimerHidden = true; },
+    onGameRejoin() { this.rejoinSnapshotApplied = true; }
+};
+const reconnectingNetwork = new NetworkManager(reconnectingGame);
+reconnectingNetwork.isAiMatch = true;
+reconnectingNetwork.myPlayerNumber = 1;
+reconnectingNetwork.roomId = 'in-flight-room';
+reconnectingNetwork.aiShotPending = true;
+reconnectingNetwork.aiShotPollTimeout = 99;
+reconnectingNetwork.startAiTurnWatchdog = () => {};
+reconnectingNetwork.socket = {
+    connected: true,
+    on(event, handler) { socketHandlers[event] = handler; },
+    emit() {}
+};
+reconnectingNetwork.setupEventListeners();
+socketHandlers.disconnect();
+assert.equal(reconnectingNetwork.aiShotPending, true, 'Disconnecting during moving balls must not cancel the AI shot');
+assert.equal(reconnectingNetwork.aiShotInFlightAtDisconnect, true);
+socketHandlers.game_rejoin({
+    roomId: 'in-flight-room',
+    myPlayerNumber: 1,
+    host: { id: 'human' },
+    guest: { id: 'bot', isBot: true },
+    gameState: { currentPlayer: 2, balls: [] }
+});
+assert.equal(reconnectingGame.rejoinSnapshotApplied, undefined, 'A stale reconnect snapshot must not replace moving balls');
+assert.equal(reconnectingGame.gameState, 'shooting');
+assert.equal(reconnectingNetwork.aiShotPending, true, 'The original AI shot must remain the only active shot after reconnect');
 
 const recoveryRooms = new RoomManager();
 const recoveryRoom = recoveryRooms.createRoom({ id: 'human-timeout', username: 'Human' });
@@ -235,6 +275,24 @@ comboNetwork.isAiMatch = true;
 comboNetwork.myPlayerNumber = 1;
 comboNetwork.roomId = 'combo-room';
 comboNetwork.socket = { connected: true, emit() {} };
+comboGame.tableState = 'open';
+const inferredSolidTarget = comboNetwork.findBestBallForAi([
+    { id: 0, x: 100, y: 100, active: true },
+    { id: 3, x: 300, y: 200, active: true },
+    { id: 8, x: 500, y: 200, active: true },
+    { id: 11, x: 600, y: 200, active: true }
+]);
+comboGame.tableState = 'closed';
+comboGame.playerTypes[2] = 'solid';
+const groupSafeTarget = comboNetwork.findBestBallForAi([
+    { id: 0, x: 100, y: 100, active: true },
+    { id: 3, x: 300, y: 200, active: true },
+    { id: 8, x: 500, y: 200, active: true },
+    { id: 11, x: 600, y: 200, active: true }
+]);
+assert.notEqual(inferredSolidTarget?.id, 8, 'An open table must never target the 8-ball');
+assert.equal(groupSafeTarget?.id, 3, 'Missing type fields must not make the AI skip a remaining group ball for the 8-ball');
+comboGame.playerTypes[2] = 'stripe';
 comboNetwork.aiPlanner = {
     calculateShot() {
         return {

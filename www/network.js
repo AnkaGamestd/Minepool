@@ -32,6 +32,7 @@ class NetworkManager {
         this.lastAiResultPayload = null;
         this.aiResultSequence = 0;
         this.aiConnectionRecoveryTimeout = null;
+        this.aiShotInFlightAtDisconnect = false;
 
         // 8-Ball pocket call
         this.calledPocket = null;
@@ -284,17 +285,40 @@ class NetworkManager {
         this.socket.on('game_rejoin', (data) => {
             console.log('🔄 Rejoining game:', data.roomId);
             this.roomId = data.roomId;
-            this.emit('game_rejoin', data);
-            if (this.game && this.game.onGameRejoin) {
-                this.game.onGameRejoin(data);
-            }
             const hostIsBot = Boolean(data.host?.isBot);
             const guestIsBot = Boolean(data.guest?.isBot);
             this.isAiMatch = this.isAiMatch || hostIsBot || guestIsBot;
             if (Number.isFinite(Number(data.myPlayerNumber))) this.myPlayerNumber = Number(data.myPlayerNumber);
+            const resumeInFlightShot = Boolean(
+                this.aiShotInFlightAtDisconnect &&
+                this.aiShotPending &&
+                this.game?.gameState === 'shooting'
+            );
+            const pendingResult = this.lastAiResultPayload;
+            this.emit('game_rejoin', data);
+            if (resumeInFlightShot) {
+                // The local device is the physics authority for an AI match. Do
+                // not replace a moving table with the server's pre-shot snapshot;
+                // let the same shot finish and submit it once after reconnecting.
+                this.game.isMultiplayer = true;
+                this.game.roomId = data.roomId;
+                this.game.myPlayerNumber = this.myPlayerNumber;
+                this.game.isMyTurn = false;
+                this.game.hideReconnectionTimer?.();
+                console.log('🤖 Resuming the in-flight AI shot after reconnect.');
+            } else if (this.game && this.game.onGameRejoin) {
+                this.game.onGameRejoin(data);
+            }
             if (this.isAiMatch) this.startAiTurnWatchdog();
             if (this.aiConnectionRecoveryTimeout) clearTimeout(this.aiConnectionRecoveryTimeout);
             this.aiConnectionRecoveryTimeout = null;
+            this.aiShotInFlightAtDisconnect = false;
+            if (pendingResult) {
+                // The result id is stable, so this is safe whether the server
+                // received the first submission or the connection dropped first.
+                this.aiAwaitingResultSince = Date.now();
+                this.sendAiShotResult(pendingResult);
+            }
         });
 
         // Chat events
@@ -360,14 +384,35 @@ class NetworkManager {
         // Disconnect
         this.socket.on('disconnect', () => {
             this.connected = false;
-            this.resetAiTurnScheduling();
+            const preserveInFlightShot = Boolean(
+                this.isAiMatch &&
+                this.roomId &&
+                this.aiShotPending &&
+                this.game?.gameState === 'shooting'
+            );
+            const preservePendingResult = Boolean(this.isAiMatch && this.roomId && this.lastAiResultPayload);
+            if (preserveInFlightShot) {
+                this.aiShotInFlightAtDisconnect = true;
+                if (this.aiThinkTimeout) clearTimeout(this.aiThinkTimeout);
+                if (this.aiTurnRetryTimeout) clearTimeout(this.aiTurnRetryTimeout);
+                this.aiThinkTimeout = null;
+                this.aiTurnRetryTimeout = null;
+                console.warn('🤖 Connection dropped during an AI shot; preserving the running simulation.');
+            } else if (preservePendingResult) {
+                this.clearAiTurnTimers();
+                this.aiShotPending = false;
+                this.aiPendingSince = 0;
+                console.warn('🤖 Connection dropped while submitting an AI result; preserving its id for retry.');
+            } else {
+                this.resetAiTurnScheduling();
+            }
             this.stopAiTurnWatchdog();
             if (this.aiConnectionRecoveryTimeout) clearTimeout(this.aiConnectionRecoveryTimeout);
             if (this.isAiMatch && this.roomId) {
                 this.aiConnectionRecoveryTimeout = window.setTimeout(() => {
                     this.aiConnectionRecoveryTimeout = null;
                     if (!this.connected) this.recoverAiMatchLocally('Connection to the game server was lost.');
-                }, 10000);
+                }, 25000);
             }
             console.log('❌ Disconnected from server');
             this.emit('disconnected', {});
@@ -669,6 +714,12 @@ class NetworkManager {
         this.stopAiTurnWatchdog();
         this.isAiMatch = false;
         this.roomId = null;
+        if (this.aiConnectionRecoveryTimeout) clearTimeout(this.aiConnectionRecoveryTimeout);
+        this.aiConnectionRecoveryTimeout = null;
+        // This is a deliberate one-way fallback. Stop Socket.IO auto-reconnect so
+        // a late connection cannot rejoin the abandoned room and overwrite the
+        // offline match that the player is already continuing.
+        if (this.socket) this.socket.disconnect();
 
         const game = this.game;
         game.balls?.forEach(ball => {
@@ -809,6 +860,9 @@ class NetworkManager {
             }
             // Get fresh ball references
             const freshBalls = this.game.balls || [];
+            freshBalls.forEach(ball => {
+                if (!ball.type) ball.type = this.getBallType(ball);
+            });
             let freshCueBall = this.prepareAiCueBall(freshBalls, Boolean(data?.gameState?.ballInHand));
             if (!freshCueBall) {
                 this.retryAiTurn('cue ball was unavailable after thinking');
@@ -859,7 +913,7 @@ class NetworkManager {
 
             // Determine AI's target group (AI is typically player 2)
             const aiPlayerNum = this.myPlayerNumber === 1 ? 2 : 1;
-            const aiGroup = this.game.playerTypes ? this.game.playerTypes[aiPlayerNum] : null;
+            const aiGroup = this.normalizeGroup(this.game.playerTypes ? this.game.playerTypes[aiPlayerNum] : null);
             console.log(`🤖 AI is Player ${aiPlayerNum}, Group: ${aiGroup || 'OPEN'}`);
 
             // Find valid target balls based on game state
@@ -872,7 +926,7 @@ class NetworkManager {
                 console.log('🤖 Open table - targeting any ball');
             } else {
                 // Closed table - target own group
-                const ownBalls = activeBalls.filter(b => b.type === aiGroup);
+                const ownBalls = activeBalls.filter(b => this.getBallType(b) === aiGroup);
 
                 if (ownBalls.length > 0) {
                     // Still have own balls - target them
@@ -1506,18 +1560,21 @@ class NetworkManager {
 
         // Get AI's player number and group
         const aiPlayerNum = this.myPlayerNumber === 1 ? 2 : 1;
-        const aiGroup = this.game.playerTypes ? this.game.playerTypes[aiPlayerNum] : null;
+        const aiGroup = this.normalizeGroup(this.game.playerTypes ? this.game.playerTypes[aiPlayerNum] : null);
 
         // Check what balls were pocketed this shot (tracked in shotPocketedBalls)
         const pocketedBalls = this.game.shotPocketedBalls || [];
-        console.log(`🤖 Pocketed balls this shot:`, pocketedBalls.map(b => `${b.id}(${b.type})`));
+        pocketedBalls.forEach(ball => {
+            if (!ball.type) ball.type = this.getBallType(ball);
+        });
+        console.log(`🤖 Pocketed balls this shot:`, pocketedBalls.map(b => `${b.id}(${this.getBallType(b)})`));
 
         // Check if 8-ball was pocketed - GAME OVER
         const eightBallPocketed = pocketedBalls.some(b => b.id === 8);
         if (eightBallPocketed) {
             // Check if AI won or lost
             const aiHadAllBallsCleared = this.game.balls.filter(b =>
-                b.id > 0 && b.id !== 8 && b.type === aiGroup && b.active
+                b.id > 0 && b.id !== 8 && this.getBallType(b) === aiGroup && b.active
             ).length === 0;
 
             let winner, reason;
@@ -1582,16 +1639,17 @@ class NetworkManager {
             if (legalPockets.length > 0) {
                 // Assign group based on what was pocketed
                 const pocketedBall = legalPockets[0];
-                this.game.playerTypes[aiPlayerNum] = pocketedBall.type;
+                const pocketedType = this.getBallType(pocketedBall);
+                this.game.playerTypes[aiPlayerNum] = pocketedType;
                 const humanPlayerNum = this.myPlayerNumber;
-                this.game.playerTypes[humanPlayerNum] = pocketedBall.type === 'solid' ? 'stripe' : 'solid';
+                this.game.playerTypes[humanPlayerNum] = pocketedType === 'solid' ? 'stripe' : 'solid';
                 this.game.tableState = 'closed';
-                console.log(`🤖 AI assigned to ${pocketedBall.type}s, continues turn!`);
+                console.log(`🤖 AI assigned to ${pocketedType}s, continues turn!`);
                 aiContinues = true;
             }
         } else {
             // Closed table - AI continues if pocketed its own group
-            const ownBallsPocketed = pocketedBalls.filter(b => b.type === aiGroup);
+            const ownBallsPocketed = pocketedBalls.filter(b => this.getBallType(b) === aiGroup);
             if (ownBallsPocketed.length > 0) {
                 console.log(`🤖 AI pocketed ${ownBallsPocketed.length} ${aiGroup}(s), continues turn!`);
                 aiContinues = true;
@@ -1685,7 +1743,7 @@ class NetworkManager {
     // Helper: Find the best ball for AI to target (for ball-in-hand positioning)
     findBestBallForAi(balls) {
         const aiPlayerNum = this.myPlayerNumber === 1 ? 2 : 1;
-        const aiGroup = this.game.playerTypes ? this.game.playerTypes[aiPlayerNum] : null;
+        const aiGroup = this.normalizeGroup(this.game.playerTypes ? this.game.playerTypes[aiPlayerNum] : null);
 
         let targetBalls = balls.filter(b => b.id > 0 && b.active);
 
@@ -1694,7 +1752,7 @@ class NetworkManager {
             targetBalls = targetBalls.filter(b => b.id !== 8);
         } else {
             // Closed table
-            const ownBalls = targetBalls.filter(b => b.type === aiGroup);
+            const ownBalls = targetBalls.filter(b => this.getBallType(b) === aiGroup);
             if (ownBalls.length > 0) {
                 targetBalls = ownBalls;
             } else {
@@ -1726,16 +1784,35 @@ class NetworkManager {
         return bestBall || targetBalls[0];
     }
 
+    normalizeGroup(group) {
+        if (group === 'solids') return 'solid';
+        if (group === 'stripes') return 'stripe';
+        return group === 'solid' || group === 'stripe' ? group : null;
+    }
+
+    getBallType(ballOrId) {
+        const id = Number(typeof ballOrId === 'object' ? ballOrId?.id : ballOrId);
+        const explicitType = typeof ballOrId === 'object' ? ballOrId?.type : null;
+        if (explicitType === 'cue' || explicitType === 'eight' || explicitType === 'solid' || explicitType === 'stripe') {
+            return explicitType;
+        }
+        if (id === 0) return 'cue';
+        if (id === 8) return 'eight';
+        if (id >= 1 && id <= 7) return 'solid';
+        if (id >= 9 && id <= 15) return 'stripe';
+        return null;
+    }
+
     // Check if current player is shooting at 8-ball (all own balls cleared)
     isShootingAtEightBall() {
         if (!this.game || !this.game.balls) return false;
 
-        const myGroup = this.game.playerTypes ? this.game.playerTypes[this.myPlayerNumber] : null;
+        const myGroup = this.normalizeGroup(this.game.playerTypes ? this.game.playerTypes[this.myPlayerNumber] : null);
         if (!myGroup) return false;
 
         // Check if all balls of my group are pocketed
         const myBallsRemaining = this.game.balls.filter(b =>
-            b.id > 0 && b.id !== 8 && b.type === myGroup && b.active
+            b.id > 0 && b.id !== 8 && this.getBallType(b) === myGroup && b.active
         ).length;
 
         return myBallsRemaining === 0;
@@ -1818,8 +1895,10 @@ class NetworkManager {
     showPocketCallOverlay() {
         console.log('🎱 Showing pocket call overlay');
         this.createPocketCallOverlay();
+        if (!this.pocketCallOverlay) return false;
         this.pocketCallOverlay.style.display = 'block';
         this.needsPocketCall = true;
+        return true;
     }
 
     // Hide pocket call overlay
