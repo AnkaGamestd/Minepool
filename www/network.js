@@ -1698,6 +1698,7 @@ class NetworkManager {
         console.log(`🤖 Sending AI shot result to server (foul=${isFoul})...`);
         this.aiShotPending = false;
         this.aiShotStartedAt = 0;
+        const canWaitForServer = Boolean(this.socket?.connected && this.roomId);
 
         // Tell server that AI's shot is done
         if (this.socket && this.roomId) {
@@ -1725,14 +1726,15 @@ class NetworkManager {
         }
 
         // If foul, set up ball-in-hand for human immediately
-        if (isFoul) {
-            this.game.ballInHand = true;
+        if (isFoul || !canWaitForServer) {
+            this.game.ballInHand = Boolean(isFoul);
             this.game.currentPlayer = this.myPlayerNumber;
             this.game.isMyTurn = true;
             this.game.gameState = 'aiming';
             this.game.updateTurnIndicator();
             this.game.startShotTimer();
-            console.log('🎱 Ball-in-hand granted! Drag cue ball to position.');
+            if (isFoul) console.log('🎱 Ball-in-hand granted! Drag cue ball to position.');
+            else console.log('🤖 AI turn completed offline; restoring the human turn locally.');
         } else {
             // Normal turn switch - wait for server confirmation
             this.game.gameState = 'waiting';

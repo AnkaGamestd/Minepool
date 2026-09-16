@@ -203,6 +203,24 @@ assert.equal(reconnectingGame.rejoinSnapshotApplied, undefined, 'A stale reconne
 assert.equal(reconnectingGame.gameState, 'shooting');
 assert.equal(reconnectingNetwork.aiShotPending, true, 'The original AI shot must remain the only active shot after reconnect');
 
+const offlineTurnGame = {
+    ...game,
+    currentPlayer: 2,
+    gameState: 'shooting',
+    ballInHand: false,
+    updateTurnIndicator() { this.turnUpdated = true; },
+    startShotTimer() { this.timerStarted = true; }
+};
+const offlineTurnNetwork = new NetworkManager(offlineTurnGame);
+offlineTurnNetwork.isAiMatch = true;
+offlineTurnNetwork.myPlayerNumber = 1;
+offlineTurnNetwork.roomId = 'offline-result-room';
+offlineTurnNetwork.socket = { connected: false, emit() {} };
+offlineTurnNetwork.switchToHumanTurn(false);
+assert.equal(offlineTurnGame.currentPlayer, 1, 'A bot shot completed offline must restore the human turn');
+assert.equal(offlineTurnGame.gameState, 'aiming');
+assert.equal(offlineTurnGame.ballInHand, false);
+
 const recoveryRooms = new RoomManager();
 const recoveryRoom = recoveryRooms.createRoom({ id: 'human-timeout', username: 'Human' });
 recoveryRooms.joinRoom(recoveryRoom.id, { id: 'bot-timeout', username: 'AI_Test', isBot: true });
