@@ -13,8 +13,8 @@ android {
         applicationId "com.minepool.game"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 7
-        versionName "1.0.6"
+        versionCode 8
+        versionName "1.0.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         def googleWebClientId = project.findProperty("MINEPOOL_GOOGLE_WEB_CLIENT_ID") ?: System.getenv("MINEPOOL_GOOGLE_WEB_CLIENT_ID") ?: "UNCONFIGURED"
         resValue "string", "google_web_client_id", "\"${googleWebClientId}\""

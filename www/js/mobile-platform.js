@@ -21,6 +21,9 @@
     let player = null;
     let audioEnabled = true;
     let authToken = '';
+    let accountRestorePromise = null;
+    const REQUEST_TIMEOUT_MS = 8000;
+    const GOOGLE_SIGN_IN_TIMEOUT_MS = 6000;
 
     const clone = (value) => JSON.parse(JSON.stringify(value));
     const isLocalPreview = () => {
@@ -82,17 +85,38 @@
 
     async function request(path, options = {}) {
         const multipart = typeof FormData !== 'undefined' && options.body instanceof FormData;
-        const response = await fetch(apiUrl(path), {
-            method: options.method || 'GET',
-            headers: {
-                ...(!multipart && options.body ? { 'Content-Type': 'application/json' } : {}),
-                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
-            },
-            body: options.body ? (multipart ? options.body : JSON.stringify(options.body)) : undefined
-        });
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeout = globalThis.setTimeout(() => controller?.abort(), REQUEST_TIMEOUT_MS);
+        let response;
+        try {
+            response = await fetch(apiUrl(path), {
+                method: options.method || 'GET',
+                headers: {
+                    ...(!multipart && options.body ? { 'Content-Type': 'application/json' } : {}),
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+                },
+                body: options.body ? (multipart ? options.body : JSON.stringify(options.body)) : undefined,
+                ...(controller ? { signal: controller.signal } : {})
+            });
+        } catch (error) {
+            if (error?.name === 'AbortError') throw new Error('The game server did not respond in time.');
+            throw error;
+        } finally {
+            globalThis.clearTimeout(timeout);
+        }
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || 'The server could not complete this request.');
         return data;
+    }
+
+    function withTimeout(promise, timeoutMs, message) {
+        let timeout;
+        return Promise.race([
+            promise,
+            new Promise((_, reject) => {
+                timeout = globalThis.setTimeout(() => reject(new Error(message)), timeoutMs);
+            })
+        ]).finally(() => globalThis.clearTimeout(timeout));
     }
 
     function applyAccount(data) {
@@ -120,22 +144,49 @@
         return clone(player);
     }
 
+    async function restoreAccountInBackground() {
+        if (accountRestorePromise) return accountRestorePromise;
+        accountRestorePromise = (async () => {
+            if (authToken) {
+                try {
+                    applyAccount(await request('/auth/me'));
+                    return;
+                } catch (error) {
+                    // A server outage must not sign the player out. Only an explicit
+                    // authentication response should invalidate the saved session.
+                    if (/invalid|expired|authentication required/i.test(String(error?.message || ''))) {
+                        authToken = '';
+                        localStorage.removeItem(AUTH_TOKEN_KEY);
+                    }
+                    console.info('Saved account will be restored when the service is available.', error?.message || error);
+                }
+            }
+
+            if (!authToken && getNativeGoogle() && localStorage.getItem(AUTO_GOOGLE_DISABLED_KEY) !== '1') {
+                try {
+                    const google = await withTimeout(
+                        getNativeGoogle().autoSignIn(),
+                        GOOGLE_SIGN_IN_TIMEOUT_MS,
+                        'Automatic Google sign-in timed out.'
+                    );
+                    if (google?.authenticated && google.idToken) {
+                        applyAccount(await request('/auth/google', { method: 'POST', body: { idToken: google.idToken } }));
+                    }
+                } catch (error) {
+                    console.info('Automatic Google sign-in is not available.', error?.message || error);
+                }
+            }
+        })().finally(() => { accountRestorePromise = null; });
+        return accountRestorePromise;
+    }
+
     async function init() {
         player = normalize(read());
         authToken = localStorage.getItem(AUTH_TOKEN_KEY) || '';
-        if (authToken) {
-            try { applyAccount(await request('/auth/me')); }
-            catch (error) { authToken = ''; localStorage.removeItem(AUTH_TOKEN_KEY); }
-        }
         persist();
-        if (!authToken && getNativeGoogle() && localStorage.getItem(AUTO_GOOGLE_DISABLED_KEY) !== '1') {
-            try {
-                const google = await getNativeGoogle().autoSignIn();
-                if (google?.authenticated && google.idToken) applyAccount(await request('/auth/google', { method: 'POST', body: { idToken: google.idToken } }));
-            } catch (error) {
-                console.info('Automatic Google sign-in is not available.', error?.message || error);
-            }
-        }
+        // Never hold the launch screen on a remote dependency. The local profile
+        // opens immediately; cloud identity is reconciled asynchronously.
+        restoreAccountInBackground();
         return clone(player);
     }
 
@@ -313,4 +364,6 @@
         },
         flush: () => Promise.resolve()
     });
+
+    globalThis.addEventListener?.('online', () => restoreAccountInBackground());
 })();

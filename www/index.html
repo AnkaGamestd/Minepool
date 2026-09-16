@@ -108,6 +108,12 @@
   <script src="rewards.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
+      const loadingScreen = document.getElementById('loading-screen');
+      const startupGuard = window.setTimeout(() => {
+        console.error('Startup guard released the launch screen.');
+        loadingScreen?.classList.add('is-ready');
+      }, 5000);
+      try {
       const platform = window.MinePoolPlatform;
       let player = await platform.init();
       let identity = platform.getIdentity();
@@ -202,7 +208,15 @@
       document.getElementById('open-cues').addEventListener('click', () => { cueModal.hidden = false; document.getElementById('close-cues').focus(); }); document.getElementById('close-cues').addEventListener('click', () => { cueModal.hidden = true; }); cueModal.addEventListener('click', (event) => { if (event.target === cueModal) cueModal.hidden = true; }); document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cueModal.hidden = true; });
       cueOptions.forEach((option) => option.addEventListener('click', async () => { renderCue(option.dataset.cue); player = await platform.updatePlayer({ selectedCue: option.dataset.cue }); window.setTimeout(() => { cueModal.hidden = true; }, 120); }));
 
-      renderProfile(); showView('menu'); document.getElementById('loading-screen').classList.add('is-ready'); window.setTimeout(() => platform.markReady(), 380);
+      renderProfile(); showView('menu'); window.setTimeout(() => platform.markReady(), 380);
+      } catch (error) {
+        console.error('Mine Pool startup failed; offline menu restored.', error);
+        document.getElementById('menu-view')?.classList.remove('hidden');
+        document.getElementById('game-view')?.classList.add('hidden');
+      } finally {
+        window.clearTimeout(startupGuard);
+        loadingScreen?.classList.add('is-ready');
+      }
     });
   </script>
 </body>
