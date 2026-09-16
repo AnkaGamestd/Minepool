@@ -2,7 +2,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { GameRoom } = require('../multiplayer/RoomManager.js');
+const { GameRoom, RoomManager } = require('../multiplayer/RoomManager.js');
+const { MultiplayerServer } = require('../multiplayer/WebSocketHandler.js');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'www', 'network.js'), 'utf8');
 const timers = [];
@@ -103,4 +104,63 @@ room.handleShotResult({ foul: true, continueTurn: false, pocketedBalls: [] });
 assert.equal(room.gameState.currentPlayer, 2, 'A human foul must pass the turn to the bot');
 assert.equal(room.gameState.ballInHand, true, 'The bot must receive authoritative ball-in-hand');
 
-console.log('PASS: AI recovers from foul ball-in-hand and reports a synchronized turn result');
+const idempotentRoom = new GameRoom('idempotent-room', { id: 'human', username: 'Human' });
+idempotentRoom.addGuest({ id: 'bot', username: 'AI_Test', isBot: true });
+idempotentRoom.startGame();
+idempotentRoom.gameState.currentPlayer = 2;
+idempotentRoom.isAiMatch = true;
+const server = Object.create(MultiplayerServer.prototype);
+server.connectedPlayers = new Map([['human-socket', { id: 'human' }]]);
+server.roomManager = { getPlayerRoom: () => idempotentRoom };
+server.io = { to: () => ({ emit() {} }) };
+server.handleGameOver = () => {};
+const socket = { id: 'human-socket', emit() {} };
+const aiResult = { resultId: 'ai-result-once', isAiShot: true, foul: false, continueTurn: false, pocketedBalls: [] };
+let firstAcknowledgement;
+server.handleShotResult(socket, aiResult, response => { firstAcknowledgement = response; });
+assert.equal(firstAcknowledgement.success, true, 'The server must acknowledge an AI result');
+assert.equal(idempotentRoom.gameState.currentPlayer, 1, 'The first AI result must return the turn to the human');
+let duplicateAcknowledgement;
+server.handleShotResult(socket, aiResult, response => { duplicateAcknowledgement = response; });
+assert.equal(duplicateAcknowledgement.duplicate, true, 'A retried AI result must be detected as a duplicate');
+assert.equal(idempotentRoom.gameState.currentPlayer, 1, 'A duplicate result must never switch the turn back to the bot');
+
+const syncGame = {
+    ...game,
+    currentPlayer: 2,
+    gameState: 'waiting',
+    onGameStateUpdate(data) { this.currentPlayer = data.gameState.currentPlayer; }
+};
+const syncNetwork = new NetworkManager(syncGame);
+syncNetwork.isAiMatch = true;
+syncNetwork.myPlayerNumber = 1;
+syncNetwork.roomId = 'sync-room';
+const syncEvents = [];
+syncNetwork.socket = {
+    connected: true,
+    timeout() { return this; },
+    emit(event, payload, callback) {
+        syncEvents.push({ event, payload });
+        if (event === 'request_game_state') callback(null, {
+            success: true,
+            gameState: { currentPlayer: 2, ballInHand: false, balls: syncGame.balls }
+        });
+    }
+};
+syncNetwork.lastAiResultPayload = { resultId: 'lost-ai-result', isAiShot: true };
+syncNetwork.aiAwaitingResultSince = Date.now() - 5000;
+syncNetwork.ensureAiTurnProgress();
+assert.equal(syncEvents.filter(event => event.event === 'request_game_state').length, 1, 'A missing result acknowledgement must request authoritative state');
+assert.equal(syncEvents.filter(event => event.event === 'shot_result').length, 1, 'An unapplied AI result must be resent');
+assert.equal(syncEvents.find(event => event.event === 'shot_result').payload.resultId, 'lost-ai-result', 'A retry must preserve the idempotency id');
+
+const reconnectRooms = new RoomManager();
+const reconnectRoom = reconnectRooms.createRoom({ id: 'old-socket', username: 'Human' });
+reconnectRooms.joinRoom(reconnectRoom.id, { id: 'bot-reconnect', username: 'AI_Test', isBot: true });
+reconnectRoom.startGame();
+reconnectRoom.host.id = 'new-socket';
+assert.equal(reconnectRooms.rebindPlayerConnection(reconnectRoom.id, 'old-socket', 'new-socket'), true);
+assert.equal(reconnectRooms.getPlayerRoom('old-socket'), null, 'The stale socket must be removed after reconnect');
+assert.equal(reconnectRooms.getPlayerRoom('new-socket'), reconnectRoom, 'The reconnected socket must remain bound to its active game');
+
+console.log('PASS: AI recovers from stalls and server acknowledgements are idempotent');

@@ -22,13 +22,28 @@ class NetworkManager {
         this.aiShotPending = false;
         this.aiThinkTimeout = null;
         this.aiTurnRetryTimeout = null;
+        this.aiShotPollTimeout = null;
         this.aiTurnRecoveryCount = 0;
         this.aiShotStartedAt = 0;
+        this.aiPendingSince = 0;
+        this.aiTurnWatchdog = null;
+        this.aiAwaitingResultSince = 0;
+        this.aiStateSyncPending = false;
+        this.lastAiResultPayload = null;
+        this.aiResultSequence = 0;
 
         // 8-Ball pocket call
         this.calledPocket = null;
         this.needsPocketCall = false;
         this.pocketCallOverlay = null;
+
+        if (typeof document !== 'undefined') {
+            document.addEventListener('minepool:resume', () => {
+                if (!this.isAiMatch) return;
+                this.startAiTurnWatchdog();
+                window.setTimeout(() => this.ensureAiTurnProgress(), 50);
+            });
+        }
     }
 
     connect(serverUrl = null) {
@@ -172,6 +187,7 @@ class NetworkManager {
                 this.myPlayerNumber = isHost ? 1 : 2;
                 this.aiOpponent = isHost ? data.guest : data.host;
                 console.log(`🤖 I am Player ${this.myPlayerNumber}, AI is Player ${this.myPlayerNumber === 1 ? 2 : 1}`);
+                this.startAiTurnWatchdog();
             }
 
             this.emit('game_start', data);
@@ -198,26 +214,7 @@ class NetworkManager {
         this.socket.on('game_state_update', (data) => {
             console.log('📥 game_state_update received from server');
             this.emit('game_state_update', data);
-            if (this.game && this.game.onGameStateUpdate) {
-                this.game.onGameStateUpdate(data);
-            }
-
-            // Handle AI turn if applicable
-            console.log(`🔍 AI Check: isAiMatch=${this.isAiMatch}, hasGameState=${!!data.gameState}, gameOver=${data.gameOver}, aiShotPending=${this.aiShotPending}`);
-            if (this.isAiMatch && data.gameState && !data.gameOver) {
-                const currentPlayer = data.gameState.currentPlayer;
-                const isAiTurn = currentPlayer !== this.myPlayerNumber;
-                console.log(`🔍 Turn Check: currentPlayer=${currentPlayer}, myPlayerNumber=${this.myPlayerNumber}, isAiTurn=${isAiTurn}`);
-
-                if (!isAiTurn) {
-                    this.resetAiTurnScheduling();
-                } else if (this.game && !this.aiShotPending) {
-                    console.log('🤖 AI turn detected from server update, executing shot...');
-                    this.executeAiTurn(data);
-                } else {
-                    console.log('🤖 AI shot already pending, skipping duplicate trigger');
-                }
-            }
+            this.applyAuthoritativeGameState(data);
         });
 
         this.socket.on('cue_ball_placed', (data) => {
@@ -230,6 +227,7 @@ class NetworkManager {
         this.socket.on('game_over', (data) => {
             console.log('🏆 Game over! Winner:', data.winnerName);
             this.resetAiTurnScheduling();
+            this.stopAiTurnWatchdog();
             this.emit('game_over', data);
             if (this.game && this.game.onGameOver) {
                 this.game.onGameOver(data);
@@ -273,6 +271,11 @@ class NetworkManager {
             if (this.game && this.game.onGameRejoin) {
                 this.game.onGameRejoin(data);
             }
+            const hostIsBot = Boolean(data.host?.isBot);
+            const guestIsBot = Boolean(data.guest?.isBot);
+            this.isAiMatch = this.isAiMatch || hostIsBot || guestIsBot;
+            if (Number.isFinite(Number(data.myPlayerNumber))) this.myPlayerNumber = Number(data.myPlayerNumber);
+            if (this.isAiMatch) this.startAiTurnWatchdog();
         });
 
         // Chat events
@@ -339,6 +342,7 @@ class NetworkManager {
         this.socket.on('disconnect', () => {
             this.connected = false;
             this.resetAiTurnScheduling();
+            this.stopAiTurnWatchdog();
             console.log('❌ Disconnected from server');
             this.emit('disconnected', {});
         });
@@ -373,6 +377,8 @@ class NetworkManager {
 
     leaveRoom() {
         this.socket.emit('leave_room');
+        this.resetAiTurnScheduling();
+        this.stopAiTurnWatchdog();
         this.roomId = null;
         this.isHost = false;
     }
@@ -488,6 +494,7 @@ class NetworkManager {
     // === Connection ===
     disconnect() {
         this.resetAiTurnScheduling();
+        this.stopAiTurnWatchdog();
         if (this.socket) {
             this.socket.disconnect();
             this.socket = null;
@@ -517,8 +524,10 @@ class NetworkManager {
     clearAiTurnTimers() {
         if (this.aiThinkTimeout) clearTimeout(this.aiThinkTimeout);
         if (this.aiTurnRetryTimeout) clearTimeout(this.aiTurnRetryTimeout);
+        if (this.aiShotPollTimeout) clearTimeout(this.aiShotPollTimeout);
         this.aiThinkTimeout = null;
         this.aiTurnRetryTimeout = null;
+        this.aiShotPollTimeout = null;
     }
 
     resetAiTurnScheduling() {
@@ -526,6 +535,98 @@ class NetworkManager {
         this.aiShotPending = false;
         this.aiTurnRecoveryCount = 0;
         this.aiShotStartedAt = 0;
+        this.aiPendingSince = 0;
+        this.aiAwaitingResultSince = 0;
+        this.aiStateSyncPending = false;
+        this.lastAiResultPayload = null;
+    }
+
+    applyAuthoritativeGameState(data) {
+        if (!data?.gameState) return;
+        this.aiAwaitingResultSince = 0;
+        this.aiStateSyncPending = false;
+        this.lastAiResultPayload = null;
+        if (this.game?.onGameStateUpdate) this.game.onGameStateUpdate(data);
+
+        console.log(`🔍 AI Check: isAiMatch=${this.isAiMatch}, gameOver=${data.gameOver}, aiShotPending=${this.aiShotPending}`);
+        if (!this.isAiMatch || data.gameOver) return;
+        const currentPlayer = data.gameState.currentPlayer;
+        const isAiTurn = currentPlayer !== this.myPlayerNumber;
+        console.log(`🔍 Turn Check: currentPlayer=${currentPlayer}, myPlayerNumber=${this.myPlayerNumber}, isAiTurn=${isAiTurn}`);
+        if (!isAiTurn) {
+            this.resetAiTurnScheduling();
+        } else if (this.game && !this.aiShotPending) {
+            console.log('🤖 AI turn detected from authoritative state, executing shot...');
+            this.executeAiTurn(data);
+        }
+    }
+
+    startAiTurnWatchdog() {
+        this.stopAiTurnWatchdog();
+        if (!this.isAiMatch) return;
+        this.aiTurnWatchdog = setInterval(() => {
+            try { this.ensureAiTurnProgress(); }
+            catch (error) {
+                console.error('🤖 AI watchdog recovered from an error:', error);
+                if (this.isAiTurnActive()) this.retryAiTurn(error?.message || 'watchdog error', 100);
+            }
+        }, 1000);
+    }
+
+    stopAiTurnWatchdog() {
+        if (this.aiTurnWatchdog) clearInterval(this.aiTurnWatchdog);
+        this.aiTurnWatchdog = null;
+    }
+
+    ensureAiTurnProgress() {
+        if (!this.isAiMatch || !this.game || this.game.gameState === 'gameover') return;
+        if (this.aiAwaitingResultSince) {
+            if (Date.now() - this.aiAwaitingResultSince >= 3000) this.requestAuthoritativeGameState();
+            return;
+        }
+        if (!this.isAiTurnActive()) return;
+        if (!this.aiShotPending) {
+            console.warn('🤖 Watchdog found an idle AI turn; restarting it.');
+            this.executeAiTurn({ gameState: { currentPlayer: this.game.currentPlayer, ballInHand: this.game.ballInHand } });
+            return;
+        }
+        const pendingFor = this.aiPendingSince ? Date.now() - this.aiPendingSince : 0;
+        if (pendingFor < 25000) return;
+        if (this.game.gameState === 'shooting') {
+            console.warn('🤖 Watchdog is forcing a stalled AI shot to settle.');
+            this.game.balls?.forEach(ball => {
+                ball.vx = 0; ball.vy = 0; ball.spinX = 0; ball.spinY = 0;
+                if (ball.w) ball.w = { x: 0, y: 0, z: 0 };
+            });
+            this.waitForAiShotComplete();
+        } else {
+            this.retryAiTurn('AI pending state exceeded 25 seconds', 100);
+        }
+    }
+
+    requestAuthoritativeGameState() {
+        if (this.aiStateSyncPending || !this.socket?.connected || !this.roomId) return;
+        this.aiStateSyncPending = true;
+        const finish = (error, response) => {
+            this.aiStateSyncPending = false;
+            if (error || !response?.success || !response.gameState) return;
+            const stillAiTurn = response.gameState.currentPlayer !== this.myPlayerNumber;
+            const pendingResult = this.lastAiResultPayload;
+            if (stillAiTurn && pendingResult) {
+                // The server never applied the result. Synchronize positions, then
+                // resend the exact same idempotent result instead of taking a new shot.
+                if (this.game?.onGameStateUpdate) this.game.onGameStateUpdate(response);
+                this.aiAwaitingResultSince = 0;
+                this.sendAiShotResult(pendingResult);
+            } else {
+                this.applyAuthoritativeGameState(response);
+            }
+        };
+        if (typeof this.socket.timeout === 'function') {
+            this.socket.timeout(3500).emit('request_game_state', { roomId: this.roomId }, finish);
+        } else {
+            this.socket.emit('request_game_state', { roomId: this.roomId }, response => finish(null, response));
+        }
     }
 
     isAiTurnActive() {
@@ -540,6 +641,7 @@ class NetworkManager {
     retryAiTurn(reason, delay = 450) {
         console.warn(`🤖 AI turn recovery scheduled: ${reason}`);
         this.aiShotPending = false;
+        this.aiPendingSince = 0;
         if (this.aiThinkTimeout) clearTimeout(this.aiThinkTimeout);
         if (this.aiTurnRetryTimeout) clearTimeout(this.aiTurnRetryTimeout);
         this.aiThinkTimeout = null;
@@ -615,6 +717,7 @@ class NetworkManager {
             return;
         }
         this.aiShotPending = true;
+        this.aiPendingSince = Date.now();
         if (this.aiTurnRetryTimeout) clearTimeout(this.aiTurnRetryTimeout);
         this.aiTurnRetryTimeout = null;
 
@@ -1289,9 +1392,17 @@ class NetworkManager {
 
     // Wait for AI shot to complete and determine if AI continues or switches turn
     waitForAiShotComplete() {
+        try {
+        if (!this.isAiTurnActive()) {
+            this.resetAiTurnScheduling();
+            return;
+        }
         if (!this.game.physics.allBallsStopped(this.game.balls)) {
             if (!this.aiShotStartedAt || Date.now() - this.aiShotStartedAt < 20000) {
-                setTimeout(() => this.waitForAiShotComplete(), 100);
+                this.aiShotPollTimeout = setTimeout(() => {
+                    this.aiShotPollTimeout = null;
+                    this.waitForAiShotComplete();
+                }, 100);
                 return;
             }
             console.warn('🤖 AI shot exceeded 20 seconds; forcing a safe settle.');
@@ -1423,6 +1534,28 @@ class NetworkManager {
             console.log(`🤖 AI didn't pocket. Your turn!`);
             this.switchToHumanTurn();
         }
+        } catch (error) {
+            console.error('🤖 AI shot completion failed and will recover:', error);
+            this.retryAiTurn(error?.message || 'shot completion error', 100);
+        }
+    }
+
+    sendAiShotResult(payload) {
+        this.lastAiResultPayload = payload;
+        this.aiAwaitingResultSince = Date.now();
+        const acknowledge = (error, response) => {
+            if (error || !response?.success || !response.gameState) {
+                console.warn('🤖 AI result was not acknowledged; state sync will retry.');
+                return;
+            }
+            this.applyAuthoritativeGameState(response);
+        };
+        if (!this.socket || this.socket.connected === false) return;
+        if (typeof this.socket.timeout === 'function') {
+            this.socket.timeout(3500).emit('shot_result', payload, acknowledge);
+        } else {
+            this.socket.emit('shot_result', payload, response => acknowledge(null, response));
+        }
     }
 
     // Helper to switch to human player's turn by notifying server
@@ -1433,8 +1566,9 @@ class NetworkManager {
 
         // Tell server that AI's shot is done
         if (this.socket && this.roomId) {
-            this.socket.emit('shot_result', {
+            const resultPayload = {
                 roomId: this.roomId,
+                resultId: `ai-${this.roomId}-${Date.now()}-${++this.aiResultSequence}`,
                 foul: isFoul,
                 continueTurn: false,
                 pocketedBalls: this.game.shotPocketedBalls || [],
@@ -1450,7 +1584,8 @@ class NetworkManager {
                 isBreakShot: false,
                 isAiShot: true,
                 ballInHand: isFoul // Opponent gets ball-in-hand if foul
-            });
+            };
+            this.sendAiShotResult(resultPayload);
             console.log('🤖 AI shot_result sent to server');
         }
 

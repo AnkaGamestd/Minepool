@@ -34,6 +34,9 @@ class GameRoom {
         this.lastAction = Date.now();
         this.shotTimer = null;
         this.shotTimeLimit = 30; // seconds
+        // Socket retries are expected on mobile networks. Keep a bounded set of
+        // authoritative result ids so the same shot can never switch turns twice.
+        this.processedShotResultIds = new Set();
     }
 
     addGuest(player) {
@@ -55,6 +58,7 @@ class GameRoom {
 
     startGame() {
         this.status = 'playing';
+        this.processedShotResultIds.clear();
         this.gameState = {
             balls: this.initializeBalls(),
             currentPlayer: 1, // Host always breaks first
@@ -249,6 +253,19 @@ class GameRoom {
         return { gameOver: false };
     }
 
+    hasProcessedShotResult(resultId) {
+        return Boolean(resultId && this.processedShotResultIds.has(String(resultId)));
+    }
+
+    markShotResultProcessed(resultId) {
+        if (!resultId) return;
+        this.processedShotResultIds.add(String(resultId));
+        if (this.processedShotResultIds.size > 100) {
+            const oldest = this.processedShotResultIds.values().next().value;
+            this.processedShotResultIds.delete(oldest);
+        }
+    }
+
     switchTurn() {
         this.gameState.currentPlayer =
             this.gameState.currentPlayer === 1 ? 2 : 1;
@@ -402,6 +419,14 @@ class RoomManager {
         const roomId = this.playerRooms.get(playerId);
         if (!roomId) return null;
         return this.rooms.get(roomId);
+    }
+
+    rebindPlayerConnection(roomId, previousPlayerId, nextPlayerId) {
+        const room = this.rooms.get(roomId);
+        if (!room || !nextPlayerId) return false;
+        if (previousPlayerId) this.playerRooms.delete(previousPlayerId);
+        this.playerRooms.set(nextPlayerId, roomId);
+        return true;
     }
 
     getAvailableRooms(limit = 20) {

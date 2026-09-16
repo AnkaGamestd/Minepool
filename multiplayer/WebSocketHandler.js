@@ -59,7 +59,8 @@ class MultiplayerServer {
             socket.on('ready', () => this.handleReady(socket));
             socket.on('aim_update', (data) => this.handleAimUpdate(socket, data));
             socket.on('take_shot', (data) => this.handleTakeShot(socket, data));
-            socket.on('shot_result', (data) => this.handleShotResult(socket, data));
+            socket.on('shot_result', (data, acknowledge) => this.handleShotResult(socket, data, acknowledge));
+            socket.on('request_game_state', (data, acknowledge) => this.handleRequestGameState(socket, data, acknowledge));
             socket.on('cue_ball_placed', (data) => this.handleCueBallPlaced(socket, data));
             socket.on('request_rematch', () => this.handleRematchRequest(socket));
             socket.on('accept_rematch', () => this.handleRematchAccept(socket));
@@ -178,11 +179,13 @@ class MultiplayerServer {
                 socket.join(room.id);
 
                 // Update room with new socket ID
+                const previousSocketId = disconnectData.playerData?.id;
                 if (disconnectData.playerNumber === 1) {
                     room.host.id = socket.id;
                 } else {
                     room.guest.id = socket.id;
                 }
+                this.roomManager.rebindPlayerConnection(room.id, previousSocketId, socket.id);
 
                 // Notify reconnection
                 this.io.to(room.id).emit('opponent_reconnected', {
@@ -657,12 +660,21 @@ class MultiplayerServer {
         }
     }
 
-    handleShotResult(socket, data) {
+    handleShotResult(socket, data, acknowledge) {
+        const reply = (payload) => {
+            if (typeof acknowledge === 'function') acknowledge(payload);
+        };
         const player = this.connectedPlayers.get(socket.id);
-        if (!player) return;
+        if (!player) return reply({ success: false, error: 'Not authenticated' });
 
         const room = this.roomManager.getPlayerRoom(player.id);
-        if (!room || room.status !== 'playing') return;
+        if (!room || room.status !== 'playing') return reply({ success: false, error: 'Game is not active' });
+
+        if (room.hasProcessedShotResult(data?.resultId)) {
+            console.log(`♻️ Duplicate shot result ignored: ${data.resultId}`);
+            socket.emit('game_state_update', { gameState: room.gameState, balls: room.gameState.balls, duplicate: true });
+            return reply({ success: true, duplicate: true, gameState: room.gameState });
+        }
 
         // Accept results from the player who just shot (current player)
         // Exception: Accept AI shot results from human player in AI matches
@@ -678,7 +690,7 @@ class MultiplayerServer {
                 console.log(`🤖 Accepting AI shot_result from human player (AI match proxy)`);
             } else {
                 console.log(`⚠️ Ignoring shot_result from player ${playerNum}, expected from ${room.gameState.currentPlayer}`);
-                return;
+                return reply({ success: false, error: 'Not your turn', gameState: room.gameState });
             }
         }
 
@@ -690,6 +702,7 @@ class MultiplayerServer {
         }
 
         // Process shot result (this will handle turn switching)
+        room.markShotResultProcessed(data?.resultId);
         const result = room.handleShotResult(data);
 
         if (result.gameOver) {
@@ -702,6 +715,7 @@ class MultiplayerServer {
                 reason: result.reason
             });
             this.handleGameOver(room, result);
+            reply({ success: true, gameOver: true, gameState: room.gameState, winner: result.winner, reason: result.reason });
         } else {
             // Broadcast game state update with ball positions
             console.log(`📤 Broadcasting game state: Current Player = ${room.gameState.currentPlayer}`);
@@ -710,7 +724,20 @@ class MultiplayerServer {
                 balls: data.balls,  // Send ball positions at top level for easy access
                 lastResult: data
             });
+            reply({ success: true, gameState: room.gameState });
         }
+    }
+
+    handleRequestGameState(socket, _data, acknowledge) {
+        const player = this.connectedPlayers.get(socket.id);
+        const room = player ? this.roomManager.getPlayerRoom(player.id) : null;
+        if (!room || room.status !== 'playing') {
+            if (typeof acknowledge === 'function') acknowledge({ success: false, error: 'Game is not active' });
+            return;
+        }
+        const payload = { success: true, roomId: room.id, gameState: room.gameState, balls: room.gameState.balls };
+        if (typeof acknowledge === 'function') acknowledge(payload);
+        else socket.emit('game_state_update', payload);
     }
 
     handleCueBallPlaced(socket, data) {
