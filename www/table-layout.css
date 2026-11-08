@@ -9,6 +9,34 @@
 .game-shell .match-hud:not(:has(.game-back-button)) { grid-template-columns: minmax(0, 1fr) 132px minmax(0, 1fr); }
 .game-shell .game-footer #cloud-state { display: inline; }
 .game-shell .turn-label { text-align: center; }
+.game-shell .player-copy { flex: 1; min-width: 0; }
+.game-shell .ball-rack { flex: none; }
+.game-shell .player-name { max-width: 100%; }
+.game-shell .turn-core {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    overflow: hidden;
+}
+.game-shell .turn-label {
+    font: 800 10px/1.15 system-ui, sans-serif;
+    letter-spacing: .03em;
+    min-height: 0;
+    max-height: 2.3em;
+    overflow: hidden;
+}
+.game-shell #timer-text {
+    flex: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: 800 18px/1.1 ui-monospace, monospace;
+}
+.game-shell #timer-text::before { content: none; }
 .game-shell .table-frame {
     width: var(--table-width);
     padding: 0;
@@ -67,30 +95,48 @@
 
 @media (max-height: 540px) and (orientation: landscape) {
     .game-shell {
-        --table-width: min(100%, calc((100svh - 80px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 2));
-        grid-template-rows: 34px minmax(0, auto) 32px;
+        --table-width: min(100%, calc((100svh - 104px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 2));
+        grid-template-rows: 40px minmax(0, auto) 48px;
         gap: 4px;
         padding: max(2px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(2px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
     }
     .game-shell .match-hud { grid-template-columns: 30px minmax(0, 1fr) 88px minmax(0, 1fr); gap: 4px; }
     .game-shell .match-hud:not(:has(.game-back-button)) { grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr); }
-    .game-shell :is(.player-panel, .turn-core) { height: 34px; padding: 2px 5px; border-radius: 8px; gap: 4px; }
+    .game-shell :is(.player-panel, .turn-core) { height: 40px; padding: 2px 5px; border-radius: 8px; gap: 4px; }
     .game-shell .avatar { width: 23px; height: 23px; flex-basis: 23px; font-size: 11px; }
     .game-shell .player-copy { min-width: 0; }
     .game-shell .player-name { font-size: 10px; }
     .game-shell .ball-group { display: none; }
-    .game-shell .ball-rack { display: flex; width: auto; flex: 1; gap: 2px; }
+    .game-shell .player-panel {
+        display: grid;
+        grid-template-columns: 23px minmax(0, 1fr);
+        grid-template-rows: 12px 12px;
+        grid-template-areas: "avatar identity" "avatar rack";
+        align-content: center;
+        gap: 2px 4px;
+    }
+    .game-shell .player-2 {
+        grid-template-columns: minmax(0, 1fr) 23px;
+        grid-template-areas: "identity avatar" "rack avatar";
+    }
+    .game-shell .player-panel .avatar { grid-area: avatar; }
+    .game-shell .player-copy { grid-area: identity; }
+    .game-shell .player-2 .player-copy { text-align: right; }
+    .game-shell .ball-rack { grid-area: rack; display: flex; width: auto; flex: none; gap: 2px; justify-content: flex-start; }
+    .game-shell .player-2 .ball-rack { justify-content: flex-end; }
     .game-shell .rack-ball { width: 10px; height: 10px; min-width: 0; flex: 0 0 10px; font-size: 6px; }
-    .game-shell .turn-label { font-size: 8px; letter-spacing: 0; white-space: normal; }
+    .game-shell .turn-core { gap: 1px; }
+    .game-shell .turn-label { font-size: 9px; letter-spacing: 0; white-space: normal; }
     .game-shell .turn-label::after { content: none; }
-    .game-shell .timer { font-size: 11px; margin: 0; }
+    .game-shell #timer-text { font-size: 12px; }
     .game-shell .game-footer { display: none; }
     .game-shell .table-frame { border-radius: 10px; box-shadow: 0 2px #140e0a; }
     .match-controls :is(.power-console, .spin-console) { padding: 1px 6px; gap: 6px; border-radius: 7px; }
-    .match-controls #power-gauge { height: 13px; }
+    .match-controls #power-gauge { height: 44px; border-radius: 7px; }
     .match-controls #power-handle { height: 17px; }
-    .match-controls .spin-ball { width: 26px; height: 26px; }
-    .fine-aim button { width: 22px; height: 23px; }
+    .match-controls .spin-ball { width: 44px; height: 44px; }
+    .match-controls #reset-spin { min-width: 44px; min-height: 44px; }
+    .fine-aim button { width: 44px; height: 44px; }
 }
 
 @media (max-width: 520px) and (orientation: portrait) {
@@ -100,4 +146,18 @@
     .game-shell .player-copy { min-width: 0; }
     .game-shell .ball-rack { display: none; }
     .match-controls :is(.power-console, .spin-console) { padding: 3px 6px; gap: 5px; }
+}
+
+@media (pointer: coarse) and (min-height: 541px) {
+    .game-shell { grid-template-rows: 58px minmax(0, auto) 56px 12px; }
+    .match-controls #power-gauge { height: 44px; }
+    .match-controls .spin-ball { width: 44px; height: 44px; }
+    .match-controls #reset-spin { min-width: 44px; min-height: 44px; }
+    .fine-aim button { width: 44px; height: 44px; }
+}
+
+@media (max-width: 520px) and (orientation: portrait) {
+    .game-shell { grid-template-rows: 58px minmax(0, auto) 104px; }
+    .match-controls { display: grid; grid-template-rows: 48px 48px; gap: 8px; width: 100%; }
+    .match-controls .spin-console { justify-content: center; }
 }

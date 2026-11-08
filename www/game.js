@@ -337,7 +337,6 @@ class PoolGame {
             this.isBreakShot = true;
 
             this.updateTurnIndicator();
-            this.showMessage('BREAK SHOT', 'Place the cue ball anywhere in the kitchen (behind the line)');
             this.startShotTimer(); // Start timer for first shot
             this.animate();
         } catch (error) {
@@ -742,6 +741,7 @@ class PoolGame {
         if (this.ballInHand) {
             this.isDraggingBall = true;
             this.canvas.style.cursor = 'grabbing';
+            this.handleMouseMove(e);
             return;
         }
 
@@ -872,6 +872,7 @@ class PoolGame {
         // BALL IN HAND LOGIC
         if (this.ballInHand) {
             this.isDraggingBall = true;
+            this.handleTouchMove(e);
             return;
         }
 
@@ -1184,20 +1185,9 @@ class PoolGame {
         const aiTurn = this.isLocalAITurn();
         let text = aiTurn ? 'AI THINKING…' : this.isMultiplayer
             ? (this.currentPlayer === this.myPlayerNumber ? 'YOUR TURN' : "OPPONENT'S TURN")
-            : `PLAYER ${this.currentPlayer}'s TURN`;
+            : `PLAYER ${this.currentPlayer} TURN`;
 
-        // Show Group
-        const group = this.playerTypes[this.currentPlayer];
-        if (group) {
-            text += ` (${group.toUpperCase()})`;
-        } else {
-            text += ` (OPEN TABLE)`;
-        }
-
-        // Show Ball in Hand
-        if (this.ballInHand) {
-            text += " - BALL IN HAND";
-        }
+        if (this.ballInHand) text = this.ballInHandKitchen ? 'PLACE BEHIND LINE' : 'PLACE CUE BALL';
 
         turnText.textContent = text;
 

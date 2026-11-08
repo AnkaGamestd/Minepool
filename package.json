@@ -21,7 +21,8 @@
         "test:profile-ui": "node scripts/test-profile-ui.cjs",
         "test:friends": "node scripts/test-friends.cjs",
         "test:friends-ui": "node scripts/test-friends-ui.cjs",
-        "test:mobile-startup": "node scripts/test-mobile-startup.cjs"
+        "test:mobile-startup": "node scripts/test-mobile-startup.cjs",
+        "test:mobile-layout": "node scripts/test-mobile-layout.cjs"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",
