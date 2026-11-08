@@ -30,7 +30,7 @@ const { chromium } = require('playwright');
             assert(modalBounds.y >= 0 && modalBounds.y + modalBounds.height <= viewport.height, `${name}: cue modal fits`);
             await page.screenshot({ path: path.join(output, `${name}-cues.png`) });
             await page.locator('[data-cue="legendary"].cue-option').click();
-            await page.locator('#play-two').click();
+            await page.locator('#play-practice').click();
             await page.waitForFunction(() => window.gameInstance.gameState === 'aiming');
             await page.waitForTimeout(600);
             const geometry = await page.evaluate(() => {
@@ -77,26 +77,31 @@ const { chromium } = require('playwright');
             await page.locator('.spin-ball').click({position:{x:spin.width/2,y:spin.height*.9}});
             assert(await page.evaluate(() => gameInstance.spinY > .7), 'draw selected');
             const gauge = await page.locator('#power-gauge').boundingBox();
-            const gx=gauge.x+gauge.width/2, gy=gauge.y+gauge.height-2;
+            const gx=gauge.x+4, gy=gauge.y+gauge.height/2;
+            const pullX=gx+gauge.width*.4;
+            const table=await page.locator('#pool-table').boundingBox();
+            const controls=await page.locator('.match-controls').boundingBox();
+            assert(table.width >= Math.min(viewport.width*.7, viewport.height*1.5), name+': wide table');
+            assert(controls.y>=table.y+table.height && controls.y+controls.height<=viewport.height, name+': controls below table');
             await page.mouse.move(gx,gy); await page.mouse.down();
             assert.equal(await page.evaluate(() => gameInstance.power),0,'touching gauge does not jump to full power');
-            await page.mouse.move(gx,gy-gauge.height*.4);
-            assert(Math.abs(await page.evaluate(() => gameInstance.power)-50)<1,'upwards pull increases power');
+            await page.mouse.move(pullX,gy);
+            assert(Math.abs(await page.evaluate(() => gameInstance.power)-50)<1,'rightward pull increases power');
             await page.keyboard.press('Escape'); await page.mouse.up();
             assert.equal(await page.evaluate(() => gameInstance.gameState),'aiming','Escape cancels without shooting');
             if (touch) {
                 const cdp=await context.newCDPSession(page);
                 await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:gx,y:gy}]});
-                await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:gx,y:gy-gauge.height*.4}]});
+                await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:pullX,y:gy}]});
                 await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
                 assert.equal(await page.evaluate(() => gameInstance.gameState),'aiming','touch cancel cannot shoot');
                 await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:gx,y:gy}]});
-                await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:gx,y:gy-gauge.height*.4}]});
+                await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:pullX,y:gy}]});
                 await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
                 await cdp.detach();
             } else {
                 await page.mouse.move(gx,gy);await page.mouse.down();
-                await page.mouse.move(gx,gy-gauge.height*.4);await page.mouse.up();
+                await page.mouse.move(pullX,gy);await page.mouse.up();
             }
             const shot = await page.evaluate(() => ({state:gameInstance.gameState,speed:Math.hypot(gameInstance.balls[0].vx,gameInstance.balls[0].vy),spin:gameInstance.balls[0].w.y}));
             assert(shot.spin<0,'selected draw reaches physical angular velocity');

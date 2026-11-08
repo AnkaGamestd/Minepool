@@ -4,6 +4,10 @@
  */
 
 const { RoomManager } = require('./RoomManager');
+const { PhysicsEngine } = require('../www/physics');
+
+const placementTable = new PhysicsEngine();
+placementTable.initTable();
 const { MatchmakingQueue, EloCalculator } = require('./MatchmakingQueue');
 const { MatchHistory } = require('./MatchHistory');
 const { AchievementManager } = require('./Achievements');
@@ -808,11 +812,18 @@ class MultiplayerServer {
         // Validate it's this player's turn
         if (room.getPlayerNumber(player.id) !== room.gameState.currentPlayer) return;
 
-        room.placeCueBall(data.x, data.y);
+        const { x, y } = data || {};
+        if (!placementTable.canPlaceCueBall(x, y, room.gameState.ballInHandKitchen) ||
+            room.gameState.balls.some(ball => ball.id !== 0 && ball.active &&
+                Math.hypot(ball.x - x, ball.y - y) < 2 * placementTable.BALL_RADIUS)) {
+            socket.emit('shot_error', { error: 'Invalid cue ball position' });
+            return;
+        }
+        room.placeCueBall(x, y);
 
         this.io.to(room.id).emit('cue_ball_placed', {
-            x: data.x,
-            y: data.y,
+            x,
+            y,
             player: room.getPlayerNumber(player.id)
         });
     }

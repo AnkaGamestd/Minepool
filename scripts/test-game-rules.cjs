@@ -80,10 +80,10 @@ game.balls = [
 ];
 game.getBallColor = id => `color-${id}`;
 game.rebuildBallRacksFromState();
-assert.equal(game.solidsRack.balls.get(1).className, 'rack-ball pocketed solid');
-assert.equal(game.stripesRack.balls.get(9).className, 'rack-ball pocketed stripe');
-assert.equal(game.stripesRack.balls.get(10).className, 'rack-ball empty');
-assert.equal(game.stripesRack.balls.get(9).style.values['--ball-color'], 'color-9');
+assert.equal(game.solidsRack.balls.get(1).className, 'rack-ball empty');
+assert.equal(game.stripesRack.balls.get(9).className, 'rack-ball empty');
+assert.equal(game.stripesRack.balls.get(10).className, 'rack-ball stripe');
+assert.equal(game.stripesRack.balls.get(10).style.values['--ball-color'], 'color-10');
 
 game.balls = [
     { id: 0, active: true },
@@ -103,4 +103,4 @@ assert.equal(mergedBalls.find(ball => ball.id === 2).type, 'solid');
 assert.equal(mergedBalls.find(ball => ball.id === 10).type, 'stripe');
 assert.equal(mergedBalls.find(ball => ball.id === 8).type, 'eight');
 
-console.log('PASS: group ownership, pocketed-ball HUD and direct 360-degree touch aiming stay consistent');
+console.log('PASS: group ownership, remaining-ball HUD and direct 360-degree touch aiming stay consistent');

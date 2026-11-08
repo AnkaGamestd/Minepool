@@ -11,9 +11,9 @@ class PhysicsEngine {
         this.MAX_CUE_SPEED = 1650;     // Firm breaks and faster travel across the table.
 
         // Detect mobile device
-        this.isMobile = ('ontouchstart' in window) ||
+        this.isMobile = typeof window !== 'undefined' && (('ontouchstart' in window) ||
             (navigator.maxTouchPoints > 0) ||
-            (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            (window.matchMedia && window.matchMedia('(pointer: coarse)').matches));
 
         // Cloth resistance is independent of input device and screen refresh rate.
         this.mobileFrictionMultiplier = 1.0;
@@ -36,35 +36,75 @@ class PhysicsEngine {
         this.tableHeight = 0;
         this.cushionWidth = 25;
         this.pockets = [];
-        this.pocketRadius = 22;          // Corner pocket radius
-        this.centerPocketRadius = 18;    // Center pocket radius (smaller, more recessed)
-        this.centerPocketInset = 12;
-        this.centerPocketMouthHalfWidth = 12;
 
         if (this.isMobile) {
             console.log('📱 Mobile device detected (using consistent physics)');
         }
     }
 
-    initTable(width, height, cushion) {
+    initTable(width = 1000, height = 500, cushion = 25) {
         this.tableWidth = width;
         this.tableHeight = height;
         this.cushionWidth = cushion;
 
-        const pw = this.pocketRadius;
         const c = cushion;
-
-        this.pockets = [
-            // Corner pockets (indices 0, 2, 3, 5) - normal size
-            { x: c + pw / 2, y: c + pw / 2, isCenter: false },
-            // Side pockets sit behind the cushion, sharing positions with artwork.
-            { x: width / 2, y: c - this.centerPocketInset, isCenter: true },
-            { x: width - c - pw / 2, y: c + pw / 2, isCenter: false },
-            { x: c + pw / 2, y: height - c - pw / 2, isCenter: false },
-            // Center bottom pocket (index 4).
-            { x: width / 2, y: height - c + this.centerPocketInset, isCenter: true },
-            { x: width - c - pw / 2, y: height - c - pw / 2, isCenter: false }
+        const right = width - c;
+        const bottom = height - c;
+        const middle = width / 2;
+        // WPA dimensions in inches, converted using the existing 2.25-inch ball diameter.
+        const inch = this.BALL_RADIUS * 2 / 2.25;
+        const corner = 4.56 * inch / Math.SQRT2;
+        const side = 5.06 * inch / 2;
+        const depth = c * .56;
+        const cornerCut = depth / Math.tan(38 * Math.PI / 180);
+        const sideCut = depth / Math.tan(76 * Math.PI / 180);
+        const point = (x, y) => ({ x, y });
+        const rail = (a, b, startCut, endCut) => {
+            const length = Math.hypot(b.x - a.x, b.y - a.y);
+            const tx = (b.x - a.x) / length, ty = (b.y - a.y) / length;
+            return {
+                a, b,
+                backA: point(a.x - tx * startCut + ty * depth, a.y - ty * startCut - tx * depth),
+                backB: point(b.x + tx * endCut + ty * depth, b.y + ty * endCut - tx * depth)
+            };
+        };
+        this.cushions = [
+            rail(point(c + corner, c), point(middle - side, c), cornerCut, sideCut),
+            rail(point(middle + side, c), point(right - corner, c), sideCut, cornerCut),
+            rail(point(right, c + corner), point(right, bottom - corner), cornerCut, cornerCut),
+            rail(point(right - corner, bottom), point(middle + side, bottom), cornerCut, sideCut),
+            rail(point(middle - side, bottom), point(c + corner, bottom), sideCut, cornerCut),
+            rail(point(c, bottom - corner), point(c, c + corner), cornerCut, cornerCut)
         ];
+        this.cushionSegments = this.cushions.flatMap(({a, b, backA, backB}) =>
+            [[backA, a], [a, b], [b, backB]].map(([start, end]) => {
+                const length = Math.hypot(end.x - start.x, end.y - start.y);
+                const tx = (end.x - start.x) / length, ty = (end.y - start.y) / length;
+                return { start, end, length, tx, ty, nx: -ty, ny: tx };
+            }));
+
+        // Keep the call-pocket order: top left to right, then bottom left to right.
+        this.pockets = [5, 0, 1, 4, 3, 2].map((index, pocketId) => {
+            const before = this.cushions[index], after = this.cushions[(index + 1) % 6];
+            const a = before.b, b = after.a, backA = before.backB, backB = after.backA;
+            const mouthWidth = Math.hypot(b.x - a.x, b.y - a.y);
+            const tx = (b.x - a.x) / mouthWidth, ty = (b.y - a.y) / mouthWidth;
+            const nx = -ty, ny = tx;
+            const isCenter = pocketId === 1 || pocketId === 4;
+            const shelf = (isCenter ? .25 : 1.125) * inch;
+            const atShelf = (front, back) => {
+                const dx = back.x - front.x, dy = back.y - front.y;
+                const fraction = shelf / -(dx * nx + dy * ny);
+                return point(front.x + dx * fraction, front.y + dy * fraction);
+            };
+            const dropA = atShelf(a, backA), dropB = atShelf(b, backB);
+            return {
+                a, b, backA, backB, dropA, dropB, tx, ty, nx, ny, shelf, mouthWidth, isCenter,
+                x: (dropA.x + dropB.x) / 2, y: (dropA.y + dropB.y) / 2,
+                halfDrop: Math.hypot(dropB.x - dropA.x, dropB.y - dropA.y) / 2
+            };
+        });
+        this.pocketRadius = 4.56 * inch / 2; // Used by the older input page for pocket selection.
     }
 
     update(balls) {
@@ -87,9 +127,8 @@ class PhysicsEngine {
                 if (!ball.active) continue;
                 this.updateBallPhysics(ball, dt);
             }
-            // Capture pocket crossings before a rail can reflect the ball away.
-            pocketed.push(...this.checkPockets(balls));
             this.handleCushionCollisions(balls);
+            pocketed.push(...this.checkPockets(balls));
         }
 
         return pocketed;
@@ -183,52 +222,58 @@ class PhysicsEngine {
     }
 
     handleCushionCollisions(balls) {
-        const c = this.cushionWidth;
         const r = this.BALL_RADIUS;
+        const inset = this.cushionWidth + r;
+
         for (const ball of balls) {
             if (!ball.active) continue;
-            let hitCushion = false;
-            const rebound = (nx, ny) => {
-                const normalSpeed = ball.vx * nx + ball.vy * ny;
-                if (normalSpeed >= 0) return;
-                ball.w ||= { x: -ball.vy / r, y: ball.vx / r, z: 0 };
-                const normalImpulse = -(1 + this.E_CUSHION) * normalSpeed;
-                ball.vx += normalImpulse * nx;
-                ball.vy += normalImpulse * ny;
-                const tx = -ny, ty = nx;
-                const slip = ball.vx * tx + ball.vy * ty - r * ball.w.z;
-                const limit = .16 * normalImpulse;
-                const impulse = Math.max(-limit, Math.min(limit, -slip / 3.5));
-                ball.vx += impulse * tx; ball.vy += impulse * ty;
-                ball.w.z -= 2.5 * impulse / r;
-                // Cushion contact also dissipates some horizontal rotation.
-                ball.w.x *= .75; ball.w.y *= .75;
-                hitCushion = true;
-            };
-            if (ball.x - r < c) { ball.x = c + r; rebound(1, 0); }
-            else if (ball.x + r > this.tableWidth - c) { ball.x = this.tableWidth - c - r; rebound(-1, 0); }
-            // The recessed side pocket has a short mouth through the cushion.
-            // Open it only for inward travel; a ball running along the rail
-            // still follows the cushion line rather than being pulled inside.
-            const inMouth = Math.abs(ball.x - this.tableWidth / 2) < this.centerPocketMouthHalfWidth;
-            if (ball.y - r < c && !(inMouth && ball.vy < 0)) { ball.y = c + r; rebound(0, 1); }
-            else if (ball.y + r > this.tableHeight - c && !(inMouth && ball.vy > 0)) { ball.y = this.tableHeight - c - r; rebound(0, -1); }
+            if (ball.x >= inset && ball.x <= this.tableWidth - inset &&
+                ball.y >= inset && ball.y <= this.tableHeight - inset) continue;
 
-            if (hitCushion) {
-                // === RULE TRACKING ===
-                // 1. Check if this is a rail hit AFTER the first contact
-                if (this.shotFirstContact !== null) {
-                    this.railContactAfterHit = true;
-                }
-
-                // 2. Track unique balls hitting rails (for Break Shot rule)
-                if (this.ballsHitRailSet && !this.ballsHitRailSet.has(ball.id)) {
-                    this.ballsHitRailSet.add(ball.id);
-                    this.railsHitOnBreak++;
-                }
-
-                this.playCushionSound(Math.min(1, Math.abs(ball.vx + ball.vy) / 12));
+            let contact = null;
+            let nearest = r * r;
+            for (const segment of this.cushionSegments) {
+                const x = ball.x - segment.start.x, y = ball.y - segment.start.y;
+                const along = Math.max(0, Math.min(segment.length, x * segment.tx + y * segment.ty));
+                const dx = x - along * segment.tx, dy = y - along * segment.ty;
+                const distanceSq = dx * dx + dy * dy;
+                if (distanceSq >= nearest) continue;
+                nearest = distanceSq;
+                contact = { segment, dx, dy };
             }
+            if (!contact) continue;
+
+            const { segment, dx, dy } = contact;
+            const distance = Math.sqrt(nearest);
+            // At a jaw tip use the ball-to-tip normal. On a face use its inward normal.
+            const behind = dx * segment.nx + dy * segment.ny < 0;
+            const nx = distance && !behind ? dx / distance : segment.nx;
+            const ny = distance && !behind ? dy / distance : segment.ny;
+            const separation = r - dx * nx - dy * ny;
+            ball.x += separation * nx;
+            ball.y += separation * ny;
+            const impact = ball.vx * nx + ball.vy * ny;
+            if (impact >= 0) continue;
+
+            ball.w ||= { x: -ball.vy / r, y: ball.vx / r, z: 0 };
+            const normalImpulse = -(1 + this.E_CUSHION) * impact;
+            ball.vx += normalImpulse * nx;
+            ball.vy += normalImpulse * ny;
+            const tx = -ny, ty = nx;
+            const slip = ball.vx * tx + ball.vy * ty - r * ball.w.z;
+            const limit = .16 * normalImpulse;
+            const impulse = Math.max(-limit, Math.min(limit, -slip / 3.5));
+            ball.vx += impulse * tx; ball.vy += impulse * ty;
+            ball.w.z -= 2.5 * impulse / r;
+            // Cushion contact also dissipates some horizontal rotation.
+            ball.w.x *= .75; ball.w.y *= .75;
+
+            if (this.shotFirstContact != null) this.railContactAfterHit = true;
+            if (this.ballsHitRailSet && !this.ballsHitRailSet.has(ball.id)) {
+                this.ballsHitRailSet.add(ball.id);
+                this.railsHitOnBreak++;
+            }
+            this.playCushionSound(Math.min(1, -impact / 12));
         }
     }
 
@@ -272,35 +317,32 @@ class PhysicsEngine {
             if (!ball.active) continue;
             for (let i = 0; i < this.pockets.length; i++) {
                 const pocket = this.pockets[i];
-                const dx = ball.x - pocket.x;
-                const dy = ball.y - pocket.y;
-                const distSq = dx * dx + dy * dy;
+                const dx = ball.x - pocket.x, dy = ball.y - pocket.y;
+                // Only the open throat behind the slate shelf can capture the center of a ball.
+                if (dx * pocket.nx + dy * pocket.ny > 0 ||
+                    Math.abs(dx * pocket.tx + dy * pocket.ty) >= pocket.halfDrop) continue;
 
-                // Use smaller radius for center pockets
-                const effectiveRadius = pocket.isCenter ? this.centerPocketRadius : this.pocketRadius;
-
-                if (distSq < effectiveRadius * effectiveRadius) {
-                    if (pocket.isCenter) {
-                        // A circular sensor overlaps the playable rail line by R.
-                        // Require entry beyond the ball-centre rail boundary,
-                        // not merely proximity to the pocket's painted circle.
-                        const top = pocket.y < this.tableHeight / 2;
-                        const mouthLine = top ? this.cushionWidth + this.BALL_RADIUS :
-                            this.tableHeight - this.cushionWidth - this.BALL_RADIUS;
-                        const entryDepth = top ? mouthLine - ball.y : ball.y - mouthLine;
-                        const inwardSpeed = top ? -ball.vy : ball.vy;
-                        if (entryDepth <= 1e-7 || inwardSpeed <= 0) continue;
-                    }
-
-                    ball.active = false;
-                    ball.pocket = i; // Track which pocket (0-5)
-                    pocketed.push(ball);
-                    this.playPocketSound();
-                    break;
-                }
+                ball.active = false;
+                ball.pocket = i;
+                pocketed.push(ball);
+                this.playPocketSound();
+                break;
             }
         }
         return pocketed;
+    }
+
+
+    canPlaceCueBall(x, y, kitchen = false) {
+        const inset = this.cushionWidth + this.BALL_RADIUS;
+        const right = kitchen ? this.tableWidth / 4 - this.BALL_RADIUS : this.tableWidth - inset;
+        if (!Number.isFinite(x) || !Number.isFinite(y) || x < inset || x > right ||
+            y < inset || y > this.tableHeight - inset) return false;
+        return !this.pockets.some(pocket => {
+            const dx = x - pocket.x, dy = y - pocket.y;
+            return dx * pocket.nx + dy * pocket.ny < pocket.shelf &&
+                Math.abs(dx * pocket.tx + dy * pocket.ty) < pocket.mouthWidth / 2;
+        });
     }
 
     allBallsStopped(balls) {
@@ -312,87 +354,81 @@ class PhysicsEngine {
         return true;
     }
 
-    calculateAimLine(cueBall, angle, balls, power) {
-        const points = [];
-        const segments = [];
-        const step = 2;
-        const maxSteps = 500;
+    calculateAimLine(cueBall, angle, balls) {
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+        const diameter = this.BALL_RADIUS * 2;
+        const wall = this.distanceToRail(cueBall, dx, dy);
+        let distance = wall;
+        let target = null;
 
-        let x = cueBall.x;
-        let y = cueBall.y;
-        let dx = Math.cos(angle);
-        let dy = Math.sin(angle);
-
-        let currentSegment = { start: { x, y }, points: [] };
-        let reflectionNum = 0;
-
-        for (let i = 0; i < maxSteps; i++) {
-            x += dx * step;
-            y += dy * step;
-
-            const sidePocket = this.pockets.find(pocket => pocket.isCenter &&
-                Math.hypot(x - pocket.x, y - pocket.y) < this.centerPocketRadius &&
-                (pocket.y < this.tableHeight / 2 ? dy < 0 : dy > 0));
-            if (sidePocket) {
-                currentSegment.points.push({ x, y });
-                segments.push(currentSegment);
-                points.push({ x, y, type: 'pocket' });
-                return { points, segments };
+        // The cue ball's center enters the target's radius plus its own radius.
+        for (const ball of balls) {
+            if (!ball.active || ball.id === cueBall.id) continue;
+            const x = ball.x - cueBall.x;
+            const y = ball.y - cueBall.y;
+            const along = x * dx + y * dy;
+            const across = x * dy - y * dx;
+            const clearance = diameter * diameter - across * across;
+            if (along <= 0 || clearance < 0) continue;
+            const contact = Math.max(0, along - Math.sqrt(clearance));
+            if (contact < distance) {
+                distance = contact;
+                target = ball;
             }
-
-            let hitWall = false;
-            if (x < this.cushionWidth + this.BALL_RADIUS) { dx = Math.abs(dx); hitWall = true; }
-            else if (x > this.tableWidth - this.cushionWidth - this.BALL_RADIUS) { dx = -Math.abs(dx); hitWall = true; }
-            const inMouth = Math.abs(x - this.tableWidth / 2) < this.centerPocketMouthHalfWidth;
-            if (y < this.cushionWidth + this.BALL_RADIUS && !(inMouth && dy < 0)) { dy = Math.abs(dy); hitWall = true; }
-            else if (y > this.tableHeight - this.cushionWidth - this.BALL_RADIUS && !(inMouth && dy > 0)) { dy = -Math.abs(dy); hitWall = true; }
-
-            if (hitWall) {
-                reflectionNum++;
-                currentSegment.points.push({ x, y });
-                segments.push(currentSegment);
-                currentSegment = { start: { x, y }, points: [] };
-                points.push({ x, y, type: 'reflection', num: reflectionNum });
-            }
-
-            let hitBall = null;
-            for (const ball of balls) {
-                if (!ball.active || ball.id === 0) continue;
-                const d = Math.sqrt((x - ball.x) ** 2 + (y - ball.y) ** 2);
-                if (d < this.BALL_RADIUS * 2) {
-                    hitBall = ball;
-                    break;
-                }
-            }
-
-            if (hitBall) {
-                currentSegment.points.push({ x, y });
-                segments.push(currentSegment);
-
-                points.push({
-                    x, y,
-                    type: 'contact',
-                    ghostX: x, ghostY: y,
-                    ball: hitBall
-                });
-
-                const impactAngle = Math.atan2(hitBall.y - y, hitBall.x - x);
-                points.push({
-                    x: hitBall.x, y: hitBall.y,
-                    tx: hitBall.x + Math.cos(impactAngle) * 100,
-                    ty: hitBall.y + Math.sin(impactAngle) * 100,
-                    type: 'target'
-                });
-
-                break;
-            }
-
-            currentSegment.points.push({ x, y });
         }
 
-        if (currentSegment.points.length > 0) segments.push(currentSegment);
+        const end = { x: cueBall.x + dx * distance, y: cueBall.y + dy * distance };
+        const segments = [{ start: cueBall, points: [end] }];
+        if (!target) {
+            const pocket = this.pockets.find(pocket => {
+                const x = end.x - pocket.x, y = end.y - pocket.y;
+                return Math.abs(x * pocket.nx + y * pocket.ny) < 1e-6 &&
+                    Math.abs(x * pocket.tx + y * pocket.ty) < pocket.halfDrop;
+            });
+            return { segments, points: [{ ...end, type: pocket ? 'pocket' : 'reflection' }] };
+        }
+        const length = Math.hypot(target.x - end.x, target.y - end.y) || diameter;
+        const tx = (target.x - end.x) / length;
+        const ty = (target.y - end.y) / length;
+        const travel = Math.min(130, this.distanceToRail(target, tx, ty));
+        return { segments, points: [
+            { ...end, type: 'contact', ghostX: end.x, ghostY: end.y, ball: target },
+            { x: target.x, y: target.y, type: 'target', tx: target.x + tx * travel, ty: target.y + ty * travel }
+        ] };
+    }
 
-        return { points, segments };
+
+    distanceToRail(ball, dx, dy) {
+        const r = this.BALL_RADIUS;
+        let nearest = this.tableWidth + this.tableHeight;
+        for (const {start, end, length, tx, ty, nx, ny} of this.cushionSegments) {
+            const x = ball.x - start.x, y = ball.y - start.y;
+            const toward = -(dx * nx + dy * ny);
+            if (toward > 1e-9) {
+                const travel = (x * nx + y * ny - r) / toward;
+                const along = (x + dx * travel) * tx + (y + dy * travel) * ty;
+                if (travel >= 0 && along >= 0 && along <= length) nearest = Math.min(nearest, travel);
+            }
+            // The center of a ball clips a jaw tip one radius before touching it.
+            for (const tip of [start, end]) {
+                const tx = tip.x - ball.x, ty = tip.y - ball.y;
+                const along = tx * dx + ty * dy;
+                const across = tx * dy - ty * dx;
+                const clearance = r * r - across * across;
+                if (along <= 0 || clearance <= 1e-8) continue;
+                nearest = Math.min(nearest, Math.max(0, along - Math.sqrt(clearance)));
+            }
+        }
+        for (const pocket of this.pockets) {
+            const toward = -(dx * pocket.nx + dy * pocket.ny);
+            if (toward <= 1e-9) continue;
+            const x = ball.x - pocket.x, y = ball.y - pocket.y;
+            const travel = (x * pocket.nx + y * pocket.ny) / toward;
+            const along = (x + dx * travel) * pocket.tx + (y + dy * travel) * pocket.ty;
+            if (travel >= 0 && Math.abs(along) < pocket.halfDrop) nearest = Math.min(nearest, travel);
+        }
+        return nearest;
     }
 
     setSoundManager(soundManager) {
@@ -921,5 +957,8 @@ class SoundManager {
 
 }
 
-window.PhysicsEngine = PhysicsEngine;
-window.SoundManager = SoundManager;
+if (typeof window !== 'undefined') {
+    window.PhysicsEngine = PhysicsEngine;
+    window.SoundManager = SoundManager;
+}
+if (typeof module !== 'undefined' && module.exports) module.exports = { PhysicsEngine };

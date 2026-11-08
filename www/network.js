@@ -236,6 +236,7 @@ class NetworkManager {
         });
 
         this.socket.on('cue_ball_placed', (data) => {
+            this.game?.onCueBallPlaced?.(data);
             this.emit('cue_ball_placed', data);
             if (this.game && this.game.onCueBallPlaced) {
                 this.game.onCueBallPlaced(data);

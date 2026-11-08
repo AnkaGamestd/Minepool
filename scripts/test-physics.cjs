@@ -86,7 +86,7 @@ const pocketEngine = engine(false); pocketEngine.initTable(1000,500,25);
 const pocketBall = {id:1,x:500,y:44,vx:0,vy:-750,active:true};
 let fastPocketCount=0;
 for(let i=0;i<3;i++) fastPocketCount+=pocketEngine.update([pocketBall]).length;
-assert.equal(fastPocketCount,1,'fast centre-pocket entry captured before rebound');
+assert.equal(fastPocketCount,1,'fast centre-pocket entry crosses the shelf');
 console.log('SPIN:', {draw, centre, follow, rightEnglish:rail(1), leftEnglish:rail(-1)});
 // Middle pockets must not collect balls that run along the long rail.
 for (const top of [true, false]) {
@@ -94,7 +94,8 @@ for (const top of [true, false]) {
   const line = top ? 39 : 461;
   const inward = top ? -1 : 1;
   const centre = p.pockets[top?1:4];
-  assert.equal(centre.y,top?13:487,'visual and physical centres are recessed');
+  assert(top ? centre.y < 25 : centre.y > 475, 'drop line is behind the cushion nose');
+  assert(centre.mouthWidth > p.pockets[0].mouthWidth, 'the side mouth is wider than a corner');
   for (const speed of [0, .2, 1, 80, 1650]) for (const direction of [-1,1]) {
     for (let x=478;x<=522;x++) {
       const ball = {id:1,x,y:line,vx:speed*direction,vy:0,active:true};
@@ -105,9 +106,12 @@ for (const top of [true, false]) {
     const ball = {id:1,x:500-direction*45,y:line,vx:direction*1650,vy:0,active:true};
     for(let i=0;i<5;i++) assert.equal(p.update([ball]).length,0,'full-speed rail pass must survive substeps');
     assert(ball.active && (ball.x-500)*direction>40);
+    const shallow={id:1,x:500-direction*27,y:top?46:454,vx:direction*400,vy:inward*80,active:true};
+    for(let i=0;i<24;i++) p.update([shallow]);
+    assert(shallow.active && shallow.vy*inward<0,'a shallow approach rebounds from the far jaw');
   }
   for(const speed of [.1,1,300,1650]) for(const vx of [-speed,0,speed]) {
-    const ball={id:1,x:500,y:centre.y-inward*(p.centerPocketRadius-.001),vx,vy:inward*speed,active:true};
+    const ball={id:1,x:500,y:centre.y+inward*.001,vx,vy:inward*speed,active:true};
     assert.equal(p.checkPockets([ball]).length,1,'slow, direct and diagonal pocket entries work');
     assert.equal(ball.pocket,top?1:4);
   }
@@ -119,6 +123,12 @@ for (const top of [true, false]) {
   const aim=p.calculateAimLine({id:0,x:500,y:250},top?-Math.PI/2:Math.PI/2,[],50);
   assert(aim.points.some(point=>point.type==='pocket'),'aim guide ends in recessed side pocket');
   assert(!aim.points.some(point=>point.type==='reflection'),'no phantom bounce across pocket mouth');
+}
+const six = engine(false); six.initTable();
+for (const [id, pocket] of six.pockets.entries()) {
+  const ball={id:1,x:pocket.x+pocket.nx*90,y:pocket.y+pocket.ny*90,vx:-pocket.nx*300,vy:-pocket.ny*300,active:true};
+  for(let i=0;i<90&&ball.active;i++) six.update([ball]);
+  assert.equal(ball.pocket,id,'each pocket retains its call-pocket ID');
 }
 console.log('PASS: both middle pockets, parallel rail passes, slow/fast/diagonal entry and outgoing balls');
 const Game = vm.runInNewContext(gameSource.slice(0, gameSource.indexOf('    pauseForPlatform()')) + '\n}\nPoolGame', {

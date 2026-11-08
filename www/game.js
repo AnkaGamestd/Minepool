@@ -375,6 +375,7 @@ class PoolGame {
             // Initialize the game
             this.gameMode = 'multiplayer';
             this.initializeBalls();
+            this.resetBallRacks();
             this.gameState = 'aiming';
             this.currentPlayer = data.currentPlayer || 1;
 
@@ -397,10 +398,8 @@ class PoolGame {
             if (p2Avatar) window.MinePoolAvatar?.render(p2Avatar, { displayName: guestName, avatarText: guestName.charAt(0).toUpperCase(), avatarUrl: data.guest?.profilePicture });
 
             // Enable ball placement for break shot (only for player 1)
-            if (this.myPlayerNumber === 1) {
-                this.ballInHand = true;
-                this.ballInHandKitchen = true;
-            }
+            this.ballInHand = this.isMyTurn && (data.gameState?.ballInHand ?? true);
+            this.ballInHandKitchen = this.ballInHand && (data.gameState?.ballInHandKitchen ?? true);
             this.isBreakShot = true;
 
             this.updateTurnIndicator();
@@ -679,7 +678,7 @@ class PoolGame {
 
         if (this.gameState === 'aiming') {
             const cueBall = this.balls[0];
-            if (!this.aimLocked) {
+            if (!this.aimLocked && !this.tableAimPinned) {
                 this.aimAngle = Math.atan2(mouseY - cueBall.y, mouseX - cueBall.x);
             }
             if (this.isDragging) {
@@ -759,7 +758,7 @@ class PoolGame {
 
             // Check if placement is valid (not overlapping)
             const cueBall = this.balls[0];
-            let valid = true;
+            let valid = this.physics.canPlaceCueBall(cueBall.x, cueBall.y, this.ballInHandKitchen);
             for (const ball of this.balls) {
                 if (ball.id !== 0 && ball.active) {
                     const d = Math.hypot(cueBall.x - ball.x, cueBall.y - ball.y);
@@ -771,6 +770,7 @@ class PoolGame {
             }
 
             if (valid) {
+                if (this.isMultiplayer) window.networkManager?.sendCueBallPosition(cueBall.x, cueBall.y);
                 this.ballInHand = false;
                 this.ballInHandKitchen = false;
                 this.isPlacingCueBall = false;
@@ -782,7 +782,7 @@ class PoolGame {
                     // Ball placed - ready to shoot
                 }
             } else {
-                this.showMessage('INVALID PLACEMENT', 'Cue ball overlaps - try again');
+                this.showMessage('INVALID PLACEMENT', 'Choose an open spot on the cloth.');
             }
             return;
         }
@@ -797,6 +797,7 @@ class PoolGame {
         } else {
             this.power = 0;
             this.aimLocked = false;
+            this.tableAimPinned = !!this.powerGauge?.closest('.match-controls');
             this.updatePowerGauge();
         }
     }
@@ -930,7 +931,7 @@ class PoolGame {
         if (this.ballInHand && this.isDraggingBall) {
             this.isDraggingBall = false;
             const cueBall = this.balls[0];
-            let valid = true;
+            let valid = this.physics.canPlaceCueBall(cueBall.x, cueBall.y, this.ballInHandKitchen);
             for (const ball of this.balls) {
                 if (ball.id !== 0 && ball.active) {
                     const d = Math.hypot(cueBall.x - ball.x, cueBall.y - ball.y);
@@ -942,13 +943,15 @@ class PoolGame {
             }
 
             if (valid) {
+                if (this.isMultiplayer) window.networkManager?.sendCueBallPosition(cueBall.x, cueBall.y);
                 this.ballInHand = false;
                 this.ballInHandKitchen = false;
                 this.isPlacingCueBall = false;
                 this.updateTurnIndicator();
-                this.showMessage('READY', 'Drag the power slider up, release to shoot.');
+                const direction = this.powerGauge?.closest('.match-controls') ? 'right' : 'up';
+                this.showMessage('READY', `Drag the power slider ${direction}, release to shoot.`);
             } else {
-                this.showMessage('INVALID', 'Ball overlaps!');
+                this.showMessage('INVALID PLACEMENT', 'Choose an open spot on the cloth.');
             }
         }
     }
@@ -1004,9 +1007,11 @@ class PoolGame {
         const gauge = this.powerGauge;
         const spin = document.querySelector('.spin-ball');
         if (gauge) {
+            const horizontal = !!gauge.closest('.match-controls');
             gauge.tabIndex = 0;
             gauge.setAttribute('role', 'slider');
-            gauge.setAttribute('aria-label', 'Shot power. Drag up and release. Escape cancels.');
+            gauge.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
+            gauge.setAttribute('aria-label', `Shot power. Drag ${horizontal ? 'right' : 'up'} and release. Escape cancels.`);
             gauge.setAttribute('aria-valuemin', '0'); gauge.setAttribute('aria-valuemax', '100');
             gauge.style.touchAction = 'none';
             gauge.addEventListener('pointerdown', e => {
@@ -1014,13 +1019,16 @@ class PoolGame {
                 e.preventDefault(); gauge.focus({ preventScroll: true }); gauge.setPointerCapture(e.pointerId);
                 this.powerPointer = e.pointerId; this.aimLocked = true;
                 this.mobileTouch.isAiming = false;
-                this.powerStartY = e.clientY; this.power = 0; this.updatePowerGauge();
+                this.powerStart = horizontal ? e.clientX : -e.clientY;
+                this.power = 0; this.updatePowerGauge();
             });
             gauge.addEventListener('pointermove', e => {
                 if (e.pointerId !== this.powerPointer) return;
                 if (!this.canAdjustShot()) { this.cancelCueInput(); return; }
-                const travel = gauge.getBoundingClientRect().height * .8;
-                this.power = Math.max(0, Math.min(100, (this.powerStartY - e.clientY) / travel * 100));
+                const track = gauge.getBoundingClientRect();
+                const travel = Math.max(20, (horizontal ? track.width : track.height) * .8);
+                const position = horizontal ? e.clientX : -e.clientY;
+                this.power = Math.max(0, Math.min(100, (position - this.powerStart) / travel * 100));
                 this.updatePowerGauge();
             });
             gauge.addEventListener('pointerup', e => {
@@ -1035,9 +1043,10 @@ class PoolGame {
             });
             gauge.addEventListener('keydown', e => {
                 if (!this.canAdjustShot() || this.ballInHand) return;
-                if (['ArrowUp', 'ArrowDown', ' ', 'Enter', 'Escape'].includes(e.key)) e.preventDefault();
-                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                    this.power = Math.max(0, Math.min(100, this.power + (e.key === 'ArrowUp' ? 2 : -2)));
+                const direction = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+                if (direction || [' ', 'Enter', 'Escape'].includes(e.key)) e.preventDefault();
+                if (direction) {
+                    this.power = Math.max(0, Math.min(100, this.power + direction * 2));
                     this.updatePowerGauge();
                 } else if ((e.key === ' ' || e.key === 'Enter') && !e.repeat && this.power >= 2) this.shoot();
                 else if (e.key === 'Escape') this.cancelCueInput();
@@ -1063,6 +1072,13 @@ class PoolGame {
         document.getElementById('reset-spin')?.addEventListener('click', () => {
             if (this.canAdjustShot()) this.resetSpin();
         });
+        for (const [id, direction] of [['aim-left', -1], ['aim-right', 1]]) {
+            document.getElementById(id)?.addEventListener('click', () => {
+                if (!this.canAdjustShot() || this.ballInHand || this.powerPointer != null) return;
+                this.aimAngle = this.normalizeAngle(this.aimAngle + direction * Math.PI / 720);
+                this.tableAimPinned = true;
+            });
+        }
         window.addEventListener('blur', () => this.cancelCueInput());
         document.addEventListener('visibilitychange', () => { if (document.hidden) this.cancelCueInput(); });
     }
@@ -1116,9 +1132,13 @@ class PoolGame {
     }
 
     updatePowerGauge() {
-        this.powerFill.style.height = this.power + '%';
+        if (this.powerGauge?.closest('.match-controls')) {
+            this.powerGauge.style.setProperty('--power', this.power + '%');
+        } else {
+            this.powerFill.style.height = this.power + '%';
+            if (this.powerHandle) this.powerHandle.style.top = `${100 - this.power}%`;
+        }
         this.powerValue.textContent = Math.round(this.power) + '%';
-        if (this.powerHandle) this.powerHandle.style.top = `${100 - this.power}%`;
         this.powerGauge?.setAttribute('aria-valuenow', String(Math.round(this.power)));
     }
 
@@ -1147,6 +1167,7 @@ class PoolGame {
     }
 
     updateTurnIndicator() {
+        this.tableAimPinned = false;
         const turnText = document.querySelector('.turn-text');
         const aiTurn = this.isLocalAITurn();
         let text = aiTurn ? 'AI THINKING…' : this.isMultiplayer
@@ -1208,7 +1229,7 @@ class PoolGame {
     }
 
     resetBallRacks() {
-        this.clearBallRackVisuals();
+        this.rebuildBallRacksFromState();
         const p1Panel = document.getElementById('p1-panel');
         const p2Panel = document.getElementById('p2-panel');
         if (p1Panel && this.solidsRack?.parentElement !== p1Panel) p1Panel.appendChild(this.solidsRack);
@@ -1228,9 +1249,7 @@ class PoolGame {
 
     rebuildBallRacksFromState() {
         this.clearBallRackVisuals();
-        this.balls?.forEach(ball => {
-            if (ball.id !== 0 && ball.id !== 8 && ball.active === false) this.updateBallRack(ball);
-        });
+        this.balls?.forEach(ball => this.updateBallRack(ball));
     }
 
     // MINICLIP FEATURE: Shot Timer
@@ -1479,6 +1498,11 @@ class PoolGame {
         this.power = 0;
         this.updatePowerGauge();
         setTimeout(() => this.checkShotResult(), 100);
+    }
+
+    onCueBallPlaced({ x, y, player }) {
+        if (player === this.myPlayerNumber || !this.balls[0]) return;
+        Object.assign(this.balls[0], { x, y, active: true });
     }
 
     // Called when opponent takes a shot in multiplayer
@@ -2293,10 +2317,10 @@ class PoolGame {
         const rack = type === 'solid' ? this.solidsRack : this.stripesRack;
         const rackBall = rack.querySelector(`[data-number="${ball.id}"]`);
         if (rackBall) {
-            rackBall.className = `rack-ball pocketed ${type}`;
-            rackBall.style.setProperty('--ball-color', this.getBallColor(ball.id));
-            rackBall.textContent = ball.id;
-            rackBall.setAttribute('aria-label', `Pocketed ball ${ball.id}`);
+            rackBall.className = ball.active ? `rack-ball ${type}` : 'rack-ball empty';
+            rackBall.style.setProperty('--ball-color', ball.active ? this.getBallColor(ball.id) : '');
+            rackBall.textContent = ball.active ? ball.id : '';
+            rackBall.setAttribute('aria-label', ball.active ? `Ball ${ball.id} on the table` : `Pocketed ball ${ball.id}`);
         }
     }
 
@@ -2479,360 +2503,141 @@ class PoolGame {
     }
 
     paintTable(ctx) {
-        const c = this.cushionWidth;
-        const w = this.tableWidth;
-        const h = this.tableHeight;
-
-        // === OUTER FRAME (Dark wood with grain) ===
-        const frameGradient = ctx.createLinearGradient(0, 0, 0, h);
-        frameGradient.addColorStop(0, '#2d1810');
-        frameGradient.addColorStop(0.3, '#4a2c1a');
-        frameGradient.addColorStop(0.5, '#3d2315');
-        frameGradient.addColorStop(0.7, '#4a2c1a');
-        frameGradient.addColorStop(1, '#2d1810');
-        ctx.fillStyle = frameGradient;
+        const w = this.tableWidth, h = this.tableHeight, c = this.cushionWidth;
+        const rail = ctx.createLinearGradient(0, 0, 0, h);
+        rail.addColorStop(0, '#583b27');
+        rail.addColorStop(0.1, '#251914');
+        rail.addColorStop(0.84, '#342017');
+        rail.addColorStop(1, '#503321');
+        ctx.fillStyle = rail;
         ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#b08153';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(4, 4, w - 8, h - 8, 18);
+        ctx.stroke();
 
-        // === FELT (Rich green with enhanced texture) ===
-        const feltGradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
-        feltGradient.addColorStop(0, '#1d8050');
-        feltGradient.addColorStop(0.5, '#0f6b3d');
-        feltGradient.addColorStop(0.85, '#0a5c32');
-        feltGradient.addColorStop(1, '#085028');
-        ctx.fillStyle = feltGradient;
-        ctx.fillRect(c, c, w - 2 * c, h - 2 * c);
-
-        // Directional nap (felt has direction from head to foot)
-        ctx.save();
-        ctx.globalAlpha = 0.1;
-        const napGrad = ctx.createLinearGradient(c, c, w - c, h - c);
-        napGrad.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
-        napGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0.08)');
-        napGrad.addColorStop(0.6, 'rgba(0, 0, 0, 0.08)');
-        napGrad.addColorStop(1, 'rgba(255, 255, 255, 0.12)');
-        ctx.fillStyle = napGrad;
-        ctx.fillRect(c, c, w - 2 * c, h - 2 * c);
-        ctx.restore();
-
-        // Felt micro-texture (subtle noise) - Optimized
-        ctx.save();
-        ctx.globalAlpha = 0.08;
-        for (let i = 0; i < 150; i++) {
-            const x = c + Math.random() * (w - 2 * c);
-            const y = c + Math.random() * (h - 2 * c);
-            const size = Math.random() * 2 + 0.5;
-            ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#2a9d5c';
-            ctx.fillRect(x, y, size, size);
-        }
-        ctx.restore();
-
-        // === HEAD STRING LINE (Kitchen line for break shot) ===
-        const headStringX = w * 0.25;
-
-        // If ball-in-hand with kitchen restriction, highlight the kitchen area
-        if (this.ballInHandKitchen) {
-            // Highlight kitchen area with subtle glow
-            ctx.save();
-            ctx.globalAlpha = 0.15;
-            ctx.fillStyle = '#00aaff';
-            ctx.fillRect(c, c, headStringX - c, h - 2 * c);
-            ctx.restore();
-
-            // Draw more prominent head string line
-            ctx.save();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([10, 5]);
-            ctx.beginPath();
-            ctx.moveTo(headStringX, c);
-            ctx.lineTo(headStringX, h - c);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.restore();
-        } else {
-            // Subtle head string line always visible
-            ctx.save();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([8, 4]);
-            ctx.beginPath();
-            ctx.moveTo(headStringX, c);
-            ctx.lineTo(headStringX, h - c);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.restore();
+        const cloth = ctx.createRadialGradient(w * .43, h * .34, 45, w / 2, h / 2, w * .55);
+        cloth.addColorStop(0, '#279865');
+        cloth.addColorStop(.65, '#168454');
+        cloth.addColorStop(1, '#0e6745');
+        ctx.fillStyle = cloth;
+        ctx.fillRect(c - 1, c - 1, w - 2 * c + 2, h - 2 * c + 2);
+        let grain = 9341;
+        const random = () => {
+            grain = (Math.imul(grain, 1664525) + 1013904223) >>> 0;
+            return grain / 4294967296;
+        };
+        for (let i = 0; i < 5700; i++) {
+            ctx.fillStyle = i % 2 ? 'rgba(231,255,231,.09)' : 'rgba(4,38,25,.11)';
+            ctx.fillRect(c + random() * (w - c * 2), c + random() * (h - c * 2), 1.35, .7);
         }
 
-        // === INNER RAIL CUSHIONS (Green rubber with enhanced 3D effect) ===
-        const railDepth = 10;
-
-        // Top rail with enhanced gradient
-        const topRailGrad = ctx.createLinearGradient(0, c - railDepth, 0, c);
-        topRailGrad.addColorStop(0, '#0a5028');
-        topRailGrad.addColorStop(0.3, '#1a7a48');
-        topRailGrad.addColorStop(0.5, '#1a8a50');
-        topRailGrad.addColorStop(0.7, '#1a7a48');
-        topRailGrad.addColorStop(1, '#0d5c30');
-        ctx.fillStyle = topRailGrad;
-        ctx.fillRect(c + 30, c - railDepth, w - 2 * c - 60, railDepth);
-
-        // Rubber specular highlight on top rail
-        ctx.save();
-        ctx.globalAlpha = 0.2;
-        const topSpecGrad = ctx.createLinearGradient(0, c - railDepth, 0, c - railDepth / 2);
-        topSpecGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        topSpecGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
-        topSpecGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = topSpecGrad;
-        ctx.fillRect(c + 30, c - railDepth, w - 2 * c - 60, railDepth / 2);
-        ctx.restore();
-
-        // Bottom rail
-        const botRailGrad = ctx.createLinearGradient(0, h - c, 0, h - c + railDepth);
-        botRailGrad.addColorStop(0, '#0d5c30');
-        botRailGrad.addColorStop(0.3, '#1a7a48');
-        botRailGrad.addColorStop(0.5, '#1a8a50');
-        botRailGrad.addColorStop(0.7, '#1a7a48');
-        botRailGrad.addColorStop(1, '#0a5028');
-        ctx.fillStyle = botRailGrad;
-        ctx.fillRect(c + 30, h - c, w - 2 * c - 60, railDepth);
-
-        // Left rail
-        const leftRailGrad = ctx.createLinearGradient(c - railDepth, 0, c, 0);
-        leftRailGrad.addColorStop(0, '#0a5028');
-        leftRailGrad.addColorStop(0.3, '#1a7a48');
-        leftRailGrad.addColorStop(0.5, '#1a8a50');
-        leftRailGrad.addColorStop(0.7, '#1a7a48');
-        leftRailGrad.addColorStop(1, '#0d5c30');
-        ctx.fillStyle = leftRailGrad;
-        ctx.fillRect(c - railDepth, c + 30, railDepth, h - 2 * c - 60);
-
-        // Right rail
-        const rightRailGrad = ctx.createLinearGradient(w - c, 0, w - c + railDepth, 0);
-        rightRailGrad.addColorStop(0, '#0d5c30');
-        rightRailGrad.addColorStop(0.3, '#1a7a48');
-        rightRailGrad.addColorStop(0.5, '#1a8a50');
-        rightRailGrad.addColorStop(0.7, '#1a7a48');
-        rightRailGrad.addColorStop(1, '#0a5028');
-        ctx.fillStyle = rightRailGrad;
-        ctx.fillRect(w - c, c + 30, railDepth, h - 2 * c - 60);
-
-        // === ENHANCED WOOD RAILS (3D with realistic grain) - Optimized ===
-        ctx.save();
-        ctx.globalAlpha = 0.15;
-        ctx.strokeStyle = '#1a0f08';
-        ctx.lineWidth = 0.5;
-        for (let i = 0; i < 25; i++) {
-            // Horizontal grain on top/bottom
-            const y1 = Math.random() * c;
+        for (const {a, b, dropA, dropB, tx, ty, x, y, isCenter, mouthWidth} of this.physics.pockets) {
+            const shelf = ctx.createLinearGradient((a.x + b.x) / 2, (a.y + b.y) / 2, x, y);
+            shelf.addColorStop(0, '#19734c');
+            shelf.addColorStop(1, '#0b3f2d');
+            ctx.fillStyle = shelf;
             ctx.beginPath();
-            ctx.moveTo(0, y1);
-            ctx.lineTo(w, y1 + Math.sin(i) * 2);
-            ctx.stroke();
-            const y2 = h - c + Math.random() * c;
-            ctx.beginPath();
-            ctx.moveTo(0, y2);
-            ctx.lineTo(w, y2 + Math.sin(i) * 2);
-            ctx.stroke();
-        }
-        ctx.restore();
-
-        // Rail highlight line
-        ctx.strokeStyle = '#654321';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(c - 2, c - 2, w - 2 * c + 4, h - 2 * c + 4);
-
-        // Inner shadow on felt (more dramatic)
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.5)';
-        ctx.shadowBlur = 20;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-        ctx.strokeStyle = 'rgba(0,0,0,0)';
-        ctx.lineWidth = 25;
-        ctx.strokeRect(c + 12, c + 12, w - 2 * c - 24, h - 2 * c - 24);
-        ctx.restore();
-
-        // === DIRECTIONAL OVERHEAD LIGHTING ===
-        ctx.save();
-        const lightGrad = ctx.createRadialGradient(
-            w / 2, h / 2, 0,
-            w / 2, h / 2, Math.max(w, h) / 1.8
-        );
-        lightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-        lightGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.02)');
-        lightGrad.addColorStop(0.8, 'rgba(0, 0, 0, 0.05)');
-        lightGrad.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
-        ctx.fillStyle = lightGrad;
-        ctx.fillRect(c, c, w - 2 * c, h - 2 * c);
-        ctx.restore();
-
-        // === DIAMOND MARKERS (Metallic inlays) ===
-        const diamondSize = 6;
-        const playableWidth = w - 2 * c;
-        const playableHeight = h - 2 * c;
-
-        for (let i = 1; i <= 6; i++) {
-            const x = c + (playableWidth / 7) * i;
-            this.drawDiamond(ctx, x, c / 2, diamondSize);
-            this.drawDiamond(ctx, x, h - c / 2, diamondSize);
-        }
-        for (let i = 1; i <= 3; i++) {
-            const y = c + (playableHeight / 4) * i;
-            this.drawDiamond(ctx, c / 2, y, diamondSize);
-            this.drawDiamond(ctx, w - c / 2, y, diamondSize);
-        }
-
-        // === ENHANCED POCKETS (Optimized) ===
-        for (const pocket of this.physics.pockets) {
-            // Use different radius for center pockets (smaller, more recessed)
-            const pr = pocket.isCenter ? this.physics.centerPocketRadius : this.physics.pocketRadius;
-
-            if (pocket.isCenter) {
-                // Recessed opening cuts through the rail, not a circle floating
-                // over the cloth. The throat and sensor share the same centre.
-                const top = pocket.y < h / 2;
-                const half = this.physics.centerPocketMouthHalfWidth;
-                ctx.fillStyle = '#090e0c';
-                ctx.fillRect(pocket.x - half, top ? pocket.y : h - c, half * 2,
-                    this.physics.centerPocketInset);
-                ctx.strokeStyle = '#254637'; ctx.lineWidth = 1.5;
-                for (const side of [-1, 1]) {
-                    ctx.beginPath();
-                    ctx.moveTo(pocket.x + side * half, top ? c : h - c);
-                    ctx.lineTo(pocket.x + side * half, pocket.y);
-                    ctx.stroke();
-                }
-            }
-
-            // Pocket shadow (optimized - single layer)
-            ctx.save();
-            ctx.shadowColor = 'rgba(0,0,0,0.8)';
-            ctx.shadowBlur = 12;
-            ctx.fillStyle = '#000000';
-            ctx.beginPath();
-            ctx.arc(pocket.x, pocket.y, pr + 3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-
-            // Deep pocket interior with gradient
-            const pocketGrad = ctx.createRadialGradient(
-                pocket.x, pocket.y, 0,
-                pocket.x, pocket.y, pr
-            );
-            pocketGrad.addColorStop(0, '#000000');
-            pocketGrad.addColorStop(0.6, '#0a0a0a');
-            pocketGrad.addColorStop(1, '#1a1a1a');
-            ctx.fillStyle = pocketGrad;
-            ctx.beginPath();
-            ctx.arc(pocket.x, pocket.y, pr, 0, Math.PI * 2);
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.lineTo(dropB.x, dropB.y);
+            ctx.lineTo(dropA.x, dropA.y);
             ctx.fill();
 
-            // Enhanced metallic rim
-            const rimWidth = pocket.isCenter ? 3 : 4;
-            const rimGrad = ctx.createRadialGradient(
-                pocket.x - 3, pocket.y - 3, pr - rimWidth,
-                pocket.x, pocket.y, pr + 2
-            );
-            rimGrad.addColorStop(0, '#8a8a8a');
-            rimGrad.addColorStop(0.3, '#c0c0c0');
-            rimGrad.addColorStop(0.6, '#d0d0d0');
-            rimGrad.addColorStop(1, '#5a5a5a');
-
-            ctx.strokeStyle = rimGrad;
-            ctx.lineWidth = rimWidth;
-            ctx.beginPath();
-            ctx.arc(pocket.x, pocket.y, pr - rimWidth / 2, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // Bright rim specular highlight
+            const radius = mouthWidth * (isCenter ? .34 : .43);
             ctx.save();
-            ctx.globalAlpha = 0.6;
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1.5;
+            ctx.translate(x, y);
+            ctx.rotate(Math.atan2(ty, tx));
+            // Recess the side pocket so its visible lip clears a ball hugging the rail.
+            ctx.translate(0, -radius * .12);
+            ctx.scale(radius, radius * (isCenter ? .78 : .96));
+
+            const rim = ctx.createLinearGradient(-.55, -1, .3, 1);
+            rim.addColorStop(0, '#9e8066');
+            rim.addColorStop(.28, '#6b5140');
+            rim.addColorStop(.65, '#352921');
+            rim.addColorStop(1, '#214234');
+            ctx.fillStyle = rim;
             ctx.beginPath();
-            ctx.arc(pocket.x - 3, pocket.y - 3, pr - rimWidth, -Math.PI * 0.7, -Math.PI * 0.3);
-            ctx.stroke();
+            ctx.arc(0, 0, 1.05, 0, Math.PI * 2);
+            ctx.fill();
+
+            const bowl = ctx.createRadialGradient(.12, .21, .29, 0, 0, 1);
+            bowl.addColorStop(0, '#020504');
+            bowl.addColorStop(.57, '#060a08');
+            bowl.addColorStop(.86, '#171511');
+            bowl.addColorStop(1, '#3b2e23');
+            ctx.fillStyle = bowl;
+            ctx.beginPath();
+            ctx.arc(0, 0, .96, 0, Math.PI * 2);
+            ctx.fill();
             ctx.restore();
         }
 
-        // === CORNER BRACKETS (Metallic silver) ===
-        this.drawCornerBracket(ctx, 0, 0, 1, 1);
-        this.drawCornerBracket(ctx, w, 0, -1, 1);
-        this.drawCornerBracket(ctx, 0, h, 1, -1);
-        this.drawCornerBracket(ctx, w, h, -1, -1);
+        // Paint the same nose and jaw coordinates used by collisions and the aiming guide.
+        for (const {a, b, backA, backB} of this.physics.cushions) {
+            const rubber = ctx.createLinearGradient(backA.x, backA.y,
+                a.x === b.x ? a.x : backA.x, a.y === b.y ? a.y : backA.y);
+            rubber.addColorStop(0, '#06442e');
+            rubber.addColorStop(.53, '#268a5c');
+            rubber.addColorStop(.88, '#116440');
+            rubber.addColorStop(1, '#07402b');
+            ctx.fillStyle = rubber;
+            ctx.beginPath();
+            ctx.moveTo(backA.x, backA.y);
+            ctx.lineTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.lineTo(backB.x, backB.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(1,33,21,.45)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+        }
 
-        // === BREAK LINE ===
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-        ctx.lineWidth = 1.2;
-        ctx.setLineDash([10, 8]);
-        ctx.beginPath();
-        ctx.moveTo(w * 0.25, c + 5);
-        ctx.lineTo(w * 0.25, h - c - 5);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        const sight = (x, y) => {
+            ctx.fillStyle = '#e5cc9a';
+            ctx.beginPath();
+            ctx.moveTo(x, y - 3);
+            ctx.lineTo(x + 4, y);
+            ctx.lineTo(x, y + 3);
+            ctx.lineTo(x - 4, y);
+            ctx.closePath();
+            ctx.fill();
+        };
+        for (const fraction of [.125, .25, .375, .625, .75, .875]) {
+            const x = c + (w - c * 2) * fraction;
+            sight(x, 8);
+            sight(x, h - 8);
+        }
+        for (const fraction of [.25, .5, .75]) {
+            const y = c + (h - c * 2) * fraction;
+            sight(8, y);
+            sight(w - 8, y);
+        }
 
-        // Break spot with glow
-        ctx.save();
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';
-        ctx.shadowBlur = 6;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-        ctx.beginPath();
-        ctx.arc(w * 0.25, h / 2, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-
-    drawDiamond(ctx, x, y, size) {
-        const grad = ctx.createLinearGradient(x - size, y - size, x + size, y + size);
-        grad.addColorStop(0, '#ffd700');
-        grad.addColorStop(0.3, '#ffec8b');
-        grad.addColorStop(0.5, '#ffd700');
-        grad.addColorStop(0.7, '#daa520');
-        grad.addColorStop(1, '#b8860b');
-
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(x, y - size);
-        ctx.lineTo(x + size, y);
-        ctx.lineTo(x, y + size);
-        ctx.lineTo(x - size, y);
-        ctx.closePath();
-        ctx.fill();
-
-        // Diamond highlight
-        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
-    }
-
-    drawCornerBracket(ctx, x, y, dirX, dirY) {
-        const size = 35;
-        ctx.save();
-
-        const grad = ctx.createLinearGradient(x, y, x + dirX * size, y + dirY * size);
-        grad.addColorStop(0, '#a0a0a0');
-        grad.addColorStop(0.3, '#d0d0d0');
-        grad.addColorStop(0.5, '#c0c0c0');
-        grad.addColorStop(0.7, '#909090');
-        grad.addColorStop(1, '#606060');
-
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + dirX * size, y);
-        ctx.lineTo(x + dirX * size * 0.7, y + dirY * size * 0.3);
-        ctx.lineTo(x + dirX * size * 0.3, y + dirY * size * 0.7);
-        ctx.lineTo(x, y + dirY * size);
-        ctx.closePath();
-        ctx.fill();
-
-        // Bracket border
-        ctx.strokeStyle = '#404040';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.restore();
+        for (const x of [w / 4, w * .75]) {
+            ctx.fillStyle = 'rgba(221,245,222,.47)';
+            ctx.beginPath();
+            ctx.arc(x, h / 2, 2.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        if (this.ballInHandKitchen && this.canAdjustShot()) {
+            const inset = this.cushionWidth;
+            const line = this.tableWidth / 4;
+            ctx.save();
+            ctx.fillStyle = 'rgba(232, 255, 229, 0.09)';
+            ctx.fillRect(inset, inset, line - inset, this.tableHeight - inset * 2);
+            ctx.strokeStyle = 'rgba(234, 255, 231, 0.63)';
+            ctx.lineWidth = 1.4;
+            ctx.setLineDash([5, 6]);
+            ctx.beginPath();
+            ctx.moveTo(line, inset + 3);
+            ctx.lineTo(line, this.tableHeight - inset - 3);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 
     drawBalls(ctx) {

@@ -1,36 +1,103 @@
-/* Compact landscape HUD keeps every control outside the playing surface. */
-@media (orientation: landscape) {
-  .game-shell {
-    padding: max(4px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
-    grid-template-rows: clamp(38px, 9vh, 60px) minmax(0, 1fr) 14px;
-    gap: 3px;
-  }
-  .game-shell .match-hud { width: min(100%, 1040px); height: 100%; grid-template-columns: 32px minmax(0, 1fr) 140px minmax(0, 1fr); gap: 6px; }
-  .game-shell .game-back-button { width: 32px; height: 32px; }
-  .game-shell .game-back-button svg { width: 18px; height: 18px; }
-  .game-shell .player-panel, .game-shell .turn-core { height: 100%; min-height: 0; border-radius: 10px; }
-  .game-shell .player-panel { padding: 3px 8px; gap: 7px; }
-  .game-shell .avatar { width: 28px; height: 28px; flex-basis: 28px; font-size: 12px; }
-  .game-shell .player-copy { min-width: 0; }
-  .game-shell .player-name { font-size: 12px; }
-  .game-shell .ball-group { display: block; font-size: 7px; letter-spacing: .06em; }
-  .game-shell .ball-rack { display: flex; gap: 2px; }
-  .game-shell .rack-ball { width: clamp(7px, 1.2vw, 12px); height: clamp(7px, 1.2vw, 12px); flex-shrink: 0; }
-  .game-shell .turn-core { min-width: 0; padding: 2px 4px; }
-  .game-shell .turn-label { max-width: 100%; font-size: 7px; line-height: 1.15; letter-spacing: 0; white-space: normal; text-align: center; }
-  .game-shell .turn-label:after { content: none; }
-  .game-shell .timer { font-size: 14px; margin: 0; }
-  .game-shell .table-stage { container-type: size; margin: 0 58px; }
-  .game-shell .table-frame { width: min(100cqw, 200cqh); padding: 4px; border-radius: 18px; }
-  .game-shell .table-frame:before { inset: 2px; border-radius: 16px; }
-  .game-shell #pool-table { border-radius: 14px; }
-  .game-shell .spin-console, .game-shell .power-console { width: 52px; padding: 6px 3px; gap: 5px; border-radius: 12px; }
-  .game-shell .power-console { left: -58px; right: auto; }
-  .game-shell .spin-console { right: -58px; left: auto; }
-  .game-shell .spin-ball { width: 42px; height: 42px; }
-  .game-shell .control-label { font-size: 8px; letter-spacing: .06em; }
-  .game-shell #power-gauge { height: clamp(70px, 40cqh, 176px); width: 20px; }
-  .game-shell #reset-spin { min-height: 28px; padding: 4px; }
-  .game-shell .game-footer { font-size: 7px; gap: 14px; letter-spacing: .04em; }
-  .game-shell .game-footer span:nth-child(2) { display: inline; }
+.game-shell {
+    --table-width: min(1560px, 100%, calc((100svh - 166px) * 2));
+    grid-template-rows: 58px minmax(0, auto) 48px 12px;
+    align-content: center;
+    gap: 8px;
+}
+
+.game-shell .match-hud { width: var(--table-width); height: auto; }
+.game-shell .match-hud:not(:has(.game-back-button)) { grid-template-columns: minmax(0, 1fr) 132px minmax(0, 1fr); }
+.game-shell .game-footer #cloud-state { display: inline; }
+.game-shell .turn-label { text-align: center; }
+.game-shell .table-frame {
+    width: var(--table-width);
+    padding: 0;
+    border: 1px solid #ba9362;
+    border-radius: 16px;
+    background: #251914;
+    box-shadow: 0 6px #140e0a, 0 16px 32px #0009;
+    overflow: hidden;
+}
+.game-shell .table-frame::before { content: none; }
+.game-shell #pool-table { height: auto; aspect-ratio: 2 / 1; border-radius: 0; }
+.match-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    width: min(var(--table-width), 1080px);
+    min-width: 0;
+    margin: 0 auto;
+}
+.match-controls :is(.power-console, .spin-console) {
+    position: static;
+    transform: none;
+    flex-direction: row;
+    min-width: 0;
+    gap: 8px;
+    padding: 4px 10px;
+    border: 1px solid #d3b18460;
+    border-radius: 11px;
+    background: #111e1b;
+}
+.match-controls .power-console { flex: 0 1 450px; }
+.match-controls .spin-console { flex: none; }
+.match-controls #power-gauge {
+    flex: 1;
+    width: auto;
+    min-width: 30px;
+    height: 18px;
+    cursor: ew-resize;
+    background: repeating-linear-gradient(90deg, #172523 0 16px, #546052 17px 18px);
+}
+.match-controls #power-fill { inset: 0 auto 0 0; height: 100%; width: var(--power, 0%); background: linear-gradient(90deg, #d7bf69, #eb9251); }
+.match-controls #power-handle { left: var(--power, 0%); top: 50%; width: 10px; height: 21px; }
+.match-controls #power-value { min-width: 4ch; text-align: right; }
+.match-controls .spin-ball { width: 36px; height: 36px; flex: none; }
+.match-controls #spin-info { display: none; }
+.fine-aim { display: flex; gap: 3px; }
+.fine-aim button {
+    width: 26px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid #d3b18460;
+    border-radius: 5px;
+    background: #25332b;
+    cursor: pointer;
+}
+
+@media (max-height: 540px) and (orientation: landscape) {
+    .game-shell {
+        --table-width: min(100%, calc((100svh - 80px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 2));
+        grid-template-rows: 34px minmax(0, auto) 32px;
+        gap: 4px;
+        padding: max(2px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(2px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    }
+    .game-shell .match-hud { grid-template-columns: 30px minmax(0, 1fr) 88px minmax(0, 1fr); gap: 4px; }
+    .game-shell .match-hud:not(:has(.game-back-button)) { grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr); }
+    .game-shell :is(.player-panel, .turn-core) { height: 34px; padding: 2px 5px; border-radius: 8px; gap: 4px; }
+    .game-shell .avatar { width: 23px; height: 23px; flex-basis: 23px; font-size: 11px; }
+    .game-shell .player-copy { min-width: 0; }
+    .game-shell .player-name { font-size: 10px; }
+    .game-shell .ball-group { display: none; }
+    .game-shell .ball-rack { display: flex; width: auto; flex: 1; gap: 2px; }
+    .game-shell .rack-ball { width: 10px; height: 10px; min-width: 0; flex: 0 0 10px; font-size: 6px; }
+    .game-shell .turn-label { font-size: 8px; letter-spacing: 0; white-space: normal; }
+    .game-shell .turn-label::after { content: none; }
+    .game-shell .timer { font-size: 11px; margin: 0; }
+    .game-shell .game-footer { display: none; }
+    .game-shell .table-frame { border-radius: 10px; box-shadow: 0 2px #140e0a; }
+    .match-controls :is(.power-console, .spin-console) { padding: 1px 6px; gap: 6px; border-radius: 7px; }
+    .match-controls #power-gauge { height: 13px; }
+    .match-controls #power-handle { height: 17px; }
+    .match-controls .spin-ball { width: 26px; height: 26px; }
+    .fine-aim button { width: 22px; height: 23px; }
+}
+
+@media (max-width: 520px) and (orientation: portrait) {
+    .game-shell .match-hud { width: 100%; grid-template-columns: 30px minmax(0, 1fr) 62px minmax(0, 1fr); }
+    .game-shell .match-hud:not(:has(.game-back-button)) { grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr); }
+    .game-shell .player-panel { gap: 4px; padding: 4px; }
+    .game-shell .player-copy { min-width: 0; }
+    .game-shell .ball-rack { display: none; }
+    .match-controls :is(.power-console, .spin-console) { padding: 3px 6px; gap: 5px; }
 }

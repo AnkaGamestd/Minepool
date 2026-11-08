@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Mine Pool — Match</title>
   <script src="https://www.youtube.com/game_api/v1"></script>
+  <script src="js/runtime-config.js"></script>
+  <script src="js/mobile-platform.js"></script>
   <link rel="stylesheet" href="game-shell.css">
+  <link rel="stylesheet" href="table-layout.css?v=2">
 </head>
 <body>
   <div class="loading-screen" id="loading-screen"><div class="loading-mark">8</div></div>
@@ -23,24 +26,30 @@
     </header>
 
     <section class="table-stage">
+      <div class="table-frame">
+        <canvas id="pool-table" width="1000" height="500" aria-label="Pool table"></canvas>
+      </div>
+    </section>
+
+    <section class="match-controls" aria-label="Shot controls">
       <aside class="power-console" aria-label="Shot power">
         <span class="control-label">POWER</span>
         <div id="power-gauge"><div id="power-fill"></div><div id="power-handle"></div></div>
         <output id="power-value">0%</output>
       </aside>
 
-      <div class="table-frame">
-        <canvas id="pool-table" width="1000" height="500" aria-label="Pool table"></canvas>
-      </div>
-
       <aside class="spin-console" aria-label="Cue ball spin">
         <span class="control-label">SPIN</span>
         <div class="spin-ball" role="button" tabindex="0" aria-label="Set cue ball spin"><span id="spin-indicator"></span></div>
         <button id="reset-spin" type="button">RESET</button><span id="spin-info">CENTER</span>
+        <div class="fine-aim" aria-label="Fine aim">
+          <button id="aim-left" type="button" aria-label="Rotate aim left">↶</button>
+          <button id="aim-right" type="button" aria-label="Rotate aim right">↷</button>
+        </div>
       </aside>
     </section>
 
-    <footer class="game-footer"><span>TAP OR DRAG ON YOUR TARGET</span><span>AIM DIRECTLY • SET POWER • RELEASE</span><span id="cloud-state">CLOUD PROFILE</span></footer>
+    <footer class="game-footer"><span>DRAG RIGHT AND RELEASE TO SHOOT</span><span id="cloud-state">CLOUD PROFILE</span></footer>
   </main>
 
   <div id="start-screen" class="hidden"></div>
@@ -65,9 +74,10 @@
     document.addEventListener('DOMContentLoaded', async () => {
       const platform = window.MinePoolPlatform;
       const player = await platform.init();
-      window.currentUser = player;
-      document.getElementById('p1-name').textContent = player.username;
-      document.querySelector('#p1-panel .avatar').textContent = player.username.slice(0, 1).toUpperCase();
+      const { displayName } = platform.getIdentity();
+      window.currentUser = { ...player, username: displayName };
+      document.getElementById('p1-name').textContent = displayName;
+      document.querySelector('#p1-panel .avatar').textContent = displayName.slice(0, 1).toUpperCase();
       document.getElementById('cloud-state').textContent = platform.isInPlayables() ? 'YOUTUBE CLOUD' : 'LOCAL PREVIEW';
 
       const applyAudio = (enabled) => {

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="multiplayer.css">
   <link rel="stylesheet" href="game-shell.css">
   <link rel="stylesheet" href="spa.css">
-  <link rel="stylesheet" href="table-layout.css">
+  <link rel="stylesheet" href="table-layout.css?v=2">
   <link rel="stylesheet" href="tournament-mode.css">
   <link rel="stylesheet" href="auth-ui.css">
   <link rel="stylesheet" href="rewards.css">
@@ -69,8 +69,26 @@
       <div class="turn-core" id="turn-indicator"><span class="turn-label turn-text" id="turn-bar-text">YOUR TURN</span><span class="timer" id="timer-text">30</span></div>
       <section class="player player-panel player-2" id="p2-panel"><div class="ball-rack" id="stripes-rack"></div><div class="player-copy"><span class="player-name" id="p2-name">Rival</span><span class="ball-group">STRIPES</span></div><div class="avatar rival">R</div></section>
     </header>
-    <section class="table-stage"><aside class="spin-console" aria-label="Cue ball spin"><span class="control-label">SPIN</span><div class="spin-ball" role="button" tabindex="0" aria-label="Set cue ball spin"><span id="spin-indicator"></span></div><button id="reset-spin" type="button">RESET</button><span id="spin-info">CENTER</span></aside><div class="table-frame"><canvas id="pool-table" width="1000" height="500" aria-label="Pool table"></canvas></div><aside class="power-console" aria-label="Shot power"><span class="control-label">POWER</span><div id="power-gauge"><div id="power-fill"></div><div id="power-handle"></div></div><output id="power-value">0%</output></aside></section>
-    <footer class="game-footer"><span>TAP OR DRAG ON YOUR TARGET</span><span>AIM DIRECTLY • SET POWER • RELEASE</span><span id="cloud-state">OFFLINE</span></footer>
+    <section class="table-stage">
+      <div class="table-frame"><canvas id="pool-table" width="1000" height="500" aria-label="Pool table"></canvas></div>
+    </section>
+    <section class="match-controls" aria-label="Shot controls">
+      <aside class="power-console" aria-label="Shot power">
+        <span class="control-label">POWER</span>
+        <div id="power-gauge"><div id="power-fill"></div><div id="power-handle"></div></div>
+        <output id="power-value">0%</output>
+      </aside>
+      <aside class="spin-console" aria-label="Cue ball spin">
+        <span class="control-label">SPIN</span>
+        <div class="spin-ball" role="button" tabindex="0" aria-label="Set cue ball spin"><span id="spin-indicator"></span></div>
+        <button id="reset-spin" type="button">RESET</button><span id="spin-info">CENTER</span>
+        <div class="fine-aim" aria-label="Fine aim">
+          <button id="aim-left" type="button" aria-label="Rotate aim left">↶</button>
+          <button id="aim-right" type="button" aria-label="Rotate aim right">↷</button>
+        </div>
+      </aside>
+    </section>
+    <footer class="game-footer"><span>DRAG RIGHT AND RELEASE TO SHOOT</span><span id="cloud-state">OFFLINE</span></footer>
   </main>
 
   <main class="tournament-shell app-view hidden" id="tournament-view" aria-label="Tournament mode">
