@@ -375,6 +375,11 @@ class PoolGame {
             // Initialize the game
             this.gameMode = 'multiplayer';
             this.initializeBalls();
+            this.playerTypes = { 1: null, 2: null };
+            this.tableState = 'open';
+            this.calledPocket = null;
+            this.needsCallPocket = false;
+            this.callPocketModal?.classList.add('hidden');
             this.resetBallRacks();
             this.gameState = 'aiming';
             this.currentPlayer = data.currentPlayer || 1;
@@ -444,6 +449,9 @@ class PoolGame {
 
             this.gameMode = 'multiplayer';
             this.gameState = 'aiming';
+            this.calledPocket = null;
+            this.needsCallPocket = false;
+            this.callPocketModal?.classList.add('hidden');
 
             if (data.gameState && data.gameState.balls) {
                 this.mergeAuthoritativeBalls(data.gameState.balls, true);
@@ -533,6 +541,10 @@ class PoolGame {
 
         // Run at 60 simulation steps per second on every refresh rate.
         if (timestamp === undefined) {
+            // Rejoining an active match must replace, not duplicate, the render
+            // and physics loop already running for that game instance.
+            if (this.animationId) cancelAnimationFrame(this.animationId);
+            this.animationId = null;
             this.lastPhysicsTime = performance.now();
             this.physicsAccumulator = 0;
             timestamp = this.lastPhysicsTime;
@@ -1299,8 +1311,10 @@ class PoolGame {
         // Check if player needs to call pocket (all their balls are cleared, only 8-ball left)
         const myGroup = this.playerTypes[this.currentPlayer];
         if (myGroup && this.isGroupCleared(myGroup)) {
-            if (this.isLocalAITurn()) {
+            const onlineAiTurn = this.isMultiplayer && window.networkManager?.isAiMatch && !this.isMyTurn;
+            if (this.isLocalAITurn() || onlineAiTurn) {
                 const eightBall = this.balls.find((ball) => ball.id === 8);
+                if (!eightBall?.active) return;
                 let bestPocket = 0;
                 let bestDistance = Infinity;
                 this.physics.pockets.forEach((pocket, index) => {
@@ -1310,30 +1324,35 @@ class PoolGame {
                 this.calledPocket = bestPocket;
                 this.needsCallPocket = false;
                 this.gameState = 'waiting';
+                this.callPocketModal?.classList.add('hidden');
+                window.networkManager?.hidePocketCallOverlay?.();
                 this.showMessage('OPPONENT CALLS POCKET', `Pocket ${bestPocket + 1}`, 1200);
-                this.scheduleAITurn();
+                if (this.isLocalAITurn()) this.scheduleAITurn();
                 return;
             }
+            if (this.isMultiplayer && !this.isMyTurn) {
+                this.needsCallPocket = false;
+                this.callPocketModal?.classList.add('hidden');
+                return;
+            }
+            if (this.calledPocket !== null && this.gameState !== 'calling-pocket') return;
             // Player is on the 8-ball, must call pocket
             this.needsCallPocket = true;
             this.gameState = 'calling-pocket';
             this.stopShotTimer();
 
-            // Use the responsive modal that is part of the current game layout.
-            if (this.callPocketModal) {
-                console.log('🎱 Showing pocket call modal for 8-ball shot');
-                this.callPocketModal.classList.remove('hidden');
-            } else {
-                // Fallback to message
-                this.showMessage('CALL POCKET', 'Click on a pocket to call your 8-ball shot', 5000);
-            }
+            // Pocket selection happens on the table canvas. A full-screen
+            // modal would block the existing mouse/touch pocket handlers.
+            this.callPocketModal?.classList.add('hidden');
+            window.networkManager?.hidePocketCallOverlay?.();
+            this.showMessage('CALL POCKET', 'Tap a glowing pocket on the table', 2500);
         } else {
             this.needsCallPocket = false;
-            if (this.gameState === 'calling-pocket') this.gameState = 'aiming';
+            if (this.gameState === 'calling-pocket') this.gameState = this.isMultiplayer && !this.isMyTurn ? 'waiting' : 'aiming';
             this.callPocketModal?.classList.add('hidden');
             window.networkManager?.hidePocketCallOverlay?.();
             if (this.isLocalAITurn()) this.scheduleAITurn();
-            else this.startShotTimer();
+            else if (!this.isMultiplayer || this.isMyTurn) this.startShotTimer();
         }
     }
 
@@ -1417,6 +1436,11 @@ class PoolGame {
                 shot = this.getFallbackAIShot(cueBall, targetType);
             }
 
+            if (this.tableState === 'closed' && this.playerTypes[2] && this.isGroupCleared(this.playerTypes[2])) {
+                const selectedPocket = this.physics.pockets.indexOf(shot.pocket);
+                if (selectedPocket >= 0) this.calledPocket = selectedPocket;
+            }
+
             this.aimAngle = this.normalizeAngle(shot.angle);
             this.power = Math.max(32, Math.min(92, shot.power * 100));
             this.spinX = Number.isFinite(shot.spinX) ? shot.spinX : 0;
@@ -1460,6 +1484,9 @@ class PoolGame {
 
     shoot() {
         if (!this.canAdjustShot() || this.ballInHand || !this.balls[0]?.active || this.power < 2) return;
+        this.shotEligibleForEight = this.tableState === 'closed' &&
+            Boolean(this.playerTypes[this.currentPlayer]) &&
+            this.isGroupCleared(this.playerTypes[this.currentPlayer]);
         this.cueStroke = { x: this.balls[0].x, y: this.balls[0].y,
             angle: this.aimAngle, started: performance.now() };
         this.aimLocked = false;
@@ -1567,6 +1594,11 @@ class PoolGame {
 
         // 1. Sync Turn State (Authoritative)
         if (data.gameState && data.gameState.currentPlayer) {
+            if (this.currentPlayer !== data.gameState.currentPlayer) {
+                this.calledPocket = null;
+                this.needsCallPocket = false;
+                this.callPocketModal?.classList.add('hidden');
+            }
             this.currentPlayer = data.gameState.currentPlayer;
             this.isMyTurn = (this.currentPlayer === this.myPlayerNumber);
 
@@ -1880,7 +1912,7 @@ class PoolGame {
                 if (this.tableState === 'open') {
                     // Open table: Can hit anything except 8-ball first (unless 8 is the only thing left? No, 8 is never legal first on open table unless it's the only ball, but here we have groups)
                     // Actually, on open table, you can hit solids or stripes. You cannot hit 8-ball first.
-                    if (isEightBall && this.hasOtherBalls()) {
+                    if (isEightBall) {
                         foul = true;
                         reason = "Cannot hit 8-ball first on open table.";
                     }
@@ -1888,7 +1920,7 @@ class PoolGame {
                     // Closed table: Must hit own group
                     if (targetGroup === 'solid' && (firstBall.type !== 'solid')) {
                         // Exception: If on 8-ball (all solids cleared)
-                        if (!this.isGroupCleared('solid')) {
+                        if (!this.shotEligibleForEight) {
                             foul = true;
                             reason = "Must hit Solid first.";
                         } else if (!isEightBall) {
@@ -1896,7 +1928,7 @@ class PoolGame {
                             reason = "Must hit 8-ball.";
                         }
                     } else if (targetGroup === 'stripe' && (firstBall.type !== 'stripe')) {
-                        if (!this.isGroupCleared('stripe')) {
+                        if (!this.shotEligibleForEight) {
                             foul = true;
                             reason = "Must hit Stripe first.";
                         } else if (!isEightBall) {
@@ -1922,13 +1954,13 @@ class PoolGame {
                 } else {
                     // Check if group is cleared
                     const myGroup = this.playerTypes[this.currentPlayer];
-                    if (this.tableState === 'open' || !this.isGroupCleared(myGroup)) {
+                    if (this.tableState === 'open' || !myGroup || this.shotEligibleForEight !== true) {
                         loss = true;
                         reason = "8-Ball pocketed early (Loss).";
                     } else {
                         // MINICLIP: Check if 8-ball went into called pocket
                         const eightBallPocket = eightBallPocketed.pocket;
-                        if (this.calledPocket !== null && eightBallPocket !== this.calledPocket) {
+                        if (this.calledPocket === null || eightBallPocket !== this.calledPocket) {
                             loss = true;
                             reason = "8-Ball in wrong pocket (Loss).";
                         } else {
@@ -2122,6 +2154,9 @@ class PoolGame {
 
     switchPlayer() {
         this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+        this.calledPocket = null;
+        this.needsCallPocket = false;
+        this.callPocketModal?.classList.add('hidden');
 
         // Update multiplayer turn tracking
         if (this.isMultiplayer) {

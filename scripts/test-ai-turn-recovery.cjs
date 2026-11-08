@@ -345,6 +345,7 @@ const continuingGame = {
     gameState: 'shooting',
     tableState: 'closed',
     playerTypes: { 1: 'stripe', 2: 'solid' },
+    physics: { ...game.physics, shotFirstContact: 1, railContactAfterHit: false },
     shotPocketedBalls: [{ id: 1, type: 'solid' }]
 };
 const continuingNetwork = new NetworkManager(continuingGame);
@@ -356,5 +357,33 @@ continuingNetwork.socket = { connected: true, emit() {} };
 continuingNetwork.waitForAiShotComplete();
 assert.equal(continuingGame.gameState, 'waiting', 'Consecutive AI turns must leave the completed shooting state');
 assert.equal(continuingNetwork.aiShotPending, false, 'The next AI shot must be allowed to schedule');
+assert.equal(continuingNetwork.lastAiResultPayload.continueTurn, true, 'A continuing AI shot must be persisted before the next shot');
+
+const humanGame = {
+    ...game, wasMyShot: true, gameState: 'shooting', currentPlayer: 1,
+    onGameStateUpdate(data) {
+        this.currentPlayer = data.gameState.currentPlayer;
+        this.gameState = 'aiming';
+    }
+};
+const humanNetwork = new NetworkManager(humanGame);
+humanNetwork.myPlayerNumber = 1;
+humanNetwork.roomId = 'human-reconnect';
+let humanAcknowledgement;
+humanNetwork.socket = {
+    connected: true,
+    emit(event, payload, acknowledge) { if (event === 'shot_result') humanAcknowledgement = acknowledge; }
+};
+humanNetwork.applyAuthoritativeGameState({ gameState: { currentPlayer: 1 } });
+assert.equal(humanGame.gameState, 'shooting', 'A pre-shot snapshot must not rewind a moving human shot');
+humanGame.gameState = 'waiting';
+humanNetwork.sendShotResult({ foul: false, continueTurn: false, balls: [] });
+const humanResultId = humanNetwork.lastHumanResultPayload.resultId;
+humanNetwork.applyAuthoritativeGameState({ gameState: { currentPlayer: 2 } });
+assert.equal(humanGame.currentPlayer, 1, 'An unacknowledged human result must survive an old snapshot');
+assert.equal(humanNetwork.lastHumanResultPayload.resultId, humanResultId);
+humanAcknowledgement({ success: true, gameState: { currentPlayer: 2 }, lastResult: { resultId: humanResultId } });
+assert.equal(humanNetwork.lastHumanResultPayload, null, 'The matching acknowledgement retires the human result');
+assert.equal(humanGame.currentPlayer, 2, 'The acknowledged result advances the turn');
 
 console.log('PASS: AI recovers from stalls and server acknowledgements are idempotent');

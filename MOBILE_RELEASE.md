@@ -1,5 +1,9 @@
 # Mine Pool mobile release
 
+The original Google Play Alpha bundle `1.0.10` (version code `11`), uploaded on 16 September 2026, was compared with the repository on 8 November 2026. Its SHA-256 is `fbd1997744a5c639b0c37f970d09681ba6d754c39c82fd801db33ad0a5d77904`.
+
+That bundle contained uncommitted changes in `www/game.js`, `www/network.js`, and `www/game-shell.css`. The recovered changes preserve human-shot reconnect recovery, acknowledgement of continuing AI shots, called-pocket selection on the canvas, and eight-ball eligibility at shot start. These changes are combined with the wider table and revised pockets. `www/js/youtube-playables.js`, also present in the bundle and referenced by the profile page, is restored from the same artifact.
+
 The Android and iOS projects package the files in `www`. The game does not open a remote website inside the app. Multiplayer connects securely to `https://api.taingames.com`.
 
 ## Prepare native projects
