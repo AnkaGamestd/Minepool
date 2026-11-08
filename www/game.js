@@ -2924,6 +2924,28 @@ class ChatManager {
     }
 
     initElements() {
+        const shell = this.game.canvas.closest('.game-shell');
+        const header = shell?.querySelector('.match-hud');
+        if (header && !document.getElementById('chat-toggle')) {
+            const toggle = document.createElement('button');
+            toggle.id = 'chat-toggle';
+            toggle.type = 'button';
+            toggle.setAttribute('aria-label', 'Open match chat');
+            toggle.setAttribute('aria-controls', 'chat-container');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4Z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span id="chat-badge" hidden></span>';
+            header.append(toggle);
+            const panel = document.createElement('section');
+            panel.id = 'chat-container';
+            panel.className = 'match-chat';
+            panel.hidden = true;
+            panel.setAttribute('aria-label', 'Match chat');
+            panel.innerHTML = '<header><strong>MATCH CHAT</strong><button id="chat-close" type="button" aria-label="Close chat">×</button></header>' +
+                '<div id="chat-messages" role="log" aria-label="Messages" aria-live="polite"><p class="chat-welcome">Say hello or send a quick message.</p></div>' +
+                '<div class="match-quick-chat" aria-label="Quick messages"><button type="button">Good luck!</button><button type="button">Nice shot!</button><button type="button">Well played!</button><button type="button">GG</button></div>' +
+                '<form id="chat-form"><input id="chat-input" aria-label="Chat message" maxlength="200" autocomplete="off" placeholder="Message…"><button id="chat-send" type="submit">SEND</button></form>';
+            shell.append(panel);
+        }
         this.chatPanel = document.getElementById('chat-panel');
         this.chatToggle = document.getElementById('chat-toggle');
         this.chatContainer = document.getElementById('chat-container');
@@ -2946,36 +2968,64 @@ class ChatManager {
             this.chatClose.addEventListener('click', () => this.closeChat());
         }
 
-        // NOTE: Send message and quick chat buttons are handled by network chat in game.html
-        // Do NOT add event listeners here to prevent duplicate messages
+        document.getElementById('chat-form')?.addEventListener('submit', event => {
+            event.preventDefault();
+            this.sendMessage();
+        });
+        document.querySelectorAll('.match-quick-chat button').forEach(button => {
+            button.addEventListener('click', () => this.sendQuickMessage(button.textContent));
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && this.isOpen) this.closeChat();
+        });
+        for (const id of ['game-back-button', 'btn-back-to-menu']) {
+            document.getElementById(id)?.addEventListener('click', () => this.closeChat());
+        }
+    }
+
+    bindNetwork(network) {
+        this.network = network;
+        const receive = data => {
+            const player = data.playerId === network.getPlayerId()
+                ? this.game.myPlayerNumber : (this.game.myPlayerNumber === 1 ? 2 : 1);
+            this.setPlayerName(player, data.username || data.from || `Player ${player}`);
+            this.addMessage(player, data.message);
+        };
+        network.on('chat_message', receive);
+        network.on('quick_chat', receive);
+        network.on('game_start', () => {
+            this.messages = [];
+            this.chatMessages.replaceChildren();
+            this.clearUnread();
+            this.closeChat();
+        });
     }
 
     toggleChat() {
-        this.isOpen = !this.isOpen;
-        if (this.chatContainer) {
-            this.chatContainer.classList.toggle('open', this.isOpen);
-        }
-        if (this.isOpen) {
-            this.clearUnread();
-            if (this.chatInput) {
-                this.chatInput.focus();
-            }
-        }
+        if (this.isOpen) this.closeChat();
+        else this.openChat();
     }
 
     openChat() {
         this.isOpen = true;
         if (this.chatContainer) {
+            this.chatContainer.hidden = false;
             this.chatContainer.classList.add('open');
         }
+        this.chatToggle?.setAttribute('aria-expanded', 'true');
+        this.game.cancelCueInput();
         this.clearUnread();
+        if (this.chatMessages) this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
     closeChat() {
         this.isOpen = false;
         if (this.chatContainer) {
+            this.chatContainer.hidden = true;
             this.chatContainer.classList.remove('open');
         }
+        this.chatToggle?.setAttribute('aria-expanded', 'false');
+        this.chatInput?.blur();
     }
 
     getCurrentPlayer() {
@@ -2988,18 +3038,23 @@ class ChatManager {
 
     sendMessage() {
         if (!this.chatInput) return;
-
-        const text = this.chatInput.value.trim();
-        if (text === '') return;
-
-        const player = this.getCurrentPlayer();
-        this.addMessage(player, text);
-        this.chatInput.value = '';
+        if (this.sendQuickMessage(this.chatInput.value)) this.chatInput.value = '';
     }
 
     sendQuickMessage(text) {
-        const player = this.getCurrentPlayer();
-        this.addMessage(player, text);
+        const message = String(text).trim().slice(0, 200);
+        if (!message) return false;
+        if (this.game.isMultiplayer) {
+            if (!this.network?.isConnected() || !this.network.roomId) {
+                this.game.showMessage('CHAT OFFLINE', 'Reconnect to send your message.');
+                return false;
+            }
+            this.network.sendMessage(message);
+        } else {
+            this.loadPlayerNames();
+            this.addMessage(this.game.gameMode === '2player' ? this.getCurrentPlayer() : 1, message);
+        }
+        return true;
     }
 
     addMessage(player, text) {
@@ -3009,6 +3064,7 @@ class ChatManager {
             time: new Date()
         };
         this.messages.push(message);
+        if (this.messages.length > 100) this.messages.shift();
 
         // Remove welcome message if exists
         const welcome = this.chatMessages?.querySelector('.chat-welcome');
@@ -3021,7 +3077,6 @@ class ChatManager {
 
         // If chat is closed, show notification
         if (!this.isOpen) {
-            this.showNotification(player, text);
             this.incrementUnread();
         }
 
@@ -3048,6 +3103,7 @@ class ChatManager {
         msgDiv.appendChild(senderSpan);
         msgDiv.appendChild(bubbleDiv);
         this.chatMessages.appendChild(msgDiv);
+        if (this.chatMessages.children.length > 100) this.chatMessages.firstElementChild.remove();
     }
 
     showNotification(player, text) {
@@ -3099,8 +3155,10 @@ class ChatManager {
         if (this.unreadCount > 0) {
             this.chatBadge.textContent = this.unreadCount > 9 ? '9+' : this.unreadCount;
             this.chatBadge.classList.add('active');
+            this.chatBadge.hidden = false;
         } else {
             this.chatBadge.classList.remove('active');
+            this.chatBadge.hidden = true;
         }
     }
 }

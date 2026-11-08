@@ -359,11 +359,6 @@ class NetworkManager {
             if (pendingHumanResult) this.sendShotResult(pendingHumanResult);
         });
 
-        // Chat events
-        this.socket.on('chat_message', (data) => {
-            this.emit('chat_message', data);
-        });
-
         this.socket.on('quick_chat', (data) => {
             this.emit('quick_chat', data);
         });

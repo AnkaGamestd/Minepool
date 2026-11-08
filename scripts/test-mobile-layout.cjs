@@ -69,7 +69,7 @@ const { chromium } = require('playwright');
             const verifyMatch = async () => {
                 const layout = await page.evaluate(() => {
                     const box = selector => document.querySelector(selector).getBoundingClientRect().toJSON();
-                    const targets = ['#power-gauge', '.spin-ball', '#reset-spin', '#aim-left', '#aim-right'];
+                    const targets = ['#power-gauge', '.spin-ball', '#reset-spin', '#aim-left', '#aim-right', '#chat-toggle'];
                     return { table: box('#pool-table'), timer: box('#timer-text'), turn: box('#turn-indicator'),
                         controls: box('.match-controls'), targets: targets.map(selector => [selector, box(selector)]),
                         names: [1, 2].map(i => ({ name: box(`#p${i}-name`), rack: box(`#p${i}-panel .ball-rack`),
@@ -103,6 +103,17 @@ const { chromium } = require('playwright');
             assert(await page.evaluate(() => gameInstance.aimAngle) > angle, 'fine aim remains usable');
             await page.locator('.spin-ball').tap();
             await page.locator('#reset-spin').tap();
+            await visible('#chat-toggle');
+            await page.locator('#chat-toggle').tap();
+            await visible('#chat-close');
+            await visible('#chat-send');
+            await page.locator('#chat-input').fill('Practice chat');
+            await page.locator('#chat-send').tap();
+            assert.match(await page.locator('#chat-messages').textContent(), /Practice chat/);
+            await page.screenshot({ path: path.join(output, `${width}x${height}-chat.png`), scale: 'css' });
+            await page.locator('#chat-close').tap();
+            assert.equal(await page.locator('#chat-container').isVisible(), false, 'chat closes without blocking controls');
+            assert.equal(await page.evaluate(() => gameInstance.gameState), 'aiming', 'chat controls cannot fire a shot');
 
             if (width === 844) {
                 await page.setViewportSize({ width: 390, height: 844 });

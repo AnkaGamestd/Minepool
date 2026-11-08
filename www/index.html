@@ -179,6 +179,7 @@
       const showMultiplayerMessage = (message) => { document.getElementById('message-title').textContent = 'ONLINE MULTIPLAYER'; document.getElementById('message-text').textContent = message; document.getElementById('game-message').classList.remove('hidden'); window.setTimeout(() => document.getElementById('game-message').classList.add('hidden'), 2600); };
       try {
         window.networkManager = new NetworkManager(window.gameInstance);
+        window.chatManager.bindNetwork(window.networkManager);
         multiplayerUI = new MobileMatchmakingUI(window.networkManager, {
           onMessage: showMultiplayerMessage,
           onGameStart: () => { activeMode = 'multiplayer'; showView('game'); }
